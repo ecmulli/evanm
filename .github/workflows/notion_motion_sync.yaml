@@ -3,9 +3,9 @@ name: Notion Task Sync
 on:
   # Scheduled runs
   schedule:
-    # Run incremental sync every 15 minutes during work hours (8 AM - 8 PM UTC)
-    - cron: '*/15 8-20 * * 1-5'  # Every 15 minutes, weekdays work hours
-    # Run full sync once daily at 6 AM UTC
+    # Run full sync every 30 minutes during work hours (8 AM - 8 PM UTC) 
+    - cron: '*/30 8-20 * * 1-5'  # Every 30 minutes, weekdays work hours
+    # Run full sync once daily at 6 AM UTC (backup)
     - cron: '0 6 * * *'   # Daily at 6 AM UTC
     
   # Allow manual triggering
@@ -44,12 +44,9 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "mode=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
-          elif [ "$(date +%H)" = "06" ]; then
-            # 6 AM UTC run = full sync
-            echo "mode=full" >> $GITHUB_OUTPUT
           else
-            # All other scheduled runs = incremental
-            echo "mode=incremental" >> $GITHUB_OUTPUT
+            # All scheduled runs = full sync (incremental not available)
+            echo "mode=full" >> $GITHUB_OUTPUT
           fi
           
       - name: Run Notion sync

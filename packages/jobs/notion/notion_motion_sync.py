@@ -261,14 +261,10 @@ class NotionTaskSync:
             ]
         }
 
-        # Add date filter for incremental sync
+        # Note: since_date filtering is not implemented due to Notion API limitations  
+        # The "Last edited time" property cannot be used in database queries
         if since_date:
-            filter_conditions["and"].append(
-                {
-                    "property": "Updated At",
-                    "last_edited_time": {"on_or_after": since_date.isoformat()},
-                }
-            )
+            self.logger.debug(f"Date filtering skipped (since_date: {since_date})")
 
         try:
             client = self.get_workspace_client(workspace)
@@ -349,14 +345,10 @@ class NotionTaskSync:
                 {"property": "Workspace", "select": {"equals": workspace}}
             )
 
-        # Add date filter for incremental sync
+        # Note: since_date filtering is not implemented due to Notion API limitations  
+        # The "Last edited time" property cannot be used in database queries
         if since_date:
-            filter_conditions["and"].append(
-                {
-                    "property": "Updated At",
-                    "last_edited_time": {"on_or_after": since_date.isoformat()},
-                }
-            )
+            self.logger.debug(f"Date filtering skipped (since_date: {since_date})")
 
         # If no conditions, query all
         query_filter = filter_conditions if filter_conditions["and"] else None
@@ -813,31 +805,12 @@ class NotionTaskSync:
         return results
 
     def sync_incremental(self, sync_content: bool = False) -> Dict[str, Any]:
-        """Perform incremental sync of tasks updated in last 24 hours."""
-        since_date = datetime.now(timezone.utc) - timedelta(hours=24)
-        self.logger.info(
-            f"🚀 Starting INCREMENTAL sync (since {since_date.isoformat()})"
-        )
-
-        results = {"workspaces": {}, "since_date": since_date.isoformat()}
-
-        for workspace in self.get_workspace_databases().keys():
-            workspace_results = {}
-
-            # External → Personal
-            workspace_results["external_to_personal"] = self.sync_external_to_personal(
-                workspace, since_date, sync_content=sync_content
-            )
-
-            # Personal → External
-            workspace_results["personal_to_external"] = self.sync_personal_to_external(
-                workspace, since_date, sync_content=sync_content
-            )
-
-            results["workspaces"][workspace] = workspace_results
-
-        self.logger.info("✅ Incremental sync completed")
-        return results
+        """Perform incremental sync - currently same as full sync due to Notion API limitations."""
+        self.logger.info("🚀 Starting INCREMENTAL sync (falling back to full sync)")
+        self.logger.warning("⚠️  Note: Incremental sync requires custom timestamp fields. Using full sync for now.")
+        
+        # Fallback to full sync since Notion's last_edited_time isn't filterable
+        return self.sync_full(sync_content=sync_content)
 
 
 def main():
@@ -873,6 +846,7 @@ def main():
         print("SYNC SUMMARY")
         print("=" * 50)
 
+        total_errors = 0
         for workspace, workspace_results in results.get("workspaces", {}).items():
             print(f"\n{workspace}:")
             ext_to_personal = workspace_results.get("external_to_personal", {})
@@ -883,14 +857,19 @@ def main():
             )
             print(f"  Personal → External: {personal_to_ext.get('updated', 0)} updated")
 
-            if ext_to_personal.get("errors", 0) + personal_to_ext.get("errors", 0) > 0:
-                print(
-                    f"  ⚠️  Errors: {ext_to_personal.get('errors', 0) + personal_to_ext.get('errors', 0)}"
-                )
+            workspace_errors = ext_to_personal.get("errors", 0) + personal_to_ext.get("errors", 0)
+            total_errors += workspace_errors
+            
+            if workspace_errors > 0:
+                print(f"  ⚠️  Errors: {workspace_errors}")
 
-        print(
-            f"\n{'🧪 DRY RUN - No changes made' if dry_run else '✅ Sync completed successfully'}"
-        )
+        if total_errors > 0:
+            print(f"\n❌ Sync completed with {total_errors} errors")
+            sys.exit(1)
+        else:
+            print(
+                f"\n{'🧪 DRY RUN - No changes made' if dry_run else '✅ Sync completed successfully'}"
+            )
 
     except Exception as e:
         print(f"❌ Sync failed: {e}")
