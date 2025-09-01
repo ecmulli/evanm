@@ -176,7 +176,7 @@ RESPONSE FORMAT (JSON):
 {{
     "task_name": "Clear, actionable task title (max 100 chars)",
     "workspace": "Personal|Livepeer|Vanquish",
-    "priority": "Low|Medium|High", 
+    "priority": "Low|Medium|High|ASAP", 
     "estimated_hours": <number between 0.25 and 40>,
     "description": "Detailed description of what needs to be done",
     "acceptance_criteria": "Clear, testable criteria for completion"
@@ -189,7 +189,7 @@ INTELLIGENT PARSING RULES:
    - Default to "Personal" if no clear workspace clues
 
 2. PRIORITY DETECTION (look for these clues):
-   - "urgent", "ASAP", "blocking", "critical", "emergency" → High
+   - "urgent", "ASAP", "blocking", "critical", "emergency" → ASAP
    - "high priority", "important", "soon", "deadline" → High
    - "low priority", "nice to have", "eventually", "when time" → Low
    - Default to "Medium" if no clear priority clues
@@ -258,7 +258,7 @@ Analyze the input and respond with ONLY the JSON object:"""
                 task_info["workspace"] = "Personal"
 
             # Validate priority
-            if task_info["priority"] not in ["Low", "Medium", "High"]:
+            if task_info["priority"] not in ["Low", "Medium", "High", "ASAP"]:
                 self.logger.warning(
                     f"Invalid priority '{task_info['priority']}', defaulting to Medium"
                 )

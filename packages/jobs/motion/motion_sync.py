@@ -162,16 +162,16 @@ class MotionNotionSync:
     def get_status_mapping(self) -> Dict[str, str]:
         """Map status values between Notion and Motion."""
         return {
-            # Notion → Motion (adjust based on actual Motion status values)
-            "Not started": "TODO",
-            "In progress": "IN_PROGRESS", 
+            # Notion → Motion (using actual Notion database status values)
+            "Todo": "TODO",
+            "Backlog": "TODO", 
+            "In Progress": "IN_PROGRESS", 
             "Completed": "COMPLETED",
-            "Canceled": "CANCELLED",
-            # Motion → Notion (adjust based on actual Motion status values)
-            "TODO": "Not started",
-            "IN_PROGRESS": "In progress",
+            # Motion → Notion (using actual Notion database status values)
+            "TODO": "Todo",
+            "IN_PROGRESS": "In Progress",
             "COMPLETED": "Completed", 
-            "CANCELLED": "Canceled"
+            "CANCELLED": "Completed"  # Map cancelled to completed since no direct equivalent
         }
 
     def convert_hours_to_minutes(self, hours: float) -> int:
