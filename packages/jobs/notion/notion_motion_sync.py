@@ -25,6 +25,8 @@ import argparse
 import logging
 import os
 import sys
+from datetime import datetime, timedelta
+from typing import Dict, Optional, List, Any
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Set
 
@@ -34,6 +36,104 @@ from notion_client import Client
 
 class NotionTaskSync:
     """Handles syncing tasks between personal hub and workspace databases."""
+
+    def get_block_content(self, page_id: str, client=None) -> List[Dict[str, Any]]:
+        """Get all blocks (content) from a page."""
+        if not client:
+            client = self.personal_client
+
+        blocks = []
+        cursor = None
+
+        while True:
+            response = client.blocks.children.list(
+                block_id=page_id,
+                start_cursor=cursor,
+            )
+            blocks.extend(response.get("results", []))
+            
+            if not response.get("has_more"):
+                break
+                
+            cursor = response.get("next_cursor")
+            
+        return blocks
+
+    def normalize_block(self, block: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize a block for comparison by removing volatile fields."""
+        normalized = block.copy()
+        
+        # Remove fields that change between copies
+        for field in ["id", "created_time", "last_edited_time", "created_by", "last_edited_by"]:
+            normalized.pop(field, None)
+            
+        # Recursively normalize child blocks
+        if block.get("has_children"):
+            child_blocks = self.get_block_content(block["id"])
+            normalized["children"] = [
+                self.normalize_block(child) for child in child_blocks
+            ]
+            
+        return normalized
+
+    def blocks_are_equal(self, blocks1: List[Dict[str, Any]], blocks2: List[Dict[str, Any]]) -> bool:
+        """Compare two lists of blocks for equality."""
+        if len(blocks1) != len(blocks2):
+            return False
+            
+        normalized1 = [self.normalize_block(b) for b in blocks1]
+        normalized2 = [self.normalize_block(b) for b in blocks2]
+        
+        return normalized1 == normalized2
+
+    def sync_blocks(
+        self, 
+        source_page_id: str, 
+        target_page_id: str,
+        source_client=None,
+        target_client=None,
+    ) -> bool:
+        """Sync blocks from source page to target page."""
+        if not source_client:
+            source_client = self.personal_client
+        if not target_client:
+            target_client = self.personal_client
+
+        # Get source and target blocks
+        source_blocks = self.get_block_content(source_page_id, source_client)
+        target_blocks = self.get_block_content(target_page_id, target_client)
+
+        # Check if sync is needed
+        if self.blocks_are_equal(source_blocks, target_blocks):
+            self.logger.debug(f"📝 Blocks already in sync for {target_page_id}")
+            return False
+
+        if self.dry_run:
+            self.logger.info(
+                f"🧪 DRY RUN: Would sync {len(source_blocks)} blocks to {target_page_id}"
+            )
+            return True
+
+        # Delete existing blocks
+        for block in target_blocks:
+            target_client.blocks.delete(block["id"])
+
+        # Create new blocks
+        children = []
+        for block in source_blocks:
+            # Remove fields that can't be sent in creation
+            for field in ["id", "created_time", "last_edited_time", "created_by", "last_edited_by"]:
+                block.pop(field, None)
+            children.append(block)
+
+        # Append all blocks at once (more efficient)
+        target_client.blocks.children.append(
+            block_id=target_page_id,
+            children=children,
+        )
+
+        self.logger.info(f"✅ Synced {len(source_blocks)} blocks to {target_page_id}")
+        return True
 
     def __init__(self, dry_run: bool = False):
         # Try to load .env.dev first, then fall back to .env
@@ -376,13 +476,15 @@ class NotionTaskSync:
             return None
 
     def update_task_properties(
-        self, page_id: str, updates: Dict[str, Any], workspace: str = "Personal"
+        self, page_id: str, updates: Dict[str, Any], workspace: str = "Personal", sync_content: bool = False, source_page_id: str = None, source_workspace: str = None
     ) -> bool:
         """Update properties of an existing task."""
         if self.dry_run:
             self.logger.info(
                 f"🧪 DRY RUN: Would update task {page_id} with {list(updates.keys())}"
             )
+            if sync_content and source_page_id:
+                self.logger.info(f"🧪 DRY RUN: Would also sync content from {source_page_id}")
             return True
 
         # Get field mapping for this workspace
@@ -425,13 +527,30 @@ class NotionTaskSync:
             client = self.get_workspace_client(workspace)
             client.pages.update(page_id=page_id, properties=properties)
             self.logger.info(f"✅ Updated task {page_id}")
+
+            # Sync content if requested
+            if sync_content and source_page_id:
+                # Determine the correct source client
+                if source_workspace:
+                    source_client = self.get_workspace_client(source_workspace)
+                else:
+                    # Default: if no source_workspace specified, assume source is from the workspace we're syncing
+                    source_client = self.get_workspace_client(workspace)
+                
+                self.sync_blocks(
+                    source_page_id=source_page_id,
+                    target_page_id=page_id,
+                    source_client=source_client,
+                    target_client=client,
+                )
+
             return True
         except Exception as e:
             self.logger.error(f"❌ Error updating task {page_id}: {e}")
             return False
 
     def sync_external_to_personal(
-        self, workspace: str, since_date: Optional[datetime] = None
+        self, workspace: str, since_date: Optional[datetime] = None, sync_content: bool = False
     ) -> Dict[str, int]:
         """Sync tasks from external workspace to personal hub."""
         self.logger.info(f"🔄 Syncing {workspace} → Personal Hub")
@@ -557,7 +676,7 @@ class NotionTaskSync:
         return stats
 
     def sync_personal_to_external(
-        self, workspace: str, since_date: Optional[datetime] = None
+        self, workspace: str, since_date: Optional[datetime] = None, sync_content: bool = False
     ) -> Dict[str, int]:
         """Sync tasks from personal hub back to external workspace."""
         self.logger.info(f"🔄 Syncing Personal Hub → {workspace}")
@@ -582,43 +701,82 @@ class NotionTaskSync:
                 external_task = client.pages.retrieve(external_id)
                 external_data = self.extract_task_data(external_task)
 
-                updates = {}
+                # Check if sync is needed based on updated_at timestamp
+                personal_updated = personal_data.get("updated_at")
+                external_updated = external_data.get("updated_at")
+                
+                needs_sync = False
+                if personal_updated and external_updated:
+                    # Compare timestamps - if personal is newer, sync is needed
+                    try:
+                        if isinstance(personal_updated, str):
+                            personal_dt = datetime.fromisoformat(personal_updated.replace('Z', '+00:00'))
+                        else:
+                            personal_dt = personal_updated
+                        if isinstance(external_updated, str):
+                            external_dt = datetime.fromisoformat(external_updated.replace('Z', '+00:00'))
+                        else:
+                            external_dt = external_updated
+                        needs_sync = personal_dt > external_dt
+                    except Exception as e:
+                        self.logger.debug(f"Error comparing timestamps: {e}")
+                        needs_sync = True  # Fallback to full sync
+                else:
+                    needs_sync = True  # Missing timestamps, do full sync
 
-                # Compare fields and build updates (exclude workspace-specific fields)
-                if personal_data["task_name"] != external_data["task_name"]:
-                    updates["task_name"] = personal_data["task_name"]
-                if personal_data["status"] != external_data["status"]:
-                    updates["status"] = personal_data["status"]
-                if (
-                    personal_data["est_duration_hrs"]
-                    != external_data["est_duration_hrs"]
-                ):
-                    updates["est_duration_hrs"] = personal_data["est_duration_hrs"]
-                if personal_data["due_date"] != external_data["due_date"]:
-                    updates["due_date"] = personal_data["due_date"]
-                if personal_data["priority"] != external_data["priority"]:
-                    updates["priority"] = personal_data["priority"]
-                if personal_data["description"] != external_data["description"]:
-                    updates["description"] = personal_data["description"]
+                if needs_sync:
+                    updates = {}
 
-                if updates:
-                    if self.dry_run:
-                        self.logger.info(
-                            f"🧪 DRY RUN: Would update {workspace} task '{personal_data['task_name']}':"
-                        )
-                        for field, value in updates.items():
-                            old_value = external_data.get(field, "None")
-                            self.logger.info(f"  - {field}: '{old_value}' → '{value}'")
-                        stats["updated"] += 1
-                    else:
-                        if self.update_task_properties(external_id, updates, workspace):
+                    # Compare fields and build updates (exclude workspace-specific fields)
+                    if personal_data["task_name"] != external_data["task_name"]:
+                        updates["task_name"] = personal_data["task_name"]
+                    if personal_data["status"] != external_data["status"]:
+                        updates["status"] = personal_data["status"]
+                    if (
+                        personal_data["est_duration_hrs"]
+                        != external_data["est_duration_hrs"]
+                    ):
+                        updates["est_duration_hrs"] = personal_data["est_duration_hrs"]
+                    if personal_data["due_date"] != external_data["due_date"]:
+                        updates["due_date"] = personal_data["due_date"]
+                    if personal_data["priority"] != external_data["priority"]:
+                        updates["priority"] = personal_data["priority"]
+                    if personal_data["description"] != external_data["description"]:
+                        updates["description"] = personal_data["description"]
+
+                    if updates or sync_content:
+                        if self.dry_run:
+                            self.logger.info(
+                                f"🧪 DRY RUN: Would update {workspace} task '{personal_data['task_name']}' (personal newer: {personal_updated} > {external_updated}):"
+                            )
+                            for field, value in updates.items():
+                                old_value = external_data.get(field, "None")
+                                self.logger.info(f"  - {field}: '{old_value}' → '{value}'")
+                            if sync_content:
+                                self.logger.info(f"🧪 DRY RUN: Would also sync content from personal hub")
                             stats["updated"] += 1
                         else:
-                            stats["errors"] += 1
+                            if self.update_task_properties(
+                                external_id, 
+                                updates, 
+                                workspace,
+                                sync_content=sync_content,
+                                source_page_id=personal_task["id"],
+                                source_workspace="Personal"
+                            ):
+                                stats["updated"] += 1
+                            else:
+                                stats["errors"] += 1
+                    else:
+                        if self.dry_run:
+                            self.logger.info(
+                                f"🧪 DRY RUN: {workspace} task '{personal_data['task_name']}' needs timestamp update only"
+                            )
+                        stats["skipped"] += 1
                 else:
                     if self.dry_run:
                         self.logger.info(
-                            f"🧪 DRY RUN: {workspace} task '{personal_data['task_name']}' already up to date"
+                            f"🧪 DRY RUN: {workspace} task '{personal_data['task_name']}' up to date (personal: {personal_updated}, external: {external_updated})"
                         )
                     stats["skipped"] += 1
 
@@ -631,7 +789,7 @@ class NotionTaskSync:
         self.logger.info(f"📊 {workspace} reverse sync complete: {stats}")
         return stats
 
-    def sync_full(self) -> Dict[str, Any]:
+    def sync_full(self, sync_content: bool = False) -> Dict[str, Any]:
         """Perform full sync of all tasks."""
         self.logger.info("🚀 Starting FULL sync")
         results = {"workspaces": {}}
@@ -641,12 +799,12 @@ class NotionTaskSync:
 
             # External → Personal
             workspace_results["external_to_personal"] = self.sync_external_to_personal(
-                workspace
+                workspace, sync_content=sync_content
             )
 
             # Personal → External
             workspace_results["personal_to_external"] = self.sync_personal_to_external(
-                workspace
+                workspace, sync_content=sync_content
             )
 
             results["workspaces"][workspace] = workspace_results
@@ -654,7 +812,7 @@ class NotionTaskSync:
         self.logger.info("✅ Full sync completed")
         return results
 
-    def sync_incremental(self) -> Dict[str, Any]:
+    def sync_incremental(self, sync_content: bool = False) -> Dict[str, Any]:
         """Perform incremental sync of tasks updated in last 24 hours."""
         since_date = datetime.now(timezone.utc) - timedelta(hours=24)
         self.logger.info(
@@ -668,12 +826,12 @@ class NotionTaskSync:
 
             # External → Personal
             workspace_results["external_to_personal"] = self.sync_external_to_personal(
-                workspace, since_date
+                workspace, since_date, sync_content=sync_content
             )
 
             # Personal → External
             workspace_results["personal_to_external"] = self.sync_personal_to_external(
-                workspace, since_date
+                workspace, since_date, sync_content=sync_content
             )
 
             results["workspaces"][workspace] = workspace_results
@@ -690,8 +848,14 @@ def main():
         required=True,
         help="Sync mode: full (all tasks), incremental (last 24h), test (dry run)",
     )
+    parser.add_argument(
+        "--sync-content",
+        action="store_true",
+        help="Also sync page content (blocks) - slower but more complete",
+    )
 
     args = parser.parse_args()
+    sync_content = args.sync_content
 
     try:
         # Initialize sync client
@@ -700,9 +864,9 @@ def main():
 
         # Run sync based on mode
         if args.mode == "full" or args.mode == "test":
-            results = sync_client.sync_full()
+            results = sync_client.sync_full(sync_content=sync_content)
         elif args.mode == "incremental":
-            results = sync_client.sync_incremental()
+            results = sync_client.sync_incremental(sync_content=sync_content)
 
         # Print summary
         print("\n" + "=" * 50)

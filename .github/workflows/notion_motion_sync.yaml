@@ -3,8 +3,8 @@ name: Notion Task Sync
 on:
   # Scheduled runs
   schedule:
-    # Run incremental sync every 2 hours during work hours (8 AM - 8 PM UTC)
-    - cron: '0 8-20/2 * * 1-5'  # Every 2 hours, weekdays only
+    # Run incremental sync every 15 minutes during work hours (8 AM - 8 PM UTC)
+    - cron: '*/15 8-20 * * 1-5'  # Every 15 minutes, weekdays work hours
     # Run full sync once daily at 6 AM UTC
     - cron: '0 6 * * *'   # Daily at 6 AM UTC
     
@@ -65,7 +65,7 @@ jobs:
           VANQUISH_NOTION_USER_ID: ${{ secrets.VANQUISH_NOTION_USER_ID }}
         run: |
           cd packages/jobs/notion
-          python notion_motion_sync.py --mode ${{ steps.sync-mode.outputs.mode }}
+          python notion_motion_sync.py --mode ${{ steps.sync-mode.outputs.mode }} --sync-content
           
       - name: Upload logs on failure
         if: failure()
