@@ -176,7 +176,7 @@ RESPONSE FORMAT (JSON):
 {{
     "task_name": "Clear, actionable task title (max 100 chars)",
     "workspace": "Personal|Livepeer|Vanquish",
-    "priority": "Low|Medium|High|ASAP", 
+    "priority": "Low|Medium|High", 
     "estimated_hours": <number between 0.25 and 40>,
     "description": "Detailed description of what needs to be done",
     "acceptance_criteria": "Clear, testable criteria for completion"
@@ -189,7 +189,7 @@ INTELLIGENT PARSING RULES:
    - Default to "Personal" if no clear workspace clues
 
 2. PRIORITY DETECTION (look for these clues):
-   - "urgent", "ASAP", "blocking", "critical", "emergency" → ASAP
+   - "urgent", "ASAP", "blocking", "critical", "emergency" → High
    - "high priority", "important", "soon", "deadline" → High
    - "low priority", "nice to have", "eventually", "when time" → Low
    - Default to "Medium" if no clear priority clues
@@ -258,7 +258,7 @@ Analyze the input and respond with ONLY the JSON object:"""
                 task_info["workspace"] = "Personal"
 
             # Validate priority
-            if task_info["priority"] not in ["Low", "Medium", "High", "ASAP"]:
+            if task_info["priority"] not in ["Low", "Medium", "High"]:
                 self.logger.warning(
                     f"Invalid priority '{task_info['priority']}', defaulting to Medium"
                 )
@@ -326,42 +326,57 @@ Analyze the input and respond with ONLY the JSON object:"""
                         {"type": "text", "text": {"content": "Acceptance Criteria"}}
                     ]
                 },
-            }
+            },
         ]
-        
+
         # Parse acceptance criteria and create checklist items
         acceptance_criteria = task_info["acceptance_criteria"]
         if acceptance_criteria:
             # Split by newlines and create checklist items
-            criteria_lines = [line.strip() for line in acceptance_criteria.split('\n') if line.strip()]
-            
+            criteria_lines = [
+                line.strip() for line in acceptance_criteria.split("\n") if line.strip()
+            ]
+
             for line in criteria_lines:
                 # Remove markdown checkbox syntax and create proper Notion to-do blocks
-                clean_text = line.replace('- [ ]', '').replace('- [x]', '').replace('- [ ] ', '').replace('- [x] ', '').strip()
+                clean_text = (
+                    line.replace("- [ ]", "")
+                    .replace("- [x]", "")
+                    .replace("- [ ] ", "")
+                    .replace("- [x] ", "")
+                    .strip()
+                )
                 if clean_text:
-                    description_blocks.append({
-                        "object": "block",
-                        "type": "to_do",
-                        "to_do": {
-                            "rich_text": [
-                                {"type": "text", "text": {"content": clean_text}}
-                            ],
-                            "checked": False
+                    description_blocks.append(
+                        {
+                            "object": "block",
+                            "type": "to_do",
+                            "to_do": {
+                                "rich_text": [
+                                    {"type": "text", "text": {"content": clean_text}}
+                                ],
+                                "checked": False,
+                            },
                         }
-                    })
+                    )
         else:
             # Fallback if no acceptance criteria
-            description_blocks.append({
-                "object": "block",
-                "type": "paragraph",
-                "paragraph": {
-                    "rich_text": [
-                        {"type": "text", "text": {"content": "No acceptance criteria specified"}}
-                    ]
-                },
-            })
+            description_blocks.append(
+                {
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [
+                            {
+                                "type": "text",
+                                "text": {"content": "No acceptance criteria specified"},
+                            }
+                        ]
+                    },
+                }
+            )
 
-        # Create page properties
+        # Create page properties (matching the existing Notion sync field names)
         properties = {
             "Task name": {
                 "title": [{"type": "text", "text": {"content": task_info["task_name"]}}]
@@ -369,7 +384,7 @@ Analyze the input and respond with ONLY the JSON object:"""
             "Workspace": {"select": {"name": workspace}},
             "Priority": {"select": {"name": task_info["priority"]}},
             "Est Duration Hrs": {"number": task_info["estimated_hours"]},
-            "Status": {"status": {"name": "Not started"}},
+            "Status": {"status": {"name": "Todo"}},
         }
 
         if self.dry_run:
