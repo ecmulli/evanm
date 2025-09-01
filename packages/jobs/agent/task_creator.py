@@ -23,7 +23,7 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -165,7 +165,14 @@ class TaskCreationAgent:
                 f"\nThe user has suggested workspace: {suggested_workspace}"
             )
 
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        current_day = datetime.now().strftime("%A")
+
         system_prompt = f"""You are an expert task creation assistant. Your job is to analyze the provided information and create a well-structured task definition.
+
+CURRENT DATE CONTEXT:
+- Today is {current_date} ({current_day})
+- Use this to calculate relative dates like 'tomorrow', 'next Friday', etc.
 
 AVAILABLE WORKSPACES:
 - Personal: Personal projects and tasks (DEFAULT)
@@ -178,6 +185,7 @@ RESPONSE FORMAT (JSON):
     "workspace": "Personal|Livepeer|Vanquish",
     "priority": "Low|Medium|High|ASAP", 
     "estimated_hours": <number between 0.25 and 40>,
+    "due_date": "YYYY-MM-DD format (e.g., 2025-01-15)",
     "description": "Detailed description of what needs to be done",
     "acceptance_criteria": "Clear, testable criteria for completion"
 }}
@@ -203,6 +211,17 @@ INTELLIGENT PARSING RULES:
    - "full day", "8 hours", "day task" → 8 hours
    - "week", "40 hours" → 40 hours
    - Default to 1 hour if no clear duration clues
+
+4. DUE DATE DETECTION (look for these clues):
+   - "today", "by end of day" → today's date
+   - "tomorrow", "by tomorrow" → tomorrow's date
+   - "by Friday", "this Friday" → next Friday
+   - "next week", "by next week" → 7 days from now
+   - "end of week", "by EOW" → next Friday
+   - "next Monday", "by Monday" → next Monday
+   - "in 2 days", "2 days from now" → 2 days from now
+   - "by [specific date]" → parse the specific date
+   - Default to 7 days from now if no clear due date clues
 
 GUIDELINES:
 - Task name should be specific and actionable
@@ -250,6 +269,13 @@ Analyze the input and respond with ONLY the JSON object:"""
             task_info["priority"] = task_info.get("priority", "Medium")
             task_info["estimated_hours"] = task_info.get("estimated_hours", 1.0)
 
+            # Default due date to 7 days from now if not provided
+            if not task_info.get("due_date"):
+                default_due_date = (datetime.now() + timedelta(days=7)).strftime(
+                    "%Y-%m-%d"
+                )
+                task_info["due_date"] = default_due_date
+
             # Validate workspace
             if task_info["workspace"] not in ["Personal", "Livepeer", "Vanquish"]:
                 self.logger.warning(
@@ -281,6 +307,7 @@ Analyze the input and respond with ONLY the JSON object:"""
             self.logger.info(
                 f"⏱️  Duration: {task_info.get('estimated_hours', 'Unknown')} hours"
             )
+            self.logger.info(f"📅 Due Date: {task_info.get('due_date', 'Unknown')}")
             self.logger.info(
                 f"📝 Description: {task_info.get('description', 'No description')}"
             )
@@ -311,6 +338,13 @@ Analyze the input and respond with ONLY the JSON object:"""
         description_blocks = [
             {
                 "object": "block",
+                "type": "heading_2",
+                "heading_2": {
+                    "rich_text": [{"type": "text", "text": {"content": "Description"}}]
+                },
+            },
+            {
+                "object": "block",
                 "type": "paragraph",
                 "paragraph": {
                     "rich_text": [
@@ -320,8 +354,8 @@ Analyze the input and respond with ONLY the JSON object:"""
             },
             {
                 "object": "block",
-                "type": "heading_3",
-                "heading_3": {
+                "type": "heading_2",
+                "heading_2": {
                     "rich_text": [
                         {"type": "text", "text": {"content": "Acceptance Criteria"}}
                     ]
@@ -384,6 +418,7 @@ Analyze the input and respond with ONLY the JSON object:"""
             "Workspace": {"select": {"name": workspace}},
             "Priority": {"select": {"name": task_info["priority"]}},
             "Est Duration Hrs": {"number": task_info["estimated_hours"]},
+            "Due date": {"date": {"start": task_info["due_date"]}},
             "Status": {"status": {"name": "Todo"}},
         }
 

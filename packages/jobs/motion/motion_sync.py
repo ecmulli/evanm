@@ -150,7 +150,7 @@ class MotionNotionSync:
             # Notion → Motion
             "Low": "LOW",
             "Medium": "MEDIUM",
-            "High": "HIGH", 
+            "High": "HIGH",
             "ASAP": "ASAP",
             # Motion → Notion
             "LOW": "Low",
