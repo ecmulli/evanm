@@ -3,6 +3,7 @@ schedule==1.2.0
 python-dotenv==1.0.0
 requests==2.31.0
 notion-client==2.2.1
+openai==1.51.0
 
 # Development dependencies
 pytest==7.4.0
