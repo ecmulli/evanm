@@ -3,8 +3,8 @@ name: Notion & Motion Task Sync
 on:
   # Scheduled runs
   schedule:
-    # Run full sync every 30 minutes during work hours (8 AM - 8 PM UTC) 
-    - cron: '*/30 8-20 * * 1-5'  # Every 30 minutes, weekdays work hours
+    # Run full sync every 15 minutes during work hours (8 AM - 8 PM UTC) 
+    - cron: '*/15 8-20 * * 1-5'  # Every 15 minutes, weekdays work hours
     # Run full sync once daily at 6 AM UTC (backup)
     - cron: '0 6 * * *'   # Daily at 6 AM UTC
     
@@ -61,7 +61,7 @@ jobs:
           VANQUISH_NOTION_USER_ID: ${{ secrets.VANQUISH_NOTION_USER_ID }}
         run: |
           cd packages/jobs/notion
-          python notion_motion_sync.py --mode ${{ steps.sync-mode.outputs.mode }} --sync-content
+          python notion_sync.py --mode ${{ steps.sync-mode.outputs.mode }} --sync-content
           
       - name: Run Motion sync
         env:
@@ -80,7 +80,7 @@ jobs:
           # Motion workspace IDs (hardcoded in script)
         run: |
           cd packages/jobs
-          python motion/motion_notion_sync.py --mode ${{ steps.sync-mode.outputs.mode }}
+          python motion/motion_sync.py --mode ${{ steps.sync-mode.outputs.mode }}
           
       - name: Upload logs on failure
         if: failure()

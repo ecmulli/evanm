@@ -90,17 +90,17 @@ VANQUISH_NOTION_USER_ID="your_vanquish_user_id"
 ### Test Mode (Dry Run)
 ```bash
 cd packages/jobs
-python motion/motion_notion_sync.py --mode test
+python motion/motion_sync.py --mode test
 ```
 
 ### Full Sync
 ```bash
-python motion/motion_notion_sync.py --mode full
+python motion/motion_sync.py --mode full
 ```
 
 ### Incremental Sync (Future)
 ```bash
-python motion/motion_notion_sync.py --mode incremental
+python motion/motion_sync.py --mode incremental
 ```
 
 ## How It Works
@@ -160,7 +160,7 @@ python motion/motion_notion_sync.py --mode incremental
 pip install -r requirements.txt
 
 # Run dry run to test configuration
-python motion/motion_notion_sync.py --mode test
+python motion/motion_sync.py --mode test
 
 # Check logs for any issues
 ```

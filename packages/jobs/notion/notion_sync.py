@@ -5,9 +5,9 @@ Notion Task Sync Script
 Syncs tasks between personal task hub and external workspace databases (Livepeer, Vanquish).
 
 Usage:
-    python notion_motion_sync.py --mode full
-    python notion_motion_sync.py --mode incremental
-    python notion_motion_sync.py --mode test  # dry run
+    python notion_sync.py --mode full
+    python notion_sync.py --mode incremental
+    python notion_sync.py --mode test  # dry run
 
 Environment Variables Required:
     PERSONAL_NOTION_API_KEY - Personal workspace Notion API token

@@ -6,7 +6,7 @@ Bidirectional sync between Motion AI and Notion task databases.
 Handles task creation, updates, and field mapping between systems.
 
 Usage:
-    python motion_notion_sync.py --mode [full|incremental|test]
+    python motion_sync.py --mode [full|incremental|test]
     
 Environment Variables Required:
     MOTION_API_KEY - Motion AI API token
