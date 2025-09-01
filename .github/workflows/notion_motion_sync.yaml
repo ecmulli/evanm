@@ -1,4 +1,4 @@
-name: Notion Task Sync
+name: Notion & Motion Task Sync
 
 on:
   # Scheduled runs
@@ -22,7 +22,7 @@ on:
           - test
 
 jobs:
-  notion-sync:
+  notion-motion-sync:
     runs-on: ubuntu-latest
     
     steps:
@@ -48,7 +48,6 @@ jobs:
             # All scheduled runs = full sync (incremental not available)
             echo "mode=full" >> $GITHUB_OUTPUT
           fi
-          
       - name: Run Notion sync
         env:
           PERSONAL_NOTION_API_KEY: ${{ secrets.PERSONAL_NOTION_API_KEY }}
@@ -64,10 +63,31 @@ jobs:
           cd packages/jobs/notion
           python notion_motion_sync.py --mode ${{ steps.sync-mode.outputs.mode }} --sync-content
           
+      - name: Run Motion sync
+        env:
+          # Motion API
+          MOTION_API_KEY: ${{ secrets.MOTION_API_KEY }}
+          # Notion API (reuse from above)
+          PERSONAL_NOTION_API_KEY: ${{ secrets.PERSONAL_NOTION_API_KEY }}
+          LIVEPEER_NOTION_API_KEY: ${{ secrets.LIVEPEER_NOTION_API_KEY }}
+          VANQUISH_NOTION_API_KEY: ${{ secrets.VANQUISH_NOTION_API_KEY }}
+          PERSONAL_NOTION_DB_ID: ${{ secrets.PERSONAL_NOTION_DB_ID }}
+          LIVEPEER_NOTION_DB_ID: ${{ secrets.LIVEPEER_NOTION_DB_ID }}
+          VANQUISH_NOTION_DB_ID: ${{ secrets.VANQUISH_NOTION_DB_ID }}
+          PERSONAL_NOTION_USER_ID: ${{ secrets.PERSONAL_NOTION_USER_ID }}
+          LIVEPEER_NOTION_USER_ID: ${{ secrets.LIVEPEER_NOTION_USER_ID }}
+          VANQUISH_NOTION_USER_ID: ${{ secrets.VANQUISH_NOTION_USER_ID }}
+          # Motion workspace IDs (hardcoded in script)
+        run: |
+          cd packages/jobs
+          python motion/motion_notion_sync.py --mode ${{ steps.sync-mode.outputs.mode }}
+          
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: sync-logs-${{ github.run_id }}
-          path: packages/jobs/notion/*.log
+          path: |
+            packages/jobs/notion/*.log
+            packages/jobs/motion/*.log
           retention-days: 7

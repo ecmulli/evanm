@@ -246,45 +246,62 @@ class MotionNotionSync:
 
     # === MOTION API METHODS ===
     
-    def motion_request(self, method: str, endpoint: str, data: Optional[Dict] = None) -> Dict[str, Any]:
-        """Make authenticated request to Motion API."""
+    def motion_request(self, method: str, endpoint: str, data: Optional[Dict] = None, max_retries: int = 3) -> Dict[str, Any]:
+        """Make authenticated request to Motion API with retry logic."""
         # Handle beta endpoints that use different base URL
         if endpoint.startswith('/beta/') or endpoint.startswith('beta/'):
             url = f"https://api.usemotion.com/{endpoint.lstrip('/')}"
         else:
             url = f"{self.motion_base_url}/{endpoint.lstrip('/')}"
         
-        try:
-            if method.upper() == "GET":
-                response = requests.get(url, headers=self.motion_headers)
-            elif method.upper() == "POST":
-                response = requests.post(url, headers=self.motion_headers, json=data)
-            elif method.upper() == "PATCH":
-                response = requests.patch(url, headers=self.motion_headers, json=data)
-            elif method.upper() == "DELETE":
-                response = requests.delete(url, headers=self.motion_headers)
-            else:
-                raise ValueError(f"Unsupported HTTP method: {method}")
-            
-            response.raise_for_status()
-            
-            # Add delay to respect rate limits (Motion: 12 req/min = 1 req per 5s)
-            time.sleep(5.5)  # 5.5 second delay between requests for safety
-            
-            return response.json() if response.content else {}
-            
-        except requests.exceptions.RequestException as e:
-            self.logger.error(f"Motion API request failed: {e}")
-            if hasattr(e, 'response') and e.response is not None:
-                self.logger.error(f"Response: {e.response.text}")
-            
-            # Handle rate limiting with exponential backoff
-            if hasattr(e, 'response') and e.response is not None and e.response.status_code == 429:
-                self.logger.warning("Rate limit hit, waiting 30 seconds before retry...")
-                time.sleep(30)
-                # Don't retry automatically to avoid infinite loops
-            
-            raise
+        for attempt in range(max_retries + 1):
+            try:
+                if method.upper() == "GET":
+                    response = requests.get(url, headers=self.motion_headers)
+                elif method.upper() == "POST":
+                    response = requests.post(url, headers=self.motion_headers, json=data)
+                elif method.upper() == "PATCH":
+                    response = requests.patch(url, headers=self.motion_headers, json=data)
+                elif method.upper() == "DELETE":
+                    response = requests.delete(url, headers=self.motion_headers)
+                else:
+                    raise ValueError(f"Unsupported HTTP method: {method}")
+                
+                response.raise_for_status()
+                
+                # Small delay between successful requests to be respectful
+                if attempt == 0:  # Only delay on first attempt (not retries)
+                    time.sleep(0.1)  # 100ms - just enough to avoid hammering
+                
+                return response.json() if response.content else {}
+                
+            except requests.exceptions.RequestException as e:
+                if hasattr(e, 'response') and e.response is not None and e.response.status_code == 429:
+                    # Rate limit hit - implement exponential backoff
+                    if attempt < max_retries:
+                        wait_time = 2 ** attempt * 10  # 10s, 20s, 40s
+                        self.logger.warning(f"Rate limit hit (attempt {attempt + 1}/{max_retries + 1}), waiting {wait_time}s before retry...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        self.logger.error(f"Rate limit exceeded after {max_retries + 1} attempts")
+                        raise
+                elif hasattr(e, 'response') and e.response is not None and e.response.status_code in [502, 503, 504]:
+                    # Server errors - retry with shorter backoff
+                    if attempt < max_retries:
+                        wait_time = 2 ** attempt * 2  # 2s, 4s, 8s
+                        self.logger.warning(f"Server error {e.response.status_code} (attempt {attempt + 1}/{max_retries + 1}), waiting {wait_time}s...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        self.logger.error(f"Server error after {max_retries + 1} attempts")
+                        raise
+                else:
+                    # Other errors - don't retry
+                    self.logger.error(f"Motion API request failed: {e}")
+                    if hasattr(e, 'response') and e.response is not None:
+                        self.logger.error(f"Response: {e.response.text}")
+                    raise
 
     def get_motion_tasks(self, workspace_id: str) -> List[Dict[str, Any]]:
         """Get all tasks from Motion workspace."""
