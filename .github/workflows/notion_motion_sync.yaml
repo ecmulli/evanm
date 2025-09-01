@@ -69,7 +69,7 @@ jobs:
           
       - name: Upload logs on failure
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sync-logs-${{ github.run_id }}
           path: packages/jobs/notion/*.log
