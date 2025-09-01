@@ -736,7 +736,8 @@ class NotionTaskSync:
                     if personal_data["description"] != external_data["description"]:
                         updates["description"] = personal_data["description"]
 
-                    if updates or sync_content:
+                    if updates:
+                        # There are actual property changes to sync
                         if self.dry_run:
                             self.logger.info(
                                 f"🧪 DRY RUN: Would update {workspace} task '{personal_data['task_name']}' (personal newer: {personal_updated} > {external_updated}):"
@@ -759,10 +760,36 @@ class NotionTaskSync:
                                 stats["updated"] += 1
                             else:
                                 stats["errors"] += 1
+                    elif sync_content:
+                        # No property changes, but content sync is enabled - check if content differs
+                        if self.dry_run:
+                            self.logger.info(
+                                f"🧪 DRY RUN: {workspace} task '{personal_data['task_name']}' - checking content only"
+                            )
+                            stats["skipped"] += 1  # Don't count as update in dry run for content-only
+                        else:
+                            # Only sync content if there are actual block differences
+                            personal_blocks = self.get_block_content(personal_task["id"], self.personal_client)
+                            external_blocks = self.get_block_content(external_id, self.get_workspace_client(workspace))
+                            
+                            if not self.blocks_are_equal(personal_blocks, external_blocks):
+                                if self.update_task_properties(
+                                    external_id, 
+                                    {}, 
+                                    workspace,
+                                    sync_content=True,
+                                    source_page_id=personal_task["id"],
+                                    source_workspace="Personal"
+                                ):
+                                    stats["updated"] += 1
+                                else:
+                                    stats["errors"] += 1
+                            else:
+                                stats["skipped"] += 1
                     else:
                         if self.dry_run:
                             self.logger.info(
-                                f"🧪 DRY RUN: {workspace} task '{personal_data['task_name']}' needs timestamp update only"
+                                f"🧪 DRY RUN: {workspace} task '{personal_data['task_name']}' up to date (no property or content changes needed)"
                             )
                         stats["skipped"] += 1
                 else:
