@@ -1,0 +1,76 @@
+name: Notion Task Sync
+
+on:
+  # Scheduled runs
+  schedule:
+    # Run incremental sync every 2 hours during work hours (8 AM - 8 PM UTC)
+    - cron: '0 8-20/2 * * 1-5'  # Every 2 hours, weekdays only
+    # Run full sync once daily at 6 AM UTC
+    - cron: '0 6 * * *'   # Daily at 6 AM UTC
+    
+  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Sync mode'
+        required: true
+        default: 'incremental'
+        type: choice
+        options:
+          - incremental
+          - full
+          - test
+
+jobs:
+  notion-sync:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          cd packages/jobs
+          pip install -r requirements.txt
+          
+      - name: Determine sync mode
+        id: sync-mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
+          elif [ "$(date +%H)" = "06" ]; then
+            # 6 AM UTC run = full sync
+            echo "mode=full" >> $GITHUB_OUTPUT
+          else
+            # All other scheduled runs = incremental
+            echo "mode=incremental" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Run Notion sync
+        env:
+          PERSONAL_NOTION_API_KEY: ${{ secrets.PERSONAL_NOTION_API_KEY }}
+          LIVEPEER_NOTION_API_KEY: ${{ secrets.LIVEPEER_NOTION_API_KEY }}
+          VANQUISH_NOTION_API_KEY: ${{ secrets.VANQUISH_NOTION_API_KEY }}
+          PERSONAL_NOTION_DB_ID: ${{ secrets.PERSONAL_NOTION_DB_ID }}
+          LIVEPEER_NOTION_DB_ID: ${{ secrets.LIVEPEER_NOTION_DB_ID }}
+          VANQUISH_NOTION_DB_ID: ${{ secrets.VANQUISH_NOTION_DB_ID }}
+          PERSONAL_NOTION_USER_ID: ${{ secrets.PERSONAL_NOTION_USER_ID }}
+          LIVEPEER_NOTION_USER_ID: ${{ secrets.LIVEPEER_NOTION_USER_ID }}
+          VANQUISH_NOTION_USER_ID: ${{ secrets.VANQUISH_NOTION_USER_ID }}
+        run: |
+          cd packages/jobs/notion
+          python notion_motion_sync.py --mode ${{ steps.sync-mode.outputs.mode }}
+          
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: sync-logs-${{ github.run_id }}
+          path: packages/jobs/notion/*.log
+          retention-days: 7

@@ -1,0 +1,22 @@
+{
+	"name": "evanm-monorepo",
+	"version": "1.0.0",
+	"description": "Personal monorepo for multiple applications",
+	"private": true,
+	"workspaces": [
+		"packages/*"
+	],
+	"scripts": {
+		"install:all": "npm install",
+		"clean": "rm -rf node_modules packages/*/node_modules",
+		"jobs:install": "cd packages/jobs && pip install -r requirements.txt",
+		"jobs:run": "cd packages/jobs && python -m jobs"
+	},
+	"devDependencies": {
+		"@types/node": "^20.0.0"
+	},
+	"engines": {
+		"node": ">=18.0.0",
+		"npm": ">=8.0.0"
+	}
+}

@@ -1,0 +1,20 @@
+{
+	"name": "@evanm/jobs",
+	"version": "1.0.0",
+	"description": "Python scripts for scheduled jobs and automation",
+	"private": true,
+	"scripts": {
+		"install": "pip install -r requirements.txt",
+		"run": "python -m jobs",
+		"dev": "python -m jobs --dev",
+		"test": "python -m pytest tests/",
+		"lint": "flake8 jobs/ tests/",
+		"format": "black jobs/ tests/"
+	},
+	"keywords": [
+		"automation",
+		"jobs",
+		"scheduling",
+		"python"
+	]
+}

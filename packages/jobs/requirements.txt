@@ -1,0 +1,18 @@
+# Core dependencies
+schedule==1.2.0
+python-dotenv==1.0.0
+requests==2.31.0
+notion-client==2.2.1
+
+# Development dependencies
+pytest==7.4.0
+black==23.7.0
+flake8==6.0.0
+pytest-cov==4.1.0
+
+# Optional dependencies for common job types
+# Uncomment as needed:
+# psycopg2-binary==2.9.7  # PostgreSQL
+# redis==4.6.0            # Redis
+# boto3==1.28.0           # AWS
+# google-cloud-storage==2.10.0  # Google Cloud
