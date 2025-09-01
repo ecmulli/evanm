@@ -20,7 +20,7 @@ def test_intelligent_parsing():
     test_cases = [
         {
             "name": "High Priority + Duration + Livepeer",
-            "input": "This is urgent! The Livepeer analytics dashboard is broken and needs a 2 hour fix ASAP."
+            "input": "This is urgent! The Livepeer analytics dashboard is broken and needs a 2 hour fix ASAP. Users can't see their streaming metrics."
         },
         {
             "name": "Vanquish + Low Priority",
@@ -41,6 +41,10 @@ def test_intelligent_parsing():
         {
             "name": "Half Hour Client Work",
             "input": "Update the client's ad campaign settings - should take about 30 minutes for Vanquish."
+        },
+        {
+            "name": "Complex Task with Multiple Requirements",
+            "input": "Build a new user onboarding flow for the Livepeer platform. This is high priority and should take about 8 hours. Need to cover signup, verification, dashboard tour, and first stream setup."
         }
     ]
     

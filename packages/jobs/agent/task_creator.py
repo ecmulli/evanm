@@ -208,8 +208,17 @@ GUIDELINES:
 - Task name should be specific and actionable
 - Parse the input text carefully for workspace/priority/duration clues
 - Description should be comprehensive but concise
-- Acceptance criteria should be specific and measurable
+- Acceptance criteria should be specific, measurable, and formatted as a markdown checklist
 - Use the intelligent parsing rules above, but apply common sense
+
+ACCEPTANCE CRITERIA FORMAT:
+Format acceptance criteria as a markdown checklist using this pattern:
+- [ ] First specific, testable criterion
+- [ ] Second specific, testable criterion  
+- [ ] Third specific, testable criterion
+- [ ] Final verification step
+
+Example: "- [ ] Dashboard loads in under 3 seconds\n- [ ] All charts display correct data\n- [ ] No console errors present\n- [ ] Performance metrics improved by 50%"
 
 Analyze the input and respond with ONLY the JSON object:"""
 
@@ -238,32 +247,47 @@ Analyze the input and respond with ONLY the JSON object:"""
 
             # Apply sensible defaults if AI didn't provide them
             task_info["workspace"] = task_info.get("workspace", "Personal")
-            task_info["priority"] = task_info.get("priority", "Medium") 
+            task_info["priority"] = task_info.get("priority", "Medium")
             task_info["estimated_hours"] = task_info.get("estimated_hours", 1.0)
-            
+
             # Validate workspace
             if task_info["workspace"] not in ["Personal", "Livepeer", "Vanquish"]:
-                self.logger.warning(f"Invalid workspace '{task_info['workspace']}', defaulting to Personal")
+                self.logger.warning(
+                    f"Invalid workspace '{task_info['workspace']}', defaulting to Personal"
+                )
                 task_info["workspace"] = "Personal"
-                
-            # Validate priority  
+
+            # Validate priority
             if task_info["priority"] not in ["Low", "Medium", "High", "ASAP"]:
-                self.logger.warning(f"Invalid priority '{task_info['priority']}', defaulting to Medium")
+                self.logger.warning(
+                    f"Invalid priority '{task_info['priority']}', defaulting to Medium"
+                )
                 task_info["priority"] = "Medium"
-                
+
             # Validate duration
-            if not isinstance(task_info["estimated_hours"], (int, float)) or task_info["estimated_hours"] <= 0:
-                self.logger.warning(f"Invalid duration '{task_info['estimated_hours']}', defaulting to 1 hour")
+            if (
+                not isinstance(task_info["estimated_hours"], (int, float))
+                or task_info["estimated_hours"] <= 0
+            ):
+                self.logger.warning(
+                    f"Invalid duration '{task_info['estimated_hours']}', defaulting to 1 hour"
+                )
                 task_info["estimated_hours"] = 1.0
 
             self.logger.info("🤖 AI successfully synthesized task information")
             self.logger.info(f"📋 Task: {task_info.get('task_name', 'Unknown')}")
             self.logger.info(f"🏢 Workspace: {task_info.get('workspace', 'Unknown')}")
             self.logger.info(f"⚡ Priority: {task_info.get('priority', 'Unknown')}")
-            self.logger.info(f"⏱️  Duration: {task_info.get('estimated_hours', 'Unknown')} hours")
-            self.logger.info(f"📝 Description: {task_info.get('description', 'No description')}")
-            self.logger.info(f"✅ Acceptance Criteria: {task_info.get('acceptance_criteria', 'No criteria')}")
-            
+            self.logger.info(
+                f"⏱️  Duration: {task_info.get('estimated_hours', 'Unknown')} hours"
+            )
+            self.logger.info(
+                f"📝 Description: {task_info.get('description', 'No description')}"
+            )
+            self.logger.info(
+                f"✅ Acceptance Criteria: {task_info.get('acceptance_criteria', 'No criteria')}"
+            )
+
             return task_info
 
         except json.JSONDecodeError as e:
@@ -302,20 +326,40 @@ Analyze the input and respond with ONLY the JSON object:"""
                         {"type": "text", "text": {"content": "Acceptance Criteria"}}
                     ]
                 },
-            },
-            {
+            }
+        ]
+        
+        # Parse acceptance criteria and create checklist items
+        acceptance_criteria = task_info["acceptance_criteria"]
+        if acceptance_criteria:
+            # Split by newlines and create checklist items
+            criteria_lines = [line.strip() for line in acceptance_criteria.split('\n') if line.strip()]
+            
+            for line in criteria_lines:
+                # Remove markdown checkbox syntax and create proper Notion to-do blocks
+                clean_text = line.replace('- [ ]', '').replace('- [x]', '').replace('- [ ] ', '').replace('- [x] ', '').strip()
+                if clean_text:
+                    description_blocks.append({
+                        "object": "block",
+                        "type": "to_do",
+                        "to_do": {
+                            "rich_text": [
+                                {"type": "text", "text": {"content": clean_text}}
+                            ],
+                            "checked": False
+                        }
+                    })
+        else:
+            # Fallback if no acceptance criteria
+            description_blocks.append({
                 "object": "block",
                 "type": "paragraph",
                 "paragraph": {
                     "rich_text": [
-                        {
-                            "type": "text",
-                            "text": {"content": task_info["acceptance_criteria"]},
-                        }
+                        {"type": "text", "text": {"content": "No acceptance criteria specified"}}
                     ]
                 },
-            },
-        ]
+            })
 
         # Create page properties
         properties = {

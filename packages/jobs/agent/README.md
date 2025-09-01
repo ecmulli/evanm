@@ -35,7 +35,7 @@ The agent automatically detects:
 ### 📋 **Rich Task Generation**
 - **Smart task titles** (actionable and specific)
 - **Detailed descriptions** (comprehensive context)
-- **Acceptance criteria** (clear completion requirements)
+- **Interactive checklists** (acceptance criteria as checkable Notion to-do items)
 - **Proper field mapping** (priority, duration, workspace)
 
 ## Setup
@@ -153,8 +153,30 @@ The agent provides detailed logging of the AI synthesis:
 ⚡ Priority: High
 ⏱️ Duration: 2.0 hours
 📝 Description: Optimize the Livepeer analytics dashboard loading time...
-✅ Acceptance Criteria: Dashboard loads in under 3 seconds...
+✅ Acceptance Criteria: - [ ] Dashboard loads in under 3 seconds
+- [ ] All charts display correct data
+- [ ] No console errors present
+- [ ] Performance metrics improved by 50%
 🧪 DRY RUN: Would create task in Livepeer database
+```
+
+### 📝 **Interactive Checklists**
+
+The agent creates acceptance criteria as interactive Notion to-do items:
+- AI automatically formats criteria as markdown checklists
+- Each criterion becomes a checkable to-do block in Notion
+- Easy to track completion progress
+- Clear, specific, and measurable requirements
+
+**Example in Notion:**
+```
+Description: Optimize the dashboard performance...
+
+Acceptance Criteria:
+☐ Dashboard loads in under 3 seconds
+☐ All charts display correct data  
+☐ No console errors present
+☐ Performance metrics improved by 50%
 ```
 
 ## Testing
