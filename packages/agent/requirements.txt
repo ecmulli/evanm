@@ -1,0 +1,13 @@
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+
+# Core dependencies
+python-dotenv==1.0.1
+requests==2.32.3
+notion-client==2.2.1
+openai==1.57.3
+
+# Additional utilities
+pydantic==2.10.5
+python-multipart==0.0.17

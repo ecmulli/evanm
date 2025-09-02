@@ -6,7 +6,7 @@ Bidirectional sync between Motion AI and Notion task databases.
 Handles task creation, updates, and field mapping between systems.
 
 Usage:
-    python motion_sync.py --mode [full|incremental|test]
+    python motion_sync.py --mode [full|test|test-real]
 
 Environment Variables Required:
     MOTION_API_KEY - Motion AI API token
@@ -66,14 +66,17 @@ class MotionNotionSync:
             "Personal": {
                 "notion_id": "cfi_4G15DQNV797KHaNzQqsxt3",
                 "notion_url": "cfi_RBFEnK3uN2Ho2o8XQXdWfv",
+                "notion_last_sync": "cfi_U1o2VDha6sjs3UFwFH8xC1",  # text type
             },
             "Livepeer": {
                 "notion_id": "cfi_rLcNg95UQ1Cggz2YAnYjsL",
                 "notion_url": "cfi_g85FVuj115igtCPLVCo34t",
+                "notion_last_sync": "cfi_1S1Fi4oP3adjT9Ab88U2Ja",  # date type
             },
             "Vanquish": {
                 "notion_id": "cfi_vS8mS9agZUaCDMX88usZXq",
                 "notion_url": "cfi_eoBPfnbbCWfS3CnbbYCbD4",
+                "notion_last_sync": "cfi_r8AYnDjHMH7XCV5GsK7A8c",  # date type
             },
         }
 
@@ -82,8 +85,10 @@ class MotionNotionSync:
 
     def _setup_logging(self) -> logging.Logger:
         """Set up logging configuration."""
+        log_level = os.getenv("SYNC_LOG_LEVEL", "INFO").upper()
+        level = getattr(logging, log_level, logging.INFO)
         logging.basicConfig(
-            level=logging.INFO,
+            level=level,
             format="%(asctime)s - %(levelname)s - %(message)s",
             handlers=[logging.StreamHandler()],
         )
@@ -167,11 +172,12 @@ class MotionNotionSync:
             "Backlog": "TODO",
             "In Progress": "IN_PROGRESS",
             "Completed": "COMPLETED",
-            # Motion → Notion (using actual Notion database status values)
-            "TODO": "Todo",
+            # Motion → Notion (using actual Motion status values)
+            "Todo": "Todo",  # Motion uses "Todo", keep as-is for Notion
+            "TODO": "Todo",  # Also handle uppercase version
             "IN_PROGRESS": "In Progress",
             "COMPLETED": "Completed",
-            "CANCELLED": "Completed",  # Map cancelled to completed since no direct equivalent
+            "CANCELLED": "Canceled",  # Map cancelled to completed since no direct equivalent
         }
 
     def convert_hours_to_minutes(self, hours: float) -> int:
@@ -274,6 +280,11 @@ class MotionNotionSync:
 
         for attempt in range(max_retries + 1):
             try:
+                # Log the Motion API call
+                self.logger.info(
+                    f"🔗 Motion API: {method.upper()} {endpoint} (attempt {attempt + 1})"
+                )
+
                 if method.upper() == "GET":
                     response = requests.get(url, headers=self.motion_headers)
                 elif method.upper() == "POST":
@@ -291,6 +302,11 @@ class MotionNotionSync:
 
                 response.raise_for_status()
 
+                # Log successful response
+                self.logger.info(
+                    f"✅ Motion API: {method.upper()} {endpoint} → {response.status_code}"
+                )
+
                 # Small delay between successful requests to be respectful
                 if attempt == 0:  # Only delay on first attempt (not retries)
                     time.sleep(0.1)  # 100ms - just enough to avoid hammering
@@ -307,7 +323,7 @@ class MotionNotionSync:
                     if attempt < max_retries:
                         wait_time = 2**attempt * 10  # 10s, 20s, 40s
                         self.logger.warning(
-                            f"Rate limit hit (attempt {attempt + 1}/{max_retries + 1}), waiting {wait_time}s before retry..."
+                            f"⚠️ Motion API Rate limit hit on {method.upper()} {endpoint} (attempt {attempt + 1}/{max_retries + 1}), waiting {wait_time}s before retry..."
                         )
                         time.sleep(wait_time)
                         continue
@@ -342,15 +358,26 @@ class MotionNotionSync:
                     raise
 
     def get_motion_tasks(self, workspace_id: str) -> List[Dict[str, Any]]:
-        """Get all tasks from Motion workspace."""
+        """Get all tasks from Motion workspace, including completed ones."""
         try:
-            response = self.motion_request("GET", f"tasks?workspaceId={workspace_id}")
+            # Use includeAllStatuses=true to get tasks across all statuses, including completed
+            response = self.motion_request(
+                "GET", f"tasks?workspaceId={workspace_id}&includeAllStatuses=true"
+            )
             return response.get("tasks", [])
         except Exception as e:
             self.logger.error(
                 f"Failed to get Motion tasks for workspace {workspace_id}: {e}"
             )
             return []
+
+    def get_motion_task(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single Motion task by ID."""
+        try:
+            return self.motion_request("GET", f"tasks/{task_id}")
+        except Exception as e:
+            self.logger.warning(f"Failed to get Motion task {task_id}: {e}")
+            return None
 
     def create_motion_task(self, task_data: Dict[str, Any]) -> Optional[str]:
         """Create a new task in Motion."""
@@ -371,7 +398,9 @@ class MotionNotionSync:
             self.logger.error(f"Failed to create Motion task: {e}")
             return None
 
-    def update_motion_task(self, task_id: str, updates: Dict[str, Any]) -> bool:
+    def update_motion_task(
+        self, task_id: str, updates: Dict[str, Any], workspace: str = None
+    ) -> bool:
         """Update an existing Motion task."""
         if self.dry_run:
             self.logger.info(
@@ -382,6 +411,9 @@ class MotionNotionSync:
         try:
             self.motion_request("PATCH", f"tasks/{task_id}", updates)
             self.logger.info(f"✅ Updated Motion task {task_id}")
+
+            # Note: Using property-based change detection instead of timestamps
+
             return True
         except requests.exceptions.RequestException as e:
             if (
@@ -437,6 +469,55 @@ class MotionNotionSync:
             )
             return False
 
+    def set_motion_notion_sync_time(
+        self, task_id: str, sync_time: str, workspace: str
+    ) -> bool:
+        """Set Motion custom field for Notion Last Sync timestamp."""
+        if self.dry_run:
+            return True  # Skip in dry run
+
+        try:
+            # Check if we have the custom field ID for this workspace
+            custom_fields = self.motion_custom_fields.get(workspace, {})
+            notion_sync_field_id = custom_fields.get("notion_last_sync")
+
+            if not notion_sync_field_id:
+                self.logger.debug(
+                    f"Notion Last Sync custom field not configured for {workspace} workspace"
+                )
+                return True  # Skip if field not configured
+
+            # Use POST approach to set custom field value
+            # Handle both text and date types (Personal is text, others are date)
+            if workspace == "Personal":
+                # Text type - just pass the ISO string
+                value_data = {"type": "text", "value": sync_time}
+            else:
+                # Date type - Motion expects date format
+                value_data = {"type": "date", "value": sync_time}
+
+            sync_data = {
+                "customFieldInstanceId": notion_sync_field_id,
+                "value": value_data,
+            }
+
+            # Debug: Log what we're sending to Motion
+            self.logger.info(f"🔍 DEBUG - Setting custom field: {sync_data}")
+
+            self.motion_request(
+                "POST", f"/beta/custom-field-values/task/{task_id}", sync_data
+            )
+            self.logger.info(
+                f"✅ Set Notion Last Sync time for Motion task {task_id} to {sync_time}"
+            )
+            return True
+        except Exception as e:
+            # Don't fail the whole sync if we can't set sync time - just log and continue
+            self.logger.debug(
+                f"Could not set Notion Last Sync time for Motion task {task_id}: {e}"
+            )
+            return True  # Return True so sync continues
+
     # === NOTION API METHODS ===
 
     def get_notion_tasks(self, workspace: str) -> List[Dict[str, Any]]:
@@ -445,27 +526,47 @@ class MotionNotionSync:
         database_id = self.notion_databases[workspace]
         user_id = self.notion_user_ids[workspace]
 
-        filter_conditions = {
-            "and": [
-                {
-                    "property": "Assignee",
-                    "people": {"contains": user_id},
-                },
-                {
-                    "and": [
-                        {"property": "Status", "status": {"does_not_equal": "Backlog"}},
-                        {
-                            "property": "Status",
-                            "status": {"does_not_equal": "Completed"},
-                        },
-                        {
-                            "property": "Status",
-                            "status": {"does_not_equal": "Canceled"},
-                        },
-                    ]
-                },
-            ]
-        }
+        # For Personal hub, skip assignee filtering since all tasks are implicitly yours
+        if workspace == "Personal":
+            filter_conditions = {
+                "and": [
+                    {"property": "Status", "status": {"does_not_equal": "Backlog"}},
+                    {
+                        "property": "Status",
+                        "status": {"does_not_equal": "Completed"},
+                    },
+                    {
+                        "property": "Status",
+                        "status": {"does_not_equal": "Canceled"},
+                    },
+                ]
+            }
+        else:
+            # For external workspaces, filter by assignee
+            filter_conditions = {
+                "and": [
+                    {
+                        "property": "Assignee",
+                        "people": {"contains": user_id},
+                    },
+                    {
+                        "and": [
+                            {
+                                "property": "Status",
+                                "status": {"does_not_equal": "Backlog"},
+                            },
+                            {
+                                "property": "Status",
+                                "status": {"does_not_equal": "Completed"},
+                            },
+                            {
+                                "property": "Status",
+                                "status": {"does_not_equal": "Canceled"},
+                            },
+                        ]
+                    },
+                ]
+            }
 
         try:
             response = client.databases.query(
@@ -499,6 +600,12 @@ class MotionNotionSync:
             select = prop.get("select")
             return select.get("name", "").strip() if select else ""
 
+        def get_status(prop):
+            if not prop:
+                return ""
+            status = prop.get("status")
+            return status.get("name", "").strip() if status else ""
+
         def get_number(prop):
             if not prop:
                 return None
@@ -512,9 +619,12 @@ class MotionNotionSync:
         return {
             "id": page.get("id"),
             "task_name": get_title(props.get("Task name")),
-            "status": get_select(props.get("Status")),
+            "status": get_status(
+                props.get("Status")
+            ),  # Use get_status for Status property
             "workspace": get_select(props.get("Workspace")),
             "est_duration_hrs": get_number(props.get("Est Duration Hrs")),
+            "actual_duration_hrs": get_number(props.get("Actual Duration")),
             "due_date": get_date(props.get("Due date")),
             "priority": get_select(props.get("Priority")),
             "description": get_text(props.get("Description")),
@@ -525,8 +635,13 @@ class MotionNotionSync:
 
     # === SYNC LOGIC ===
 
-    def sync_motion_to_notion(self, workspace: str) -> Dict[str, int]:
-        """Sync tasks from Motion back to Notion."""
+    def sync_motion_to_notion(
+        self,
+        workspace: str,
+        max_tasks: Optional[int] = None,
+        cached_motion_tasks: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, int]:
+        """Sync ONLY completed tasks from Motion to Notion (simplified architecture)."""
         stats = {"updated": 0, "skipped": 0, "errors": 0}
 
         motion_workspace_id = self.motion_workspaces[workspace]
@@ -534,27 +649,87 @@ class MotionNotionSync:
             self.logger.error(f"No Motion workspace ID configured for {workspace}")
             return stats
 
-        # Get all Motion tasks in this workspace
-        motion_tasks = self.get_motion_tasks(motion_workspace_id)
+        # Use cached Motion tasks if provided, otherwise fetch them
+        if cached_motion_tasks is not None:
+            motion_tasks = cached_motion_tasks
+            self.logger.info(
+                f"📊 Using cached Motion tasks ({len(motion_tasks)} total)"
+            )
+        else:
+            motion_tasks = self.get_motion_tasks(motion_workspace_id)
 
-        # Filter to only tasks that have Notion ID custom field (synced tasks)
-        synced_tasks = []
+        # DEBUG: Print all Motion tasks
+        self.logger.info(f"🔍 DEBUG: Total Motion tasks returned: {len(motion_tasks)}")
+        for i, task in enumerate(motion_tasks[:10]):  # Show first 10 tasks
+            task_name = task.get("name", "Unknown")
+            task_status = task.get("status", {})
+            status_name = (
+                task_status.get("name", "No Status")
+                if isinstance(task_status, dict)
+                else task_status
+            )
+            notion_id = (
+                task.get("customFieldValues", {})
+                .get("Notion ID", {})
+                .get("value", "No Notion ID")
+            )
+            self.logger.info(
+                f"🔍 DEBUG: Task {i+1}: '{task_name}' | Status: '{status_name}' | Notion ID: {notion_id}"
+            )
+
+        # Filter to only COMPLETED tasks that have Notion ID custom field
+        completed_tasks = []
         custom_fields = self.motion_custom_fields[workspace]
 
         for task in motion_tasks:
             custom_field_values = task.get("customFieldValues", {})
             notion_id_field = custom_field_values.get("Notion ID")
 
+            # DEBUG: Log all tasks with Notion IDs and their statuses
             if notion_id_field and notion_id_field.get("value"):
-                synced_tasks.append(task)
+                task_name = task.get("name", "Unknown")
+                task_status = task.get("status", {})
+                status_name = (
+                    task_status.get("name", "No Status")
+                    if isinstance(task_status, dict)
+                    else task_status
+                )
+                self.logger.info(
+                    f"🔍 DEBUG: Task '{task_name}' has status '{status_name}'"
+                )
 
-        self.logger.info(
-            f"📊 Found {len(synced_tasks)} Motion tasks with Notion references in {workspace}"
-        )
+            # Only process tasks that are completed AND have Notion ID
+            task_status = task.get("status", {})
+            if (
+                notion_id_field
+                and notion_id_field.get("value")
+                and isinstance(task_status, dict)
+                and task_status.get("name", "").lower() == "completed"
+            ):
+                completed_tasks.append(task)
 
-        for motion_task in synced_tasks:
+        # Apply task limit for test mode
+        if max_tasks is not None:
+            original_count = len(completed_tasks)
+            # Sort by Notion ID for consistent ordering across sync directions
+            completed_tasks = sorted(
+                completed_tasks,
+                key=lambda t: t["customFieldValues"]["Notion ID"]["value"],
+            )
+            completed_tasks = completed_tasks[:max_tasks]
+            self.logger.info(
+                f"📊 Found {original_count} completed Motion tasks in {workspace}, limiting to {len(completed_tasks)} for testing"
+            )
+        else:
+            self.logger.info(
+                f"📊 Found {len(completed_tasks)} completed Motion tasks in {workspace}"
+            )
+
+        processed_notion_ids = []
+        for motion_task in completed_tasks:
             try:
                 notion_id = motion_task["customFieldValues"]["Notion ID"]["value"]
+                processed_notion_ids.append(notion_id)
 
                 # Get current Notion task
                 try:
@@ -563,45 +738,176 @@ class MotionNotionSync:
                     )
                 except Exception as e:
                     self.logger.warning(
-                        f"Notion task {notion_id} not found, skipping Motion task {motion_task['id']}"
+                        f"Notion task {notion_id} not found, skipping completed Motion task {motion_task['id']}"
                     )
                     stats["skipped"] += 1
                     continue
 
-                # Check if Motion task was updated more recently
-                motion_updated = datetime.fromisoformat(
-                    motion_task["updatedTime"].replace("Z", "+00:00")
-                )
-                notion_updated = datetime.fromisoformat(notion_page["last_edited_time"])
-
-                if motion_updated > notion_updated:
-                    if self._update_notion_from_motion(
-                        motion_task, notion_id, workspace
-                    ):
-                        stats["updated"] += 1
-                    else:
-                        stats["errors"] += 1
+                # Update Notion with completion status and actual duration
+                if self._update_notion_from_completed_motion(
+                    motion_task, notion_id, workspace
+                ):
+                    stats["updated"] += 1
                 else:
-                    if self.dry_run:
-                        self.logger.info(
-                            f"🧪 DRY RUN: Motion task '{motion_task['name']}' up to date (motion: {motion_updated}, notion: {notion_updated})"
-                        )
                     stats["skipped"] += 1
 
             except Exception as e:
                 self.logger.error(
-                    f"Error processing Motion task {motion_task.get('id', 'unknown')}: {e}"
+                    f"Error processing completed Motion task {motion_task.get('id', 'unknown')}: {e}"
                 )
                 stats["errors"] += 1
 
+        # Track first processed task for test mode coordination
+        if processed_notion_ids:
+            stats["processed_notion_id"] = processed_notion_ids[0]
+        stats["processed_notion_ids"] = processed_notion_ids
+
+        # Check for deleted Motion tasks and mark as canceled in Notion
+        self._handle_deleted_motion_tasks(
+            workspace, processed_notion_ids, cached_motion_tasks
+        )
+
         self.logger.info(f"📊 {workspace} Motion → Notion sync complete: {stats}")
         return stats
+
+    def _handle_deleted_motion_tasks(
+        self,
+        workspace: str,
+        processed_notion_ids: List[str],
+        cached_motion_tasks: Optional[List[Dict[str, Any]]] = None,
+    ):
+        """Mark Notion tasks as 'Canceled' if their Motion tasks have been deleted."""
+        try:
+            # Create lookup set of Motion IDs from cached tasks for fast existence checking
+            if cached_motion_tasks:
+                existing_motion_ids = {
+                    task.get("id") for task in cached_motion_tasks if task.get("id")
+                }
+            else:
+                existing_motion_ids = set()
+
+            # Get all Notion tasks with Motion IDs
+            notion_tasks = self.get_notion_tasks(workspace)
+
+            for notion_task in notion_tasks:
+                notion_data = self.extract_notion_task_data(notion_task)
+                motion_id = notion_data.get("motion_id")
+                notion_id = notion_data.get("id")
+
+                # Skip if no Motion ID or already processed (means Motion task exists)
+                if not motion_id or notion_id in processed_notion_ids:
+                    continue
+
+                # Check if Motion task still exists using cached data
+                if motion_id not in existing_motion_ids:
+                    # Motion task was deleted, mark as canceled in Notion
+                    try:
+                        update_data = {
+                            "Status": {"status": {"name": "Canceled"}},
+                            "Motion ID": {"rich_text": []},  # Clear the Motion ID
+                        }
+
+                        self.workspace_clients[workspace].pages.update(
+                            page_id=notion_id, properties=update_data
+                        )
+
+                        self.logger.info(
+                            f"🗑️ Marked as CANCELED - Motion task deleted: {notion_data['task_name']}"
+                        )
+                    except Exception as e:
+                        self.logger.error(f"Failed to mark task as canceled: {e}")
+
+        except Exception as e:
+            self.logger.error(f"Error checking for deleted Motion tasks: {e}")
+
+    def _update_notion_from_completed_motion(
+        self, motion_task: Dict[str, Any], notion_id: str, workspace: str
+    ) -> bool:
+        """Update Notion task with ONLY status=Completed and actual duration from Motion."""
+        try:
+            # Extract actual duration from Motion (in minutes)
+            motion_duration_minutes = motion_task.get("duration", 60)  # Default 60 min
+            actual_duration_hours = motion_duration_minutes / 60.0
+
+            # Get current Notion status to check if already completed
+            notion_page = self.workspace_clients[workspace].pages.retrieve(
+                page_id=notion_id
+            )
+            notion_data = self.extract_notion_task_data(notion_page)
+            current_status = notion_data.get("status", "")
+
+            # Skip if already completed in Notion
+            if current_status == "Completed":
+                self.logger.info(
+                    f"✅ SKIPPING - Already completed in Notion: {notion_data['task_name']}"
+                )
+                return False
+
+            # Update Notion with completion status and actual duration
+            update_data = {
+                "Status": {"status": {"name": "Completed"}},
+                "Actual Duration": {"number": actual_duration_hours},
+            }
+
+            self.workspace_clients[workspace].pages.update(
+                page_id=notion_id, properties=update_data
+            )
+
+            self.logger.info(
+                f"✅ Marked as completed in Notion: {notion_data['task_name']} (actual: {actual_duration_hours}h)"
+            )
+            return True
+
+        except Exception as e:
+            self.logger.error(
+                f"Failed to update Notion from completed Motion task: {e}"
+            )
+            return False
 
     def _update_notion_from_motion(
         self, motion_task: Dict[str, Any], notion_id: str, workspace: str
     ) -> bool:
         """Update Notion task with Motion task data."""
         try:
+            # Compare Motion's updatedTime vs Notion's motion_last_sync_time (avoid infinite loops)
+            motion_updated = motion_task.get("updatedTime")
+
+            if motion_updated:
+                try:
+                    motion_dt = datetime.fromisoformat(
+                        motion_updated.replace("Z", "+00:00")
+                    )
+
+                    # Get the Notion task to check motion_last_sync_time
+                    client = self.workspace_clients[workspace]
+                    notion_page = client.pages.retrieve(page_id=notion_id)
+
+                    # Get motion_last_sync_time from Notion properties
+                    field_mapping = self.get_workspace_field_mapping(workspace)
+                    motion_sync_field = field_mapping.get(
+                        "Motion Last Sync", "Motion Last Sync"
+                    )
+                    motion_sync_prop = notion_page["properties"].get(
+                        motion_sync_field, {}
+                    )
+
+                    # Check if there are actual content differences worth syncing
+                    if not self.has_meaningful_changes(
+                        motion_task, notion_page, workspace
+                    ):
+                        self.logger.info(
+                            f"✅ SKIPPING - No meaningful changes in Motion task: {motion_task['name']}"
+                        )
+                        return True  # Not an error, just no update needed
+
+                    self.logger.info(
+                        f"🔄 UPDATING - Found meaningful changes in Motion task: {motion_task['name']}"
+                    )
+                except Exception as e:
+                    self.logger.debug(
+                        f"Error comparing sync timestamps, proceeding with update: {e}"
+                    )
+
             # Map Motion fields back to Notion
             priority_map = self.get_priority_mapping()
             status_map = self.get_status_mapping()
@@ -651,6 +957,11 @@ class MotionNotionSync:
                 self.logger.info(
                     f"✅ Updated Notion task from Motion: {motion_task['name']}"
                 )
+
+                # Set "Motion Last Sync" timestamp to track when we last synced from Motion
+                current_time = datetime.now(timezone.utc).isoformat()
+                self.set_notion_motion_sync_time(notion_id, current_time, workspace)
+
                 return True
             else:
                 self.logger.info(
@@ -673,24 +984,31 @@ class MotionNotionSync:
                 "Due date": "Due date",
                 "Priority": "Priority",
                 "Status": "Status",
+                "Motion Last Sync": "Motion Last Sync",
             }
         elif workspace == "Vanquish":
             return {
                 "Est Duration Hrs": "Est. Duration Hrs",
-                "Due date": "Due Date",
+                "Due date": "Due date",  # Personal hub uses "Due date" (lowercase 'd')
                 "Priority": "Priority",
                 "Status": "Status",
+                "Motion Last Sync": "Motion Last Sync",
             }
         else:  # Personal
             return {
                 "Est Duration Hrs": "Est Duration Hrs",
-                "Due date": "Due Date",
+                "Due date": "Due date",  # Personal hub uses "Due date" (lowercase 'd')
                 "Priority": "Priority",
                 "Status": "Status",
+                "Motion Last Sync": "Motion Last Sync",
             }
 
     def sync_notion_to_motion(
-        self, workspace: str, max_tasks: Optional[int] = None
+        self,
+        workspace: str,
+        max_tasks: Optional[int] = None,
+        skip_notion_ids: Optional[List[str]] = None,
+        cached_motion_tasks_by_id: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> Dict[str, int]:
         """Sync tasks from Notion to Motion."""
         stats = {"created": 0, "updated": 0, "skipped": 0, "errors": 0}
@@ -704,6 +1022,8 @@ class MotionNotionSync:
 
         # Limit tasks for testing if specified
         if max_tasks is not None:
+            # Sort by Notion ID for consistent ordering across sync directions
+            notion_tasks = sorted(notion_tasks, key=lambda t: t["id"])
             notion_tasks = notion_tasks[:max_tasks]
             self.logger.info(
                 f"📊 Found {len(self.get_notion_tasks(workspace))} Notion tasks in {workspace}, limiting to {len(notion_tasks)} for testing"
@@ -715,12 +1035,26 @@ class MotionNotionSync:
 
         for notion_task in notion_tasks:
             notion_data = self.extract_notion_task_data(notion_task)
+            notion_id = notion_data.get("id")
             motion_id = notion_data.get("motion_id")
+
+            # Skip tasks that were just processed by Motion → Notion sync
+            if skip_notion_ids and notion_id in skip_notion_ids:
+                self.logger.info(
+                    f"⏭️ SKIPPING - Task already processed by Motion → Notion: {notion_data['task_name']}"
+                )
+                stats["skipped"] += 1
+                continue
 
             if motion_id:
                 # Update existing Motion task
-                if self._update_motion_from_notion(motion_id, notion_data, workspace):
+                update_result = self._update_motion_from_notion(
+                    motion_id, notion_data, workspace, cached_motion_tasks_by_id
+                )
+                if update_result is True:
                     stats["updated"] += 1
+                elif update_result is False:
+                    stats["skipped"] += 1
                 else:
                     stats["errors"] += 1
             else:
@@ -731,6 +1065,52 @@ class MotionNotionSync:
                     stats["errors"] += 1
 
         self.logger.info(f"📊 {workspace} → Motion sync complete: {stats}")
+        return stats
+
+    def sync_specific_notion_task(
+        self,
+        workspace: str,
+        notion_id: str,
+        cached_motion_tasks_by_id: Optional[Dict[str, Dict[str, Any]]] = None,
+    ) -> Dict[str, int]:
+        """Sync a specific Notion task to Motion (used in test mode for coordination)."""
+        stats = {"created": 0, "updated": 0, "skipped": 0, "errors": 0}
+
+        try:
+            # Get the specific Notion task
+            notion_page = self.workspace_clients[workspace].pages.retrieve(
+                page_id=notion_id
+            )
+            notion_data = self.extract_notion_task_data(notion_page)
+            motion_id = notion_data.get("motion_id")
+
+            self.logger.info(
+                f"📊 Processing specific Notion task: {notion_data['task_name']}"
+            )
+
+            if motion_id:
+                # Update existing Motion task
+                update_result = self._update_motion_from_notion(
+                    motion_id, notion_data, workspace, cached_motion_tasks_by_id
+                )
+                if update_result is True:
+                    stats["updated"] += 1
+                elif update_result is False:
+                    stats["skipped"] += 1
+                else:
+                    stats["errors"] += 1
+            else:
+                # Create new Motion task
+                if self._create_motion_from_notion(notion_data, workspace):
+                    stats["created"] += 1
+                else:
+                    stats["errors"] += 1
+
+        except Exception as e:
+            self.logger.error(f"Error processing specific Notion task {notion_id}: {e}")
+            stats["errors"] += 1
+
+        self.logger.info(f"📊 {workspace} → Motion specific sync complete: {stats}")
         return stats
 
     def _create_motion_from_notion(
@@ -806,11 +1186,103 @@ class MotionNotionSync:
             return False
 
     def _update_motion_from_notion(
-        self, motion_id: str, notion_data: Dict[str, Any], workspace: str
+        self,
+        motion_id: str,
+        notion_data: Dict[str, Any],
+        workspace: str,
+        cached_motion_tasks_by_id: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> bool:
-        """Update existing Motion task with Notion data."""
+        """Update Motion task with Notion data (Notion owns all fields except status)."""
         try:
-            # Get Notion blocks for description
+            # Use cached Motion task data when available to avoid unnecessary API calls
+            if cached_motion_tasks_by_id and motion_id in cached_motion_tasks_by_id:
+                motion_task = cached_motion_tasks_by_id[motion_id]
+                self.logger.debug(f"Using cached Motion task data for {motion_id}")
+            else:
+                # Fallback to API call if not in cache
+                motion_task = self.get_motion_task(motion_id)
+                self.logger.debug(
+                    f"Fetched Motion task data via API for {motion_id} (cache miss)"
+                )
+
+            if not motion_task:
+                self.logger.warning(f"Motion task {motion_id} not found")
+                return False
+
+            # Compare actual task properties to detect changes instead of timestamps
+            def normalize_for_comparison(value):
+                """Normalize values for comparison."""
+                if value is None:
+                    return ""
+                if isinstance(value, str):
+                    return value.strip()
+                return str(value)
+
+            def normalize_priority(priority):
+                """Normalize priority values for comparison."""
+                if priority is None:
+                    return "NONE"
+                return str(priority).upper()
+
+            def normalize_due_date(due_date):
+                """Normalize due date for comparison - extract just YYYY-MM-DD."""
+                if due_date is None:
+                    return None
+                # If it's a dict with 'start', extract the start date
+                if isinstance(due_date, dict) and "start" in due_date:
+                    due_date = due_date["start"]
+                # Extract just the date part (YYYY-MM-DD)
+                due_date_str = str(due_date)
+                if "T" in due_date_str:
+                    return due_date_str.split("T")[0]
+                return due_date_str
+
+            # Get current Motion task properties
+            motion_name = normalize_for_comparison(motion_task.get("name", ""))
+            motion_priority = normalize_priority(motion_task.get("priority", "NONE"))
+            motion_duration = motion_task.get("duration", 30)
+            motion_due_date = normalize_due_date(motion_task.get("dueDate"))
+            # Get Notion properties for comparison
+            notion_name = normalize_for_comparison(notion_data.get("task_name", ""))
+            notion_priority = normalize_priority(notion_data.get("priority", "NONE"))
+            # Convert Notion hours to minutes to match Motion's format
+            notion_duration_hours = notion_data.get("est_duration_hrs", 1.0) or 1.0
+            notion_duration = int(notion_duration_hours * 60)  # Convert to minutes
+            notion_due_date = normalize_due_date(notion_data.get("due_date"))
+
+            # Debug: Log values for comparison
+            self.logger.info(f"🔍 DEBUG comparison for {notion_data['task_name']}:")
+            self.logger.info(
+                f"  due_date: Motion='{motion_due_date}' vs Notion='{notion_due_date}'"
+            )
+            self.logger.info(
+                f"  duration: Motion={motion_duration}min vs Notion={notion_duration}min ({notion_duration_hours}hrs)"
+            )
+
+            # Check for differences (excluding description to avoid formatting noise)
+            changes = []
+            if motion_name != notion_name:
+                changes.append(f"name ('{motion_name}' → '{notion_name}')")
+            if motion_priority != notion_priority:
+                changes.append(f"priority ('{motion_priority}' → '{notion_priority}')")
+            if motion_duration != notion_duration:
+                changes.append(f"duration ({motion_duration} → {notion_duration})")
+            if motion_due_date != notion_due_date:
+                changes.append(f"due_date ('{motion_due_date}' → '{notion_due_date}')")
+
+            if not changes:
+                self.logger.info(
+                    f"⏭️ SKIPPING - No changes detected for: {notion_data['task_name']}"
+                )
+                return False
+            else:
+                self.logger.info(
+                    f"🔄 Motion task needs update: {notion_data['task_name']}"
+                )
+                for change in changes:
+                    self.logger.info(f"  📝 {change}")
+
+            # Get Notion blocks for description (expensive operation)
             blocks = []
             if notion_data["id"]:
                 blocks_response = self.workspace_clients[
@@ -818,15 +1290,32 @@ class MotionNotionSync:
                 ].blocks.children.list(block_id=notion_data["id"])
                 blocks = blocks_response.get("results", [])
 
-            # Build update data
+            # Build update data - Notion always overwrites Motion fields
             priority_map = self.get_priority_mapping()
             status_map = self.get_status_mapping()
+
+            # Always use Notion's status UNLESS Motion is completed
+            motion_status_obj = motion_task.get("status", {})
+            motion_status = (
+                motion_status_obj.get("name", "")
+                if isinstance(motion_status_obj, dict)
+                else motion_status_obj
+            )
+            if motion_status.lower() == "completed":
+                # Preserve Motion's completed status
+                final_status = "Completed"
+                self.logger.info(
+                    f"🔒 PRESERVING Motion completed status for: {notion_data['task_name']}"
+                )
+            else:
+                # Use Notion's status for all other cases
+                final_status = status_map.get(notion_data["status"], "TODO")
 
             updates = {
                 "name": notion_data["task_name"],
                 "description": self.blocks_to_description(blocks),
                 "priority": priority_map.get(notion_data["priority"], "MEDIUM"),
-                "status": status_map.get(notion_data["status"], "TODO"),
+                "status": final_status,
                 "duration": self.convert_hours_to_minutes(
                     notion_data["est_duration_hrs"]
                 ),
@@ -841,7 +1330,10 @@ class MotionNotionSync:
             # Set auto-scheduling for work hours
             updates["autoScheduled"] = {"schedule": "Work Hours"}
 
-            return self.update_motion_task(motion_id, updates)
+            self.logger.info(
+                f"🔄 OVERWRITING Motion task from Notion: {notion_data['task_name']}"
+            )
+            return self.update_motion_task(motion_id, updates, workspace)
 
         except requests.exceptions.RequestException as e:
             if (
@@ -862,20 +1354,273 @@ class MotionNotionSync:
             return False
 
     def _update_notion_motion_id(self, notion_id: str, motion_id: str, workspace: str):
-        """Update Notion task with Motion ID."""
+        """Update Notion task with Motion ID - always in Personal hub."""
         try:
-            client = self.workspace_clients[workspace]
-            client.pages.update(
+            # Motion IDs should only be stored in the Personal hub
+            personal_client = self.workspace_clients["Personal"]
+            personal_client.pages.update(
                 page_id=notion_id,
                 properties={
                     "Motion ID": {"rich_text": [{"text": {"content": motion_id}}]}
                 },
             )
             self.logger.info(
-                f"✅ Updated Notion task {notion_id} with Motion ID {motion_id}"
+                f"✅ Updated Personal hub task {notion_id} with Motion ID {motion_id}"
             )
         except Exception as e:
             self.logger.error(f"Failed to update Notion task with Motion ID: {e}")
+
+    def has_meaningful_changes(
+        self, motion_task: Dict[str, Any], notion_page: Dict[str, Any], workspace: str
+    ) -> bool:
+        """Check if Motion task has meaningful differences compared to Notion page."""
+        try:
+            # Get field mapping for this workspace
+            field_mapping = self.get_workspace_field_mapping(workspace)
+
+            # Get Motion values
+            motion_status = motion_task.get("status", {}).get("name", "")
+            motion_priority = motion_task.get("priority", "")
+            motion_duration = motion_task.get("duration", 0)  # in minutes
+            motion_due_date = motion_task.get("dueDate")
+
+            # Get Notion values
+            notion_props = notion_page["properties"]
+
+            # Status comparison
+            status_field = field_mapping.get("Status", "Status")
+            notion_status_prop = notion_props.get(status_field, {})
+            notion_status = ""
+            if notion_status_prop.get("status") and notion_status_prop["status"].get(
+                "name"
+            ):
+                notion_status = notion_status_prop["status"]["name"]
+
+            # Priority comparison
+            priority_field = field_mapping.get("Priority", "Priority")
+            notion_priority_prop = notion_props.get(priority_field, {})
+            notion_priority = ""
+            if notion_priority_prop.get("select") and notion_priority_prop[
+                "select"
+            ].get("name"):
+                notion_priority = notion_priority_prop["select"]["name"]
+
+            # Duration comparison (convert Motion minutes to Notion hours)
+            duration_field = field_mapping.get("Est Duration Hrs", "Est Duration Hrs")
+            notion_duration_prop = notion_props.get(duration_field, {})
+            notion_duration_hours = notion_duration_prop.get("number", 0) or 0
+            motion_duration_hours = self.convert_minutes_to_hours(motion_duration)
+
+            # Due date comparison (normalize timezone formats)
+            due_date_field = field_mapping.get("Due date", "Due date")
+            notion_due_prop = notion_props.get(due_date_field, {})
+            notion_due_date = None
+            if notion_due_prop.get("date") and notion_due_prop["date"].get("start"):
+                notion_due_date = notion_due_prop["date"]["start"]
+                # Normalize timezone format: convert +00:00 to Z for comparison
+                if notion_due_date and notion_due_date.endswith("+00:00"):
+                    notion_due_date = notion_due_date.replace("+00:00", "Z")
+
+            # Map Motion values to Notion format for comparison
+            priority_map = self.get_priority_mapping()
+            status_map = self.get_status_mapping()
+
+            mapped_motion_status = status_map.get(motion_status, motion_status)
+            mapped_motion_priority = priority_map.get(motion_priority, motion_priority)
+
+            # Check for differences
+            status_changed = mapped_motion_status != notion_status
+            priority_changed = mapped_motion_priority != notion_priority
+
+            duration_changed = (
+                abs(motion_duration_hours - notion_duration_hours) > 0.01
+            )  # Small tolerance
+            due_date_changed = motion_due_date != notion_due_date
+
+            if (
+                status_changed
+                or priority_changed
+                or duration_changed
+                or due_date_changed
+            ):
+                self.logger.info(f"📋 Changes detected in {motion_task['name']}:")
+                if status_changed:
+                    self.logger.info(
+                        f"   Status: '{notion_status}' → '{mapped_motion_status}'"
+                    )
+                if priority_changed:
+                    self.logger.info(
+                        f"   Priority: '{notion_priority}' → '{mapped_motion_priority}'"
+                    )
+                if duration_changed:
+                    self.logger.info(
+                        f"   Duration: {notion_duration_hours}h → {motion_duration_hours}h"
+                    )
+                if due_date_changed:
+                    self.logger.info(
+                        f"   Due date: '{notion_due_date}' → '{motion_due_date}'"
+                    )
+                return True
+            else:
+                self.logger.debug(f"No meaningful changes in {motion_task['name']}")
+                return False
+
+        except Exception as e:
+            self.logger.warning(
+                f"Error comparing task content, proceeding with update: {e}"
+            )
+            return True  # When in doubt, update
+
+    def has_notion_to_motion_changes(
+        self, notion_data: Dict[str, Any], motion_task: Dict[str, Any], workspace: str
+    ) -> bool:
+        """Check if Notion task has meaningful differences compared to Motion task."""
+        try:
+
+            # Get Notion values
+            notion_status = notion_data.get("status", "")
+            notion_priority = notion_data.get("priority", "")
+            notion_duration_hours = notion_data.get("est_duration_hrs", 1.0)
+            notion_due_date = notion_data.get("due_date")
+
+            if isinstance(notion_due_date, dict) and notion_due_date.get("start"):
+                notion_due_date = notion_due_date["start"]
+                # Normalize timezone format
+                if notion_due_date and notion_due_date.endswith("+00:00"):
+                    notion_due_date = notion_due_date.replace("+00:00", "Z")
+            notion_description = notion_data.get("description", "")
+
+            # Get Motion values (with debug logging)
+            motion_status = motion_task.get("status", {}).get("name", "")
+            motion_priority = motion_task.get("priority", "")
+            motion_duration_minutes = motion_task.get("duration", 0)
+            motion_due_date = motion_task.get("dueDate")
+            motion_description = motion_task.get("description", "")
+
+            # Convert Motion minutes to hours for comparison
+            motion_duration_hours = self.convert_minutes_to_hours(
+                motion_duration_minutes
+            )
+
+            # Normalize both values to a common format for comparison
+            # Motion → Common format
+            motion_status_normalized = motion_status.upper() if motion_status else ""
+            motion_priority_normalized = (
+                motion_priority.upper() if motion_priority else ""
+            )
+
+            # Notion → Common format
+            notion_status_map = {
+                "Todo": "TODO",
+                "Backlog": "TODO",
+                "In Progress": "IN_PROGRESS",
+                "Completed": "COMPLETED",
+            }
+            notion_priority_map = {
+                "Low": "LOW",
+                "Medium": "MEDIUM",
+                "High": "HIGH",
+                "ASAP": "ASAP",
+            }
+
+            notion_status_normalized = notion_status_map.get(
+                notion_status, notion_status.upper() if notion_status else ""
+            )
+            notion_priority_normalized = notion_priority_map.get(
+                notion_priority, notion_priority.upper() if notion_priority else ""
+            )
+
+            # Check for differences using normalized values (excluding description)
+            status_changed = notion_status_normalized != motion_status_normalized
+            priority_changed = notion_priority_normalized != motion_priority_normalized
+            duration_changed = abs(notion_duration_hours - motion_duration_hours) > 0.01
+            due_date_changed = notion_due_date != motion_due_date
+
+            # Debug: Always log the raw values being compared
+            self.logger.debug(
+                f"🔍 Notion→Motion comparison for {notion_data['task_name']}:"
+            )
+            self.logger.debug(
+                f"   Motion status: '{motion_status}' → normalized: '{motion_status_normalized}'"
+            )
+            self.logger.debug(
+                f"   Notion status: '{notion_status}' → normalized: '{notion_status_normalized}'"
+            )
+            self.logger.debug(
+                f"   Motion duration: {motion_duration_minutes} min ({motion_duration_hours}h)"
+            )
+            self.logger.debug(f"   Notion duration: {notion_duration_hours}h")
+            self.logger.debug(
+                f"   Changes: status={status_changed}, priority={priority_changed}, duration={duration_changed}"
+            )
+
+            if (
+                status_changed
+                or priority_changed
+                or duration_changed
+                or due_date_changed
+            ):
+                self.logger.info(f"📋 Changes detected in {notion_data['task_name']}:")
+                if status_changed:
+                    self.logger.info(
+                        f"   Status: '{motion_status}' ({motion_status_normalized}) → '{notion_status}' ({notion_status_normalized})"
+                    )
+                if priority_changed:
+                    self.logger.info(
+                        f"   Priority: '{motion_priority}' ({motion_priority_normalized}) → '{notion_priority}' ({notion_priority_normalized})"
+                    )
+                if duration_changed:
+                    self.logger.info(
+                        f"   Duration: {motion_duration_hours}h → {notion_duration_hours}h"
+                    )
+                if due_date_changed:
+                    self.logger.info(
+                        f"   Due date: '{motion_due_date}' → '{notion_due_date}'"
+                    )
+                return True
+            else:
+                self.logger.debug(
+                    f"No meaningful changes in {notion_data['task_name']}"
+                )
+                return False
+
+        except Exception as e:
+            self.logger.warning(
+                f"Error comparing Notion→Motion content, proceeding with update: {e}"
+            )
+            return True  # When in doubt, update
+
+    def set_notion_motion_sync_time(
+        self, notion_id: str, sync_time: str, workspace: str
+    ) -> bool:
+        """Set Notion 'Motion Last Sync' field to track when we last synced from Motion."""
+        if self.dry_run:
+            return True  # Skip in dry run
+
+        try:
+            # Update the Motion Last Sync field in the specified workspace
+            client = self.workspace_clients[workspace]
+
+            # Get the field mapping for this workspace
+            field_mapping = self.get_workspace_field_mapping(workspace)
+            motion_sync_field = field_mapping.get(
+                "Motion Last Sync", "Motion Last Sync"
+            )
+
+            client.pages.update(
+                page_id=notion_id,
+                properties={motion_sync_field: {"date": {"start": sync_time}}},
+            )
+            self.logger.debug(
+                f"✅ Set Motion Last Sync time for Notion task {notion_id}"
+            )
+            return True
+        except Exception as e:
+            # Don't fail the whole sync if we can't set sync time - just log and continue
+            self.logger.debug(
+                f"Could not set Motion Last Sync time for Notion task {notion_id}: {e}"
+            )
+            return True  # Return True so sync continues
 
     def sync_full(self, test_mode: bool = False) -> Dict[str, Any]:
         """Perform full sync of all tasks."""
@@ -883,23 +1628,57 @@ class MotionNotionSync:
         self.logger.info(f"🚀 Starting {mode_label} Motion ↔ Notion sync")
         results = {"workspaces": {}}
 
-        for workspace in ["Personal", "Livepeer", "Vanquish"]:
-            self.logger.info(f"🔄 Syncing {workspace}")
+        # Motion sync only works with Personal hub (Motion IDs are stored there)
+        workspace = "Personal"
+        self.logger.info(f"🔄 Syncing Motion ↔ {workspace} Hub")
 
-            workspace_results = {}
+        # Get Motion tasks once and cache them for both sync directions
+        motion_workspace_id = self.motion_workspaces[workspace]
+        if not motion_workspace_id:
+            self.logger.error(f"No Motion workspace ID configured for {workspace}")
+            return results
 
-            # Notion → Motion (limit to 1 task in test mode)
-            max_tasks = 1 if test_mode else None
+        motion_tasks = self.get_motion_tasks(motion_workspace_id)
+        self.logger.info(f"📊 Cached {len(motion_tasks)} Motion tasks for sync")
+
+        # Create lookup dictionary by Motion ID for fast access
+        motion_tasks_by_id = {
+            task.get("id"): task for task in motion_tasks if task.get("id")
+        }
+
+        workspace_results = {}
+
+        # Motion → Notion sync first (to capture user changes from Motion)
+        max_tasks = 1 if test_mode else None
+        workspace_results["motion_to_notion"] = self.sync_motion_to_notion(
+            workspace, max_tasks=max_tasks, cached_motion_tasks=motion_tasks
+        )
+
+        # Get list of Notion IDs that were just processed by Motion → Notion
+        processed_notion_ids = workspace_results["motion_to_notion"].get(
+            "processed_notion_ids", []
+        )
+
+        # Notion → Motion second (after Motion changes are synced to Notion)
+        # In test mode, limit to same task that was processed by Motion → Notion
+        if test_mode and workspace_results["motion_to_notion"].get(
+            "processed_notion_id"
+        ):
+            # Process only the same Notion task that Motion → Notion just processed
+            processed_id = workspace_results["motion_to_notion"]["processed_notion_id"]
+            workspace_results["notion_to_motion"] = self.sync_specific_notion_task(
+                workspace, processed_id, cached_motion_tasks_by_id=motion_tasks_by_id
+            )
+        else:
+            # Skip tasks that were just processed by Motion → Notion to avoid overwriting changes
             workspace_results["notion_to_motion"] = self.sync_notion_to_motion(
-                workspace, max_tasks=max_tasks
+                workspace,
+                max_tasks=max_tasks,
+                skip_notion_ids=processed_notion_ids,
+                cached_motion_tasks_by_id=motion_tasks_by_id,
             )
 
-            # Motion → Notion sync (bidirectional)
-            workspace_results["motion_to_notion"] = self.sync_motion_to_notion(
-                workspace
-            )
-
-            results["workspaces"][workspace] = workspace_results
+        results["workspaces"] = {workspace: workspace_results}
 
         self.logger.info(f"✅ {mode_label} Motion ↔ Notion sync completed")
         return results
@@ -911,9 +1690,9 @@ def main():
     )
     parser.add_argument(
         "--mode",
-        choices=["full", "incremental", "test", "test-real"],
+        choices=["full", "test", "test-real"],
         required=True,
-        help="Sync mode: full (all tasks), incremental (last 24h), test (dry run), test-real (1 task real update)",
+        help="Sync mode: full (all tasks), test (dry run), test-real (1 task real update)",
     )
 
     args = parser.parse_args()
@@ -930,9 +1709,8 @@ def main():
             results = sync_client.sync_full(test_mode=True)
         elif args.mode == "test-real":
             results = sync_client.sync_full(test_mode=True)
-        elif args.mode == "incremental":
-            # TODO: Implement incremental sync
-            results = sync_client.sync_full()  # Fallback to full for now
+        else:
+            results = sync_client.sync_full()
 
         # Print summary
         print("\n" + "=" * 50)

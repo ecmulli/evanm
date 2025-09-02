@@ -1,115 +1,43 @@
 #!/usr/bin/env python3
 """
-AI Task Creation Agent
-
-Synthesizes information from various sources (text, quotes, screenshots)
-and creates well-structured Notion tasks using AI.
-
-Usage:
-    python agent/task_creator.py --input "text description" --workspace Personal
-    python agent/task_creator.py --file input.txt --screenshots img1.png,img2.png
-
-Environment Variables Required:
-    OPENAI_API_KEY - OpenAI API token for ChatGPT
-    PERSONAL_NOTION_API_KEY - Notion Personal Hub API token
-    PERSONAL_NOTION_DB_ID - Personal hub database ID
-
-Author: AI Task Creation Agent
+Task creation service - extracted from the original task_creator.py
 """
 
-import argparse
 import base64
 import json
 import logging
 import os
-import sys
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# Third-party imports
 import openai
-from dotenv import load_dotenv
-from notion_client import Client
-
-# Load environment variables
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env.dev"))
+import requests
+from notion_client import Client as NotionClient
+from utils.config import config
 
 
-class TaskCreationAgent:
-    """AI-powered agent that creates Notion tasks from synthesized information."""
+class TaskCreationService:
+    """Service for creating tasks using AI and Notion integration."""
 
     def __init__(self, dry_run: bool = False):
-        """Initialize the agent with API clients."""
+        """Initialize the task creation service."""
         self.dry_run = dry_run
-        self.logger = self._setup_logging()
+        self.logger = logging.getLogger(__name__)
 
-        # Initialize OpenAI
-        self.openai_client = self._init_openai()
-
-        # Initialize Notion
-        self.notion_client = self._init_notion()
-
-        # Workspace mapping
-        self.workspace_db_mapping = {
-            "Personal": os.getenv("PERSONAL_NOTION_DB_ID"),
-            "Livepeer": os.getenv("LIVEPEER_NOTION_DB_ID"),
-            "Vanquish": os.getenv("VANQUISH_NOTION_DB_ID"),
-        }
-
-    def _setup_logging(self) -> logging.Logger:
-        """Set up logging configuration."""
-        logging.basicConfig(
-            level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-        )
-        logger = logging.getLogger(__name__)
-
-        if self.dry_run:
-            logger.info("🧪 Running in DRY RUN mode - no tasks will be created")
-
-        return logger
-
-    def _init_openai(self) -> openai.OpenAI:
-        """Initialize OpenAI client."""
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
+        # Initialize OpenAI client
+        if not config.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY environment variable is required")
+        self.openai_client = openai.OpenAI(api_key=config.OPENAI_API_KEY)
 
-        return openai.OpenAI(api_key=api_key)
-
-    def _init_notion(self) -> Client:
-        """Initialize Notion client."""
-        api_key = os.getenv("PERSONAL_NOTION_API_KEY")
-        if not api_key:
+        # Initialize Notion client for personal hub
+        if not config.PERSONAL_NOTION_API_KEY:
             raise ValueError("PERSONAL_NOTION_API_KEY environment variable is required")
+        self.notion_client = NotionClient(auth=config.PERSONAL_NOTION_API_KEY)
 
-        return Client(auth=api_key)
-
-    def read_file(self, file_path: str) -> str:
-        """Read text content from a file."""
+    def extract_text_from_image_url(self, image_url: str) -> str:
+        """Extract text from an image URL using OpenAI Vision API."""
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                return f.read()
-        except Exception as e:
-            self.logger.error(f"Error reading file {file_path}: {e}")
-            return ""
-
-    def extract_text_from_image(self, image_path: str) -> str:
-        """Extract text from an image using OpenAI Vision API."""
-        try:
-            # Read and encode image
-            with open(image_path, "rb") as image_file:
-                base64_image = base64.b64encode(image_file.read()).decode("utf-8")
-
-            # Get file extension for MIME type
-            file_ext = Path(image_path).suffix.lower()
-            mime_type = {
-                ".png": "image/png",
-                ".jpg": "image/jpeg",
-                ".jpeg": "image/jpeg",
-                ".gif": "image/gif",
-                ".webp": "image/webp",
-            }.get(file_ext, "image/png")
+            self.logger.info(f"📸 Extracting text from image: {image_url}")
 
             response = self.openai_client.chat.completions.create(
                 model="gpt-4o",
@@ -119,14 +47,9 @@ class TaskCreationAgent:
                         "content": [
                             {
                                 "type": "text",
-                                "text": "Extract all text content from this image. Include any UI text, error messages, user feedback, or other readable content. Be thorough and accurate.",
+                                "text": "Extract all text content from this image. Include any visible text, labels, captions, or written content. Return only the extracted text without additional commentary.",
                             },
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:{mime_type};base64,{base64_image}"
-                                },
-                            },
+                            {"type": "image_url", "image_url": {"url": image_url}},
                         ],
                     }
                 ],
@@ -134,31 +57,27 @@ class TaskCreationAgent:
             )
 
             extracted_text = response.choices[0].message.content
-            self.logger.info(f"📸 Extracted text from {image_path}")
+            self.logger.info(
+                f"✅ Extracted {len(extracted_text)} characters from image"
+            )
             return extracted_text
 
         except Exception as e:
-            self.logger.error(f"Error extracting text from {image_path}: {e}")
-            return f"[Error extracting text from {image_path}]"
+            self.logger.error(f"Error extracting text from image {image_url}: {e}")
+            return f"[Error extracting text from image: {e}]"
 
     def synthesize_task_info(
         self,
         text_inputs: List[str],
-        image_texts: List[str],
+        image_texts: List[str] = None,
         suggested_workspace: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Use AI to synthesize information into a structured task."""
+        """Synthesize task information from inputs using AI."""
 
-        # Combine all inputs
-        combined_input = "\n\n".join(
-            [
-                "=== TEXT INPUTS ===",
-                *text_inputs,
-                "=== SCREENSHOT/IMAGE CONTENT ===",
-                *image_texts,
-            ]
-        )
+        if image_texts is None:
+            image_texts = []
 
+        # Prepare workspace guidance
         workspace_guidance = ""
         if suggested_workspace:
             workspace_guidance = (
@@ -228,37 +147,39 @@ GUIDELINES:
 - Parse the input text carefully for workspace/priority/duration clues
 - Description should be comprehensive but concise
 - Acceptance criteria should be specific, measurable, and formatted as a markdown checklist
-- Use the intelligent parsing rules above, but apply common sense
 
 ACCEPTANCE CRITERIA FORMAT:
-Format acceptance criteria as a markdown checklist using this pattern:
-- [ ] First specific, testable criterion
-- [ ] Second specific, testable criterion  
-- [ ] Third specific, testable criterion
-- [ ] Final verification step
+Format acceptance criteria as a markdown checklist like:
+- [ ] First acceptance criterion
+- [ ] Second acceptance criterion  
+- [ ] Third acceptance criterion"""
 
-Example: "- [ ] Dashboard loads in under 3 seconds\n- [ ] All charts display correct data\n- [ ] No console errors present\n- [ ] Performance metrics improved by 50%"
+        # Combine all inputs
+        all_inputs = text_inputs + image_texts
+        combined_input = "\n\n".join(all_inputs)
 
-Analyze the input and respond with ONLY the JSON object:"""
+        user_prompt = f"""Please analyze the following information and create a structured task definition:
+
+{combined_input}
+
+Return only the JSON response with the task information."""
 
         try:
             response = self.openai_client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": combined_input},
+                    {"role": "user", "content": user_prompt},
                 ],
-                temperature=0.3,  # Lower temperature for more consistent outputs
+                temperature=0.3,
                 max_tokens=1000,
             )
 
             response_text = response.choices[0].message.content.strip()
 
-            # Parse JSON response
+            # Clean up response text (remove markdown code blocks if present)
             if response_text.startswith("```json"):
-                response_text = (
-                    response_text.split("```json")[1].split("```")[0].strip()
-                )
+                response_text = response_text[7:-3].strip()
             elif response_text.startswith("```"):
                 response_text = response_text.split("```")[1].split("```")[0].strip()
 
@@ -290,13 +211,13 @@ Analyze the input and respond with ONLY the JSON object:"""
                 )
                 task_info["priority"] = "Medium"
 
-            # Validate duration
+            # Validate estimated hours
             if (
                 not isinstance(task_info["estimated_hours"], (int, float))
                 or task_info["estimated_hours"] <= 0
             ):
                 self.logger.warning(
-                    f"Invalid duration '{task_info['estimated_hours']}', defaulting to 1 hour"
+                    f"Invalid estimated_hours '{task_info['estimated_hours']}', defaulting to 1.0"
                 )
                 task_info["estimated_hours"] = 1.0
 
@@ -318,21 +239,22 @@ Analyze the input and respond with ONLY the JSON object:"""
             return task_info
 
         except json.JSONDecodeError as e:
-            self.logger.error(f"Error parsing AI response as JSON: {e}")
+            self.logger.error(f"Failed to parse AI response as JSON: {e}")
             self.logger.error(f"Raw response: {response_text}")
-            raise
+            raise ValueError(f"Invalid JSON response from AI: {e}")
         except Exception as e:
-            self.logger.error(f"Error calling OpenAI API: {e}")
+            self.logger.error(f"Error synthesizing task info: {e}")
             raise
 
     def create_notion_task(self, task_info: Dict[str, Any]) -> Optional[str]:
-        """Create a task in the appropriate Notion database."""
+        """Create a task in Notion and return the page ID."""
 
         workspace = task_info["workspace"]
-        database_id = self.workspace_db_mapping.get(workspace)
+        # Always create in personal database - sync jobs will handle distribution
+        database_id = config.PERSONAL_NOTION_DB_ID
 
         if not database_id:
-            raise ValueError(f"No database ID configured for workspace: {workspace}")
+            raise ValueError("PERSONAL_NOTION_DB_ID environment variable is required")
 
         # Build description content (rich text blocks)
         description_blocks = [
@@ -410,7 +332,7 @@ Analyze the input and respond with ONLY the JSON object:"""
                 }
             )
 
-        # Create page properties (matching the existing Notion sync field names)
+            # Create page properties (matching the existing Notion sync field names)
         properties = {
             "Task name": {
                 "title": [{"type": "text", "text": {"content": task_info["task_name"]}}]
@@ -451,22 +373,19 @@ Analyze the input and respond with ONLY the JSON object:"""
     def create_task_from_inputs(
         self,
         text_inputs: List[str],
-        image_paths: List[str] = None,
+        image_urls: List[str] = None,
         suggested_workspace: Optional[str] = None,
-    ) -> Optional[str]:
+    ) -> Dict[str, Any]:
         """Main method to create a task from various inputs."""
 
         self.logger.info("🚀 Starting AI task creation")
 
         # Process images if provided
         image_texts = []
-        if image_paths:
-            for image_path in image_paths:
-                if os.path.exists(image_path):
-                    extracted_text = self.extract_text_from_image(image_path)
-                    image_texts.append(f"--- From {image_path} ---\n{extracted_text}")
-                else:
-                    self.logger.warning(f"Image file not found: {image_path}")
+        if image_urls:
+            for image_url in image_urls:
+                extracted_text = self.extract_text_from_image_url(image_url)
+                image_texts.append(f"--- From {image_url} ---\n{extracted_text}")
 
         # Synthesize task information
         task_info = self.synthesize_task_info(
@@ -476,71 +395,10 @@ Analyze the input and respond with ONLY the JSON object:"""
         # Create the task
         page_id = self.create_notion_task(task_info)
 
-        return page_id
-
-
-def main():
-    """CLI interface for the task creation agent."""
-    parser = argparse.ArgumentParser(description="AI Task Creation Agent")
-    parser.add_argument("--input", "-i", type=str, help="Direct text input")
-    parser.add_argument("--file", "-f", type=str, help="Path to text file")
-    parser.add_argument(
-        "--screenshots", "-s", type=str, help="Comma-separated image paths"
-    )
-    parser.add_argument(
-        "--workspace",
-        "-w",
-        type=str,
-        choices=["Personal", "Livepeer", "Vanquish"],
-        help="Suggested workspace",
-    )
-    parser.add_argument(
-        "--dry-run", action="store_true", help="Dry run mode (no task creation)"
-    )
-
-    args = parser.parse_args()
-
-    if not args.input and not args.file and not args.screenshots:
-        parser.error("Must provide at least one of: --input, --file, or --screenshots")
-
-    # Initialize agent
-    agent = TaskCreationAgent(dry_run=args.dry_run)
-
-    # Collect text inputs
-    text_inputs = []
-
-    if args.input:
-        text_inputs.append(args.input)
-
-    if args.file:
-        file_content = agent.read_file(args.file)
-        if file_content:
-            text_inputs.append(file_content)
-
-    # Process screenshots
-    image_paths = []
-    if args.screenshots:
-        image_paths = [path.strip() for path in args.screenshots.split(",")]
-
-    try:
-        page_id = agent.create_task_from_inputs(
-            text_inputs=text_inputs,
-            image_paths=image_paths,
-            suggested_workspace=args.workspace,
-        )
-
-        if page_id:
-            print(f"\n🎉 Task created successfully!")
-            print(f"📋 Page ID: {page_id}")
-        elif args.dry_run:
-            print(f"\n🧪 Dry run completed - no task created")
-        else:
-            print(f"\n❌ Task creation failed")
-
-    except Exception as e:
-        print(f"\n💥 Error: {e}")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
+        return {
+            "task_info": task_info,
+            "page_id": page_id,
+            "page_url": (
+                f"https://www.notion.so/{page_id.replace('-', '')}" if page_id else None
+            ),
+        }
