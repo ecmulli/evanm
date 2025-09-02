@@ -1130,8 +1130,22 @@ class MotionNotionSync:
             priority_map = self.get_priority_mapping()
             status_map = self.get_status_mapping()
 
+            # Map Notion workspace to Motion workspace ID
+            notion_workspace = notion_data.get("workspace", "Personal")
+            motion_workspace_id = self.motion_workspaces.get(notion_workspace)
+
+            self.logger.info(
+                f"🏢 Mapping Notion workspace '{notion_workspace}' to Motion workspace ID: {motion_workspace_id}"
+            )
+
+            if not motion_workspace_id:
+                self.logger.error(
+                    f"No Motion workspace ID configured for Notion workspace: {notion_workspace}"
+                )
+                return False
+
             motion_task_data = {
-                "workspaceId": self.motion_workspaces[workspace],
+                "workspaceId": motion_workspace_id,
                 "name": notion_data["task_name"],
                 "description": self.blocks_to_description(blocks),
                 "priority": priority_map.get(notion_data["priority"], "MEDIUM"),
@@ -1168,7 +1182,7 @@ class MotionNotionSync:
             if motion_id:
                 # Set custom fields for back-reference to Notion
                 if self.set_motion_custom_fields(
-                    motion_id, workspace, notion_data["id"], notion_data["url"]
+                    motion_id, notion_workspace, notion_data["id"], notion_data["url"]
                 ):
                     # Update Notion with Motion ID
                     if not self.dry_run:
