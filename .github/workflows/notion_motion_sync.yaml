@@ -61,7 +61,7 @@ jobs:
           VANQUISH_NOTION_USER_ID: ${{ secrets.VANQUISH_NOTION_USER_ID }}
         run: |
           cd packages/jobs/notion
-          python notion_sync.py --mode ${{ steps.sync-mode.outputs.mode }} S I
+          python notion_sync.py --mode ${{ steps.sync-mode.outputs.mode }}
       - name: Run Motion sync
         env:
           # Motion API
