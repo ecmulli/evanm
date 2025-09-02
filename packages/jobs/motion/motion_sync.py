@@ -1595,18 +1595,26 @@ class MotionNotionSync:
         self.logger.info(f"🚀 Starting {mode_label} Motion ↔ Notion sync")
         results = {"workspaces": {}}
 
-        # Motion sync only works with Personal hub (Motion IDs are stored there)
+        # Motion sync needs to check all Motion workspaces since tasks can be in any workspace
+        # but Notion IDs are stored in Personal hub
         workspace = "Personal"
         self.logger.info(f"🔄 Syncing Motion ↔ {workspace} Hub")
 
-        # Get Motion tasks once and cache them for both sync directions
-        motion_workspace_id = self.motion_workspaces[workspace]
-        if not motion_workspace_id:
-            self.logger.error(f"No Motion workspace ID configured for {workspace}")
-            return results
+        # Get Motion tasks from ALL configured workspaces and combine them
+        all_motion_tasks = []
+        for ws_name, ws_id in self.motion_workspaces.items():
+            if ws_id:
+                self.logger.info(f"📊 Fetching Motion tasks from {ws_name} workspace")
+                ws_tasks = self.get_motion_tasks(ws_id)
+                all_motion_tasks.extend(ws_tasks)
+                self.logger.info(
+                    f"📊 Found {len(ws_tasks)} tasks in {ws_name} workspace"
+                )
 
-        motion_tasks = self.get_motion_tasks(motion_workspace_id)
-        self.logger.info(f"📊 Cached {len(motion_tasks)} Motion tasks for sync")
+        motion_tasks = all_motion_tasks
+        self.logger.info(
+            f"📊 Cached {len(motion_tasks)} Motion tasks total from all workspaces"
+        )
 
         # Create lookup dictionary by Motion ID for fast access
         motion_tasks_by_id = {
