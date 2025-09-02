@@ -14,12 +14,12 @@ on:
       mode:
         description: 'Sync mode'
         required: true
-        default: 'incremental'
+        default: 'full'
         type: choice
         options:
-          - incremental
           - full
           - test
+          - test-real
 
 jobs:
   notion-motion-sync:
@@ -45,7 +45,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "mode=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
           else
-            # All scheduled runs = full sync (incremental not available)
+            # All scheduled runs = full sync
             echo "mode=full" >> $GITHUB_OUTPUT
           fi
       - name: Run Notion sync
@@ -61,8 +61,7 @@ jobs:
           VANQUISH_NOTION_USER_ID: ${{ secrets.VANQUISH_NOTION_USER_ID }}
         run: |
           cd packages/jobs/notion
-          python notion_sync.py --mode ${{ steps.sync-mode.outputs.mode }} --sync-content
-          
+          python notion_sync.py --mode ${{ steps.sync-mode.outputs.mode }} S I
       - name: Run Motion sync
         env:
           # Motion API
