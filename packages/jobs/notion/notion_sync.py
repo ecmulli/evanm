@@ -694,21 +694,16 @@ class NotionTaskSync:
                 updates = {}
 
                 # Compare fields and build updates
-                if external_data["task_name"] != personal_data["task_name"]:
-                    updates["task_name"] = external_data["task_name"]
+                # Note: For existing tasks, Hub is source of truth - only sync status changes from external
                 if external_data["status"] != personal_data["status"]:
                     updates["status"] = external_data["status"]
-                if (
-                    external_data["est_duration_hrs"]
-                    != personal_data["est_duration_hrs"]
-                ):
-                    updates["est_duration_hrs"] = external_data["est_duration_hrs"]
-                if external_data["due_date"] != personal_data["due_date"]:
-                    updates["due_date"] = external_data["due_date"]
-                if external_data["priority"] != personal_data["priority"]:
-                    updates["priority"] = external_data["priority"]
-                if external_data["description"] != personal_data["description"]:
-                    updates["description"] = external_data["description"]
+
+                # These fields should NOT be updated from external for existing tasks (Hub is source of truth):
+                # - task_name: Hub manages naming
+                # - due_date: Hub manages scheduling
+                # - est_duration_hrs: Hub manages time estimates
+                # - priority: Hub manages priority
+                # - description: Hub manages content
 
                 if updates:
                     if self.dry_run:
