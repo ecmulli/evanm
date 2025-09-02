@@ -124,19 +124,47 @@ class NotionTaskSync:
         for block in target_blocks:
             target_client.blocks.delete(block["id"])
 
-        # Create new blocks
+        # Create new blocks with validation
         children = []
-        for block in source_blocks:
-            # Remove fields that can't be sent in creation
-            for field in [
-                "id",
-                "created_time",
-                "last_edited_time",
-                "created_by",
-                "last_edited_by",
-            ]:
-                block.pop(field, None)
-            children.append(block)
+        for i, block in enumerate(source_blocks):
+            try:
+                # Deep copy to avoid modifying the original
+                block_copy = block.copy()
+
+                # Remove fields that can't be sent in creation
+                for field in [
+                    "id",
+                    "created_time",
+                    "last_edited_time",
+                    "created_by",
+                    "last_edited_by",
+                    "archived",
+                    "has_children",
+                ]:
+                    block_copy.pop(field, None)
+
+                # Validate block has a proper type
+                block_type = block_copy.get("type")
+                if not block_type:
+                    self.logger.warning(f"⚠️ Skipping block {i}: missing 'type' field")
+                    continue
+
+                # Check if the block content for the type exists
+                if block_type not in block_copy or not block_copy[block_type]:
+                    self.logger.warning(
+                        f"⚠️ Skipping block {i}: empty or invalid '{block_type}' content"
+                    )
+                    continue
+
+                children.append(block_copy)
+
+            except Exception as e:
+                self.logger.warning(f"⚠️ Skipping invalid block {i}: {e}")
+                continue
+
+        if not children:
+            self.logger.info(f"📝 No valid blocks to sync to {target_page_id}")
+            return True
 
         # Append all blocks at once (more efficient)
         target_client.blocks.children.append(
