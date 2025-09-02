@@ -7,6 +7,7 @@ import base64
 import json
 import logging
 import os
+import re
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
@@ -33,6 +34,76 @@ class TaskCreationService:
         if not config.PERSONAL_NOTION_API_KEY:
             raise ValueError("PERSONAL_NOTION_API_KEY environment variable is required")
         self.notion_client = NotionClient(auth=config.PERSONAL_NOTION_API_KEY)
+
+    def extract_urls_from_text(self, text: str) -> List[str]:
+        """Extract URLs from text using regex."""
+        # Regular expression to match URLs
+        url_pattern = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+        urls = re.findall(url_pattern, text)
+        return urls
+
+    def extract_all_urls_from_inputs(self, text_inputs: List[str]) -> List[str]:
+        """Extract all URLs from the provided text inputs."""
+        all_urls = []
+        for text in text_inputs:
+            urls = self.extract_urls_from_text(text)
+            all_urls.extend(urls)
+        return list(set(all_urls))  # Remove duplicates
+
+    def convert_markdown_to_notion_rich_text(self, text: str) -> List[Dict]:
+        """Convert markdown text (including URLs) to Notion rich text format."""
+        rich_text = []
+
+        # Pattern to match markdown links: [text](url)
+        markdown_link_pattern = r"\[([^\]]+)\]\(([^)]+)\)"
+
+        # Pattern to match plain URLs
+        url_pattern = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+
+        # Split text by markdown links first
+        parts = re.split(markdown_link_pattern, text)
+
+        i = 0
+        while i < len(parts):
+            part = parts[i]
+
+            # If this is a text part (not a link), check for plain URLs
+            if i % 3 == 0:  # Text parts are at indices 0, 3, 6, etc.
+                # Split by plain URLs
+                url_parts = re.split(f"({url_pattern})", part)
+                for j, url_part in enumerate(url_parts):
+                    if url_part:
+                        if re.match(url_pattern, url_part):
+                            # This is a plain URL
+                            rich_text.append(
+                                {
+                                    "type": "text",
+                                    "text": {
+                                        "content": url_part,
+                                        "link": {"url": url_part},
+                                    },
+                                }
+                            )
+                        else:
+                            # This is regular text
+                            rich_text.append(
+                                {"type": "text", "text": {"content": url_part}}
+                            )
+            elif i % 3 == 1:  # Link text parts
+                link_text = part
+                link_url = parts[i + 1] if i + 1 < len(parts) else ""
+                if link_url:
+                    rich_text.append(
+                        {
+                            "type": "text",
+                            "text": {"content": link_text, "link": {"url": link_url}},
+                        }
+                    )
+                i += 1  # Skip the URL part since we've processed it
+
+            i += 1
+
+        return rich_text
 
     def extract_text_from_image_url(self, image_url: str) -> str:
         """Extract text from an image URL using OpenAI Vision API."""
@@ -147,6 +218,13 @@ GUIDELINES:
 - Parse the input text carefully for workspace/priority/duration clues
 - Description should be comprehensive but concise
 - Acceptance criteria should be specific, measurable, and formatted as a markdown checklist
+- PRESERVE ALL URLs: Include any URLs found in the input text in the description or acceptance criteria as clickable links
+
+URL HANDLING:
+- If URLs are found in the input, include them in the description as supporting materials
+- Format URLs as markdown links when possible: [Link Text](URL)
+- If the URL context is unclear, label it as "Supporting Material: [URL]"
+- URLs should be preserved exactly as provided
 
 ACCEPTANCE CRITERIA FORMAT:
 Format acceptance criteria as a markdown checklist like:
@@ -154,13 +232,31 @@ Format acceptance criteria as a markdown checklist like:
 - [ ] Second acceptance criterion  
 - [ ] Third acceptance criterion"""
 
+        # Extract URLs from text inputs
+        extracted_urls = self.extract_all_urls_from_inputs(text_inputs)
+        if extracted_urls:
+            self.logger.info(
+                f"🔗 Found {len(extracted_urls)} URL(s) in text inputs: {extracted_urls}"
+            )
+
         # Combine all inputs
         all_inputs = text_inputs + image_texts
         combined_input = "\n\n".join(all_inputs)
 
+        # Add URL information to prompt if URLs were found
+        url_instruction = ""
+        if extracted_urls:
+            url_list = "\n".join([f"- {url}" for url in extracted_urls])
+            url_instruction = f"""
+
+IMPORTANT: The following URLs were found in the input and MUST be preserved in the task:
+{url_list}
+
+Please include these URLs in the description or acceptance criteria as supporting materials."""
+
         user_prompt = f"""Please analyze the following information and create a structured task definition:
 
-{combined_input}
+{combined_input}{url_instruction}
 
 Return only the JSON response with the task information."""
 
@@ -269,9 +365,9 @@ Return only the JSON response with the task information."""
                 "object": "block",
                 "type": "paragraph",
                 "paragraph": {
-                    "rich_text": [
-                        {"type": "text", "text": {"content": task_info["description"]}}
-                    ]
+                    "rich_text": self.convert_markdown_to_notion_rich_text(
+                        task_info["description"]
+                    )
                 },
             },
             {
@@ -308,9 +404,9 @@ Return only the JSON response with the task information."""
                             "object": "block",
                             "type": "to_do",
                             "to_do": {
-                                "rich_text": [
-                                    {"type": "text", "text": {"content": clean_text}}
-                                ],
+                                "rich_text": self.convert_markdown_to_notion_rich_text(
+                                    clean_text
+                                ),
                                 "checked": False,
                             },
                         }
