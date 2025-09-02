@@ -1079,6 +1079,9 @@ class MotionNotionSync:
 
             # Map Notion workspace to Motion workspace ID
             notion_workspace = notion_data.get("workspace", "Personal")
+            # Default empty/None workspace to Personal
+            if not notion_workspace or notion_workspace.strip() == "":
+                notion_workspace = "Personal"
             motion_workspace_id = self.motion_workspaces.get(notion_workspace)
 
             self.logger.info(
@@ -1167,8 +1170,11 @@ class MotionNotionSync:
                 )
 
             if not motion_task:
-                self.logger.warning(f"Motion task {motion_id} not found")
-                return False
+                self.logger.warning(
+                    f"Motion task {motion_id} not found - creating new task to replace orphaned reference"
+                )
+                # Create a new Motion task since the old one doesn't exist
+                return self._create_motion_from_notion(notion_data, workspace)
 
             # Compare actual task properties to detect changes instead of timestamps
             def normalize_for_comparison(value):

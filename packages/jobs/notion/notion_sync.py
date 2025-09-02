@@ -865,15 +865,15 @@ class NotionTaskSync:
                                 external_id,
                                 updates,
                                 workspace,
-                                sync_content=sync_content,
+                                sync_content=True,  # Always sync content from hub to external
                                 source_page_id=personal_task["id"],
                                 source_workspace="Personal",
                             ):
                                 stats["updated"] += 1
                             else:
                                 stats["errors"] += 1
-                    elif sync_content:
-                        # No property changes, but content sync is enabled - check if content differs
+                    else:  # Always sync content from hub to external
+                        # No property changes, but always sync content from hub - check if content differs
                         if self.dry_run:
                             self.logger.info(
                                 f"🧪 DRY RUN: {workspace} task '{personal_data['task_name']}' - checking content only"
@@ -906,12 +906,6 @@ class NotionTaskSync:
                                     stats["errors"] += 1
                             else:
                                 stats["skipped"] += 1
-                    else:
-                        if self.dry_run:
-                            self.logger.info(
-                                f"🧪 DRY RUN: {workspace} task '{personal_data['task_name']}' up to date (no property or content changes needed)"
-                            )
-                        stats["skipped"] += 1
                 else:
                     if self.dry_run:
                         self.logger.info(
