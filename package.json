@@ -10,7 +10,10 @@
 		"install:all": "npm install",
 		"clean": "rm -rf node_modules packages/*/node_modules",
 		"jobs:install": "cd packages/jobs && pip install -r requirements.txt",
-		"jobs:run": "cd packages/jobs && python -m jobs"
+		"jobs:run": "cd packages/jobs && python -m jobs",
+		"agent:install": "cd packages/agent && pip install -r requirements.txt",
+		"agent:run": "cd packages/agent && venv/bin/python app.py",
+		"agent": "cd packages/agent && venv/bin/python app.py"
 	},
 	"devDependencies": {
 		"@types/node": "^20.0.0"

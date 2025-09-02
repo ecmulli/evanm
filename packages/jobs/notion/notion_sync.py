@@ -717,44 +717,18 @@ class NotionTaskSync:
             existing_personal_task = external_id_map.get(external_id)
 
             if existing_personal_task:
-                # Update existing task
+                # SKIP existing tasks - External workspaces should NEVER update existing tasks
+                # The Hub is the single source of truth for all task data
                 personal_data = self.extract_task_data(existing_personal_task)
-                updates = {}
-
-                # Compare fields and build updates
-                # Note: For existing tasks, Hub is source of truth - only sync status changes from external
-                if external_data["status"] != personal_data["status"]:
-                    updates["status"] = external_data["status"]
-
-                # These fields should NOT be updated from external for existing tasks (Hub is source of truth):
-                # - task_name: Hub manages naming
-                # - due_date: Hub manages scheduling
-                # - est_duration_hrs: Hub manages time estimates
-                # - priority: Hub manages priority
-                # - description: Hub manages content
-
-                if updates:
-                    if self.dry_run:
-                        self.logger.info(
-                            f"🧪 DRY RUN: Would update personal hub task '{personal_data['task_name']}':"
-                        )
-                        for field, value in updates.items():
-                            old_value = personal_data.get(field, "None")
-                            self.logger.info(f"  - {field}: '{old_value}' → '{value}'")
-                        stats["updated"] += 1
-                    else:
-                        if self.update_task_properties(
-                            personal_data["id"], updates, "Personal"
-                        ):
-                            stats["updated"] += 1
-                        else:
-                            stats["errors"] += 1
+                if self.dry_run:
+                    self.logger.info(
+                        f"🚫 DRY RUN: SKIPPING existing personal hub task '{personal_data['task_name']}' (External should not update existing tasks)"
+                    )
                 else:
-                    if self.dry_run:
-                        self.logger.info(
-                            f"🧪 DRY RUN: Personal hub task '{personal_data['task_name']}' already up to date"
-                        )
-                    stats["skipped"] += 1
+                    self.logger.info(
+                        f"🚫 SKIPPING existing personal hub task '{personal_data['task_name']}' (External should not update existing tasks)"
+                    )
+                stats["skipped"] += 1
             else:
                 # Create new task in personal hub
                 new_task_id = self.create_task_in_personal_hub(
