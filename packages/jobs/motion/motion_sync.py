@@ -762,63 +762,10 @@ class MotionNotionSync:
             stats["processed_notion_id"] = processed_notion_ids[0]
         stats["processed_notion_ids"] = processed_notion_ids
 
-        # Check for deleted Motion tasks and mark as canceled in Notion
-        self._handle_deleted_motion_tasks(
-            workspace, processed_notion_ids, cached_motion_tasks
-        )
+        # Note: Deleted Motion tasks are ignored - they just disappear from sync
 
         self.logger.info(f"📊 {workspace} Motion → Notion sync complete: {stats}")
         return stats
-
-    def _handle_deleted_motion_tasks(
-        self,
-        workspace: str,
-        processed_notion_ids: List[str],
-        cached_motion_tasks: Optional[List[Dict[str, Any]]] = None,
-    ):
-        """Mark Notion tasks as 'Canceled' if their Motion tasks have been deleted."""
-        try:
-            # Create lookup set of Motion IDs from cached tasks for fast existence checking
-            if cached_motion_tasks:
-                existing_motion_ids = {
-                    task.get("id") for task in cached_motion_tasks if task.get("id")
-                }
-            else:
-                existing_motion_ids = set()
-
-            # Get all Notion tasks with Motion IDs
-            notion_tasks = self.get_notion_tasks(workspace)
-
-            for notion_task in notion_tasks:
-                notion_data = self.extract_notion_task_data(notion_task)
-                motion_id = notion_data.get("motion_id")
-                notion_id = notion_data.get("id")
-
-                # Skip if no Motion ID or already processed (means Motion task exists)
-                if not motion_id or notion_id in processed_notion_ids:
-                    continue
-
-                # Check if Motion task still exists using cached data
-                if motion_id not in existing_motion_ids:
-                    # Motion task was deleted, mark as canceled in Notion
-                    try:
-                        update_data = {
-                            "Status": {"status": {"name": "Canceled"}},
-                            "Motion ID": {"rich_text": []},  # Clear the Motion ID
-                        }
-
-                        self.workspace_clients[workspace].pages.update(
-                            page_id=notion_id, properties=update_data
-                        )
-
-                        self.logger.info(
-                            f"🗑️ Marked as CANCELED - Motion task deleted: {notion_data['task_name']}"
-                        )
-                    except Exception as e:
-                        self.logger.error(f"Failed to mark task as canceled: {e}")
-
-        except Exception as e:
-            self.logger.error(f"Error checking for deleted Motion tasks: {e}")
 
     def _update_notion_from_completed_motion(
         self, motion_task: Dict[str, Any], notion_id: str, workspace: str
