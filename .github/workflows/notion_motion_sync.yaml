@@ -66,6 +66,9 @@ jobs:
         env:
           # Motion API
           MOTION_API_KEY: ${{ secrets.MOTION_API_KEY }}
+          MOTION_PERSONAL_WORKSPACE_ID: ${{ secrets.MOTION_PERSONAL_WORKSPACE_ID }}
+          MOTION_LIVEPEER_WORKSPACE_ID: ${{ secrets.MOTION_LIVEPEER_WORKSPACE_ID }}
+          MOTION_VANQUISH_WORKSPACE_ID: ${{ secrets.MOTION_VANQUISH_WORKSPACE_ID }}
           # Notion API (reuse from above)
           PERSONAL_NOTION_API_KEY: ${{ secrets.PERSONAL_NOTION_API_KEY }}
           LIVEPEER_NOTION_API_KEY: ${{ secrets.LIVEPEER_NOTION_API_KEY }}
@@ -76,7 +79,6 @@ jobs:
           PERSONAL_NOTION_USER_ID: ${{ secrets.PERSONAL_NOTION_USER_ID }}
           LIVEPEER_NOTION_USER_ID: ${{ secrets.LIVEPEER_NOTION_USER_ID }}
           VANQUISH_NOTION_USER_ID: ${{ secrets.VANQUISH_NOTION_USER_ID }}
-          # Motion workspace IDs (hardcoded in script)
         run: |
           cd packages/jobs
           python motion/motion_sync.py --mode ${{ steps.sync-mode.outputs.mode }}
