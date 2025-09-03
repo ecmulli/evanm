@@ -10,15 +10,18 @@ Usage:
     python notion_sync.py --mode test  # dry run
 
 Environment Variables Required:
-    PERSONAL_NOTION_API_KEY - Personal workspace Notion API token
-    LIVEPEER_NOTION_API_KEY - Livepeer workspace Notion API token
-    VANQUISH_NOTION_API_KEY - Vanquish workspace Notion API token
-    PERSONAL_NOTION_DB_ID - Personal task hub database ID
-    LIVEPEER_NOTION_DB_ID - Livepeer workspace database ID
-    VANQUISH_NOTION_DB_ID - Vanquish workspace database ID
-    PERSONAL_NOTION_USER_ID - Your user ID in the personal workspace
-    LIVEPEER_NOTION_USER_ID - Your user ID in the Livepeer workspace
-    VANQUISH_NOTION_USER_ID - Your user ID in the Vanquish workspace
+    HUB_NOTION_API_KEY - Hub workspace Notion API token
+    HUB_NOTION_DB_ID - Hub task database ID
+    HUB_NOTION_USER_ID - Your user ID in the hub workspace
+
+    Dynamic workspaces (auto-discovered from pattern):
+    <WORKSPACE>_NOTION_API_KEY - External workspace Notion API token
+    <WORKSPACE>_NOTION_DB_ID - External workspace database ID
+    <WORKSPACE>_NOTION_USER_ID - Your user ID in the external workspace
+
+    Examples:
+    LIVEPEER_NOTION_API_KEY, LIVEPEER_NOTION_DB_ID, LIVEPEER_NOTION_USER_ID
+    VANQUISH_NOTION_API_KEY, VANQUISH_NOTION_DB_ID, VANQUISH_NOTION_USER_ID
 """
 
 import argparse
@@ -176,48 +179,7 @@ class NotionTaskSync:
         return True
 
     def __init__(self, dry_run: bool = False):
-        # Try to load .env.dev first, then fall back to .env
-        load_dotenv(".env.dev")
-        load_dotenv(".env")
-        self.dry_run = dry_run
-
-        # API tokens for each workspace
-        self.personal_token = os.getenv("PERSONAL_NOTION_API_KEY")
-        self.livepeer_token = os.getenv("LIVEPEER_NOTION_API_KEY")
-        self.vanquish_token = os.getenv("VANQUISH_NOTION_API_KEY")
-
-        # Initialize Notion clients for each workspace
-        self.personal_client = Client(auth=self.personal_token)
-        self.livepeer_client = Client(auth=self.livepeer_token)
-        self.vanquish_client = Client(auth=self.vanquish_token)
-
-        # Database IDs
-        self.personal_hub_id = os.getenv("PERSONAL_NOTION_DB_ID")
-        self.livepeer_db_id = os.getenv("LIVEPEER_NOTION_DB_ID")
-        self.vanquish_db_id = os.getenv("VANQUISH_NOTION_DB_ID")
-
-        # User IDs for each workspace
-        self.personal_user_id = os.getenv("PERSONAL_NOTION_USER_ID")
-        self.livepeer_user_id = os.getenv("LIVEPEER_NOTION_USER_ID")
-        self.vanquish_user_id = os.getenv("VANQUISH_NOTION_USER_ID")
-
-        # Validate required environment variables
-        required_vars = [
-            "PERSONAL_NOTION_API_KEY",
-            "LIVEPEER_NOTION_API_KEY",
-            "VANQUISH_NOTION_API_KEY",
-            "PERSONAL_NOTION_DB_ID",
-            "LIVEPEER_NOTION_DB_ID",
-            "VANQUISH_NOTION_DB_ID",
-            "PERSONAL_NOTION_USER_ID",
-            "LIVEPEER_NOTION_USER_ID",
-            "VANQUISH_NOTION_USER_ID",
-        ]
-        missing = [var for var in required_vars if not os.getenv(var)]
-        if missing:
-            raise ValueError(f"Missing required environment variables: {missing}")
-
-        # Setup logging
+        # Setup logging first
         logging.basicConfig(
             level=logging.INFO,
             format="%(asctime)s - %(levelname)s - %(message)s",
@@ -225,30 +187,115 @@ class NotionTaskSync:
         )
         self.logger = logging.getLogger(__name__)
 
+        # Try to load .env.dev first, then fall back to .env
+        load_dotenv(".env.dev")
+        load_dotenv(".env")
+        self.dry_run = dry_run
+
+        # Initialize hub workspace
+        self._init_hub_workspace()
+
+        # Discover and initialize external workspaces dynamically
+        self._discover_workspaces()
+
+        # Validate all required environment variables
+        self._validate_workspace_config()
+
         if dry_run:
             self.logger.info("🧪 Running in DRY RUN mode - no changes will be made")
 
+    def _init_hub_workspace(self):
+        """Initialize the hub workspace (main task database)."""
+        # Hub workspace (backwards compatibility: check both HUB and PERSONAL)
+        self.hub_token = os.getenv("HUB_NOTION_API_KEY") or os.getenv(
+            "PERSONAL_NOTION_API_KEY"
+        )
+        self.hub_db_id = os.getenv("HUB_NOTION_DB_ID") or os.getenv(
+            "PERSONAL_NOTION_DB_ID"
+        )
+        self.hub_user_id = os.getenv("HUB_NOTION_USER_ID") or os.getenv(
+            "PERSONAL_NOTION_USER_ID"
+        )
+
+        if not all([self.hub_token, self.hub_db_id, self.hub_user_id]):
+            raise ValueError(
+                "Hub workspace requires HUB_NOTION_API_KEY, HUB_NOTION_DB_ID, and HUB_NOTION_USER_ID"
+            )
+
+        # Initialize hub client
+        self.hub_client = Client(auth=self.hub_token)
+
+    def _discover_workspaces(self):
+        """Auto-discover external workspaces from environment variables."""
+        self.workspaces = {}
+        self.workspace_clients = {"Hub": self.hub_client}
+        self.workspace_databases = {"Hub": self.hub_db_id}
+        self.workspace_user_ids = {"Hub": self.hub_user_id}
+
+        # Find all *_NOTION_DB_ID patterns
+        for key, value in os.environ.items():
+            if key.endswith("_NOTION_DB_ID") and value:
+                workspace_name = key.replace("_NOTION_DB_ID", "")
+
+                # Skip HUB and PERSONAL (hub workspace, handled separately)
+                if workspace_name in ["HUB", "PERSONAL"]:
+                    continue
+
+                # Check if this workspace has all required vars
+                api_key = os.getenv(f"{workspace_name}_NOTION_API_KEY")
+                user_id = os.getenv(f"{workspace_name}_NOTION_USER_ID")
+
+                if api_key and user_id:
+                    # Store workspace configuration
+                    self.workspaces[workspace_name] = {
+                        "api_key": api_key,
+                        "db_id": value,
+                        "user_id": user_id,
+                    }
+
+                    # Initialize client and store references
+                    self.workspace_clients[workspace_name] = Client(auth=api_key)
+                    self.workspace_databases[workspace_name] = value
+                    self.workspace_user_ids[workspace_name] = user_id
+
+                    self.logger.info(f"📊 Discovered workspace: {workspace_name}")
+                else:
+                    missing_vars = []
+                    if not api_key:
+                        missing_vars.append(f"{workspace_name}_NOTION_API_KEY")
+                    if not user_id:
+                        missing_vars.append(f"{workspace_name}_NOTION_USER_ID")
+                    self.logger.warning(
+                        f"⚠️ Incomplete workspace config for {workspace_name}, missing: {missing_vars}"
+                    )
+
+    def _validate_workspace_config(self):
+        """Validate that we have at least the hub workspace configured."""
+        if not self.workspace_clients.get("Hub"):
+            raise ValueError("Hub workspace must be configured")
+
+        workspace_count = len(self.workspaces)
+        self.logger.info(
+            f"✅ Initialized {workspace_count} external workspaces: {list(self.workspaces.keys())}"
+        )
+
     def get_workspace_databases(self) -> Dict[str, str]:
-        """Return mapping of workspace names to database IDs."""
-        return {"Livepeer": self.livepeer_db_id, "Vanquish": self.vanquish_db_id}
+        """Return mapping of workspace names to database IDs (excluding Hub)."""
+        return {name: self.workspace_databases[name] for name in self.workspaces.keys()}
 
     def get_workspace_client(self, workspace: str) -> Client:
         """Return the appropriate Notion client for a workspace."""
-        if workspace == "Livepeer":
-            return self.livepeer_client
-        elif workspace == "Vanquish":
-            return self.vanquish_client
-        else:
-            return self.personal_client
+        # Handle backwards compatibility and aliases
+        if workspace in ["Personal", "Hub"]:
+            return self.workspace_clients["Hub"]
+        return self.workspace_clients.get(workspace, self.workspace_clients["Hub"])
 
     def get_workspace_user_id(self, workspace: str) -> str:
         """Return the appropriate User ID for a workspace."""
-        if workspace == "Livepeer":
-            return self.livepeer_user_id
-        elif workspace == "Vanquish":
-            return self.vanquish_user_id
-        else:
-            return self.personal_user_id
+        # Handle backwards compatibility and aliases
+        if workspace in ["Personal", "Hub"]:
+            return self.workspace_user_ids["Hub"]
+        return self.workspace_user_ids.get(workspace, self.workspace_user_ids["Hub"])
 
     def get_workspace_field_mapping(self, workspace: str) -> Dict[str, str]:
         """Return field name mappings for each workspace."""
@@ -377,22 +424,23 @@ class NotionTaskSync:
             self.logger.error(f"Error querying database {database_id}: {e}")
             return []
 
-    def query_personal_hub_tasks(
+    def query_hub_tasks(
         self, workspace: str = None, since_date: Optional[datetime] = None
     ) -> List[Dict]:
         """
-        Query tasks from personal hub, optionally filtered by workspace.
+        Query tasks from hub, optionally filtered by workspace.
 
         Args:
-            workspace: Filter by workspace (Livepeer, Vanquish, or None for all)
+            workspace: Filter by workspace (external workspace name, or None for all)
             since_date: Only get tasks updated since this date
         """
         filter_conditions = {"and": []}
 
         # Filter by workspace if specified
         if workspace:
+            # Use case-insensitive matching for workspace names
             filter_conditions["and"].append(
-                {"property": "Workspace", "select": {"equals": workspace}}
+                {"property": "Workspace", "select": {"equals": workspace.title()}}
             )
 
         # Note: since_date filtering is not implemented due to Notion API limitations
@@ -404,12 +452,12 @@ class NotionTaskSync:
         query_filter = filter_conditions if filter_conditions["and"] else None
 
         try:
-            response = self.personal_client.databases.query(
-                database_id=self.personal_hub_id, filter=query_filter
+            response = self.hub_client.databases.query(
+                database_id=self.hub_db_id, filter=query_filter
             )
             return response.get("results", [])
         except Exception as e:
-            self.logger.error(f"Error querying personal hub: {e}")
+            self.logger.error(f"Error querying hub: {e}")
             return []
 
     def extract_task_data(self, page: Dict) -> Dict[str, Any]:
@@ -483,13 +531,13 @@ class NotionTaskSync:
             "url": page.get("url"),
         }
 
-    def create_task_in_personal_hub(
+    def create_task_in_hub(
         self, task_data: Dict, workspace: str, external_id: str
     ) -> Optional[str]:
-        """Create a new task in the personal hub."""
+        """Create a new task in the hub."""
         if self.dry_run:
             self.logger.info(
-                f"🧪 DRY RUN: Would create task '{task_data['task_name']}' in personal hub"
+                f"🧪 DRY RUN: Would create task '{task_data['task_name']}' in hub"
             )
             return "dry_run_id"
 
@@ -520,22 +568,20 @@ class NotionTaskSync:
             properties["Team"] = {"select": {"name": task_data["team"]}}
 
         try:
-            response = self.personal_client.pages.create(
-                parent={"database_id": self.personal_hub_id}, properties=properties
+            response = self.hub_client.pages.create(
+                parent={"database_id": self.hub_db_id}, properties=properties
             )
-            self.logger.info(
-                f"✅ Created task '{task_data['task_name']}' in personal hub"
-            )
+            self.logger.info(f"✅ Created task '{task_data['task_name']}' in hub")
             return response.get("id")
         except Exception as e:
-            self.logger.error(f"❌ Error creating task in personal hub: {e}")
+            self.logger.error(f"❌ Error creating task in hub: {e}")
             return None
 
     def update_task_properties(
         self,
         page_id: str,
         updates: Dict[str, Any],
-        workspace: str = "Personal",
+        workspace: str = "Hub",
         sync_content: bool = False,
         source_page_id: str = None,
         source_workspace: str = None,
@@ -678,14 +724,14 @@ class NotionTaskSync:
             self.logger.error(f"Error creating task in {workspace}: {e}")
             return None
 
-    def sync_external_to_personal(
+    def sync_external_to_hub(
         self,
         workspace: str,
         since_date: Optional[datetime] = None,
         sync_content: bool = False,
     ) -> Dict[str, int]:
-        """Sync tasks from external workspace to personal hub."""
-        self.logger.info(f"🔄 Syncing {workspace} → Personal Hub")
+        """Sync tasks from external workspace to hub."""
+        self.logger.info(f"🔄 Syncing {workspace} → Hub")
 
         stats = {"created": 0, "updated": 0, "skipped": 0, "errors": 0}
         workspace_db_id = self.get_workspace_databases()[workspace]
@@ -695,11 +741,11 @@ class NotionTaskSync:
             workspace_db_id, workspace, since_date
         )
 
-        # Get existing personal hub tasks for this workspace
-        personal_tasks = self.query_personal_hub_tasks(workspace, since_date)
+        # Get existing hub tasks for this workspace
+        hub_tasks = self.query_hub_tasks(workspace, since_date)
         external_id_map = {}
 
-        for task in personal_tasks:
+        for task in hub_tasks:
             try:
                 # Safely extract External Notion ID
                 props = task.get("properties", {})
@@ -731,9 +777,7 @@ class NotionTaskSync:
         self.logger.info(
             f"📊 Found {len(external_tasks)} external tasks in {workspace}"
         )
-        self.logger.info(
-            f"📊 Found {len(personal_tasks)} personal hub tasks for {workspace}"
-        )
+        self.logger.info(f"📊 Found {len(hub_tasks)} hub tasks for {workspace}")
 
         for external_task in external_tasks:
             try:
@@ -753,19 +797,19 @@ class NotionTaskSync:
             if existing_personal_task:
                 # SKIP existing tasks - External workspaces should NEVER update existing tasks
                 # The Hub is the single source of truth for all task data
-                personal_data = self.extract_task_data(existing_personal_task)
+                hub_data = self.extract_task_data(existing_personal_task)
                 if self.dry_run:
                     self.logger.info(
-                        f"🚫 DRY RUN: SKIPPING existing personal hub task '{personal_data['task_name']}' (External should not update existing tasks)"
+                        f"🚫 DRY RUN: SKIPPING existing hub task '{hub_data['task_name']}' (External should not update existing tasks)"
                     )
                 else:
                     self.logger.info(
-                        f"🚫 SKIPPING existing personal hub task '{personal_data['task_name']}' (External should not update existing tasks)"
+                        f"🚫 SKIPPING existing hub task '{hub_data['task_name']}' (External should not update existing tasks)"
                     )
                 stats["skipped"] += 1
             else:
-                # Create new task in personal hub
-                new_task_id = self.create_task_in_personal_hub(
+                # Create new task in hub
+                new_task_id = self.create_task_in_hub(
                     external_data, workspace, external_id
                 )
                 if new_task_id:
@@ -776,44 +820,44 @@ class NotionTaskSync:
         self.logger.info(f"📊 {workspace} sync complete: {stats}")
         return stats
 
-    def sync_personal_to_external(
+    def sync_hub_to_external(
         self,
         workspace: str,
         since_date: Optional[datetime] = None,
         sync_content: bool = False,
     ) -> Dict[str, int]:
-        """Sync tasks from personal hub back to external workspace."""
-        self.logger.info(f"🔄 Syncing Personal Hub → {workspace}")
+        """Sync tasks from hub back to external workspace."""
+        self.logger.info(f"🔄 Syncing Hub → {workspace}")
 
         stats = {"updated": 0, "skipped": 0, "errors": 0}
         workspace_db_id = self.get_workspace_databases()[workspace]
 
-        # Get personal hub tasks for this workspace
-        personal_tasks = self.query_personal_hub_tasks(workspace, since_date)
+        # Get hub tasks for this workspace
+        hub_tasks = self.query_hub_tasks(workspace, since_date)
 
-        for personal_task in personal_tasks:
-            personal_data = self.extract_task_data(personal_task)
-            external_id = personal_data["external_notion_id"]
+        for hub_task in hub_tasks:
+            hub_data = self.extract_task_data(hub_task)
+            external_id = hub_data["external_notion_id"]
 
             if not external_id:
                 # Task has no External Notion ID - create it in external workspace
                 self.logger.info(
-                    f"🆕 Creating new task in {workspace}: {personal_data['task_name']}"
+                    f"🆕 Creating new task in {workspace}: {hub_data['task_name']}"
                 )
                 try:
                     new_external_id = self.create_task_in_external_workspace(
-                        personal_data, workspace, workspace_db_id
+                        hub_data, workspace, workspace_db_id
                     )
                     if new_external_id:
-                        # Update personal task with the new External Notion ID
+                        # Update hub task with the new External Notion ID
                         self.update_task_properties(
-                            personal_task["id"],
+                            hub_task["id"],
                             {"external_notion_id": new_external_id},
-                            "Personal",
+                            "Hub",
                         )
                         stats["updated"] += 1
                         self.logger.info(
-                            f"✅ Created and linked task: {personal_data['task_name']}"
+                            f"✅ Created and linked task: {hub_data['task_name']}"
                         )
                     else:
                         stats["errors"] += 1
@@ -829,26 +873,26 @@ class NotionTaskSync:
                 external_data = self.extract_task_data(external_task)
 
                 # Check if sync is needed based on updated_at timestamp
-                personal_updated = personal_data.get("updated_at")
+                hub_updated = hub_data.get("updated_at")
                 external_updated = external_data.get("updated_at")
 
                 needs_sync = False
-                if personal_updated and external_updated:
-                    # Compare timestamps - if personal is newer, sync is needed
+                if hub_updated and external_updated:
+                    # Compare timestamps - if hub is newer, sync is needed
                     try:
-                        if isinstance(personal_updated, str):
-                            personal_dt = datetime.fromisoformat(
-                                personal_updated.replace("Z", "+00:00")
+                        if isinstance(hub_updated, str):
+                            hub_dt = datetime.fromisoformat(
+                                hub_updated.replace("Z", "+00:00")
                             )
                         else:
-                            personal_dt = personal_updated
+                            hub_dt = hub_updated
                         if isinstance(external_updated, str):
                             external_dt = datetime.fromisoformat(
                                 external_updated.replace("Z", "+00:00")
                             )
                         else:
                             external_dt = external_updated
-                        needs_sync = personal_dt > external_dt
+                        needs_sync = hub_dt > external_dt
                     except Exception as e:
                         self.logger.debug(f"Error comparing timestamps: {e}")
                         needs_sync = True  # Fallback to full sync
@@ -859,31 +903,31 @@ class NotionTaskSync:
                     updates = {}
 
                     # Compare fields and build updates (exclude workspace-specific fields)
-                    if personal_data["task_name"] != external_data["task_name"]:
-                        updates["task_name"] = personal_data["task_name"]
-                    if personal_data["status"] != external_data["status"]:
-                        updates["status"] = personal_data["status"]
+                    if hub_data["task_name"] != external_data["task_name"]:
+                        updates["task_name"] = hub_data["task_name"]
+                    if hub_data["status"] != external_data["status"]:
+                        updates["status"] = hub_data["status"]
                     if (
-                        personal_data["est_duration_hrs"]
+                        hub_data["est_duration_hrs"]
                         != external_data["est_duration_hrs"]
                     ):
-                        updates["est_duration_hrs"] = personal_data["est_duration_hrs"]
-                    if personal_data["due_date"] != external_data["due_date"]:
-                        updates["due_date"] = personal_data["due_date"]
-                    if personal_data["priority"] != external_data["priority"]:
-                        updates["priority"] = personal_data["priority"]
-                    if personal_data["description"] != external_data["description"]:
-                        updates["description"] = personal_data["description"]
-                    if personal_data["labels"] != external_data["labels"]:
-                        updates["labels"] = personal_data["labels"]
-                    if personal_data["team"] != external_data["team"]:
-                        updates["team"] = personal_data["team"]
+                        updates["est_duration_hrs"] = hub_data["est_duration_hrs"]
+                    if hub_data["due_date"] != external_data["due_date"]:
+                        updates["due_date"] = hub_data["due_date"]
+                    if hub_data["priority"] != external_data["priority"]:
+                        updates["priority"] = hub_data["priority"]
+                    if hub_data["description"] != external_data["description"]:
+                        updates["description"] = hub_data["description"]
+                    if hub_data["labels"] != external_data["labels"]:
+                        updates["labels"] = hub_data["labels"]
+                    if hub_data["team"] != external_data["team"]:
+                        updates["team"] = hub_data["team"]
 
                     if updates:
                         # There are actual property changes to sync
                         if self.dry_run:
                             self.logger.info(
-                                f"🧪 DRY RUN: Would update {workspace} task '{personal_data['task_name']}' (personal newer: {personal_updated} > {external_updated}):"
+                                f"🧪 DRY RUN: Would update {workspace} task '{hub_data['task_name']}' (hub newer: {hub_updated} > {external_updated}):"
                             )
                             for field, value in updates.items():
                                 old_value = external_data.get(field, "None")
@@ -892,7 +936,7 @@ class NotionTaskSync:
                                 )
                             if sync_content:
                                 self.logger.info(
-                                    f"🧪 DRY RUN: Would also sync content from personal hub"
+                                    f"🧪 DRY RUN: Would also sync content from hub"
                                 )
                             stats["updated"] += 1
                         else:
@@ -901,8 +945,8 @@ class NotionTaskSync:
                                 updates,
                                 workspace,
                                 sync_content=True,  # Always sync content from hub to external
-                                source_page_id=personal_task["id"],
-                                source_workspace="Personal",
+                                source_page_id=hub_task["id"],
+                                source_workspace="Hub",
                             ):
                                 stats["updated"] += 1
                             else:
@@ -911,30 +955,28 @@ class NotionTaskSync:
                         # No property changes, but always sync content from hub - check if content differs
                         if self.dry_run:
                             self.logger.info(
-                                f"🧪 DRY RUN: {workspace} task '{personal_data['task_name']}' - checking content only"
+                                f"🧪 DRY RUN: {workspace} task '{hub_data['task_name']}' - checking content only"
                             )
                             stats[
                                 "skipped"
                             ] += 1  # Don't count as update in dry run for content-only
                         else:
                             # Only sync content if there are actual block differences
-                            personal_blocks = self.get_block_content(
-                                personal_task["id"], self.personal_client
+                            hub_blocks = self.get_block_content(
+                                hub_task["id"], self.hub_client
                             )
                             external_blocks = self.get_block_content(
                                 external_id, self.get_workspace_client(workspace)
                             )
 
-                            if not self.blocks_are_equal(
-                                personal_blocks, external_blocks
-                            ):
+                            if not self.blocks_are_equal(hub_blocks, external_blocks):
                                 if self.update_task_properties(
                                     external_id,
                                     {},
                                     workspace,
                                     sync_content=True,
-                                    source_page_id=personal_task["id"],
-                                    source_workspace="Personal",
+                                    source_page_id=hub_task["id"],
+                                    source_workspace="Hub",
                                 ):
                                     stats["updated"] += 1
                                 else:
@@ -944,7 +986,7 @@ class NotionTaskSync:
                 else:
                     if self.dry_run:
                         self.logger.info(
-                            f"🧪 DRY RUN: {workspace} task '{personal_data['task_name']}' up to date (personal: {personal_updated}, external: {external_updated})"
+                            f"🧪 DRY RUN: {workspace} task '{hub_data['task_name']}' up to date (hub: {hub_updated}, external: {external_updated})"
                         )
                     stats["skipped"] += 1
 
@@ -965,13 +1007,13 @@ class NotionTaskSync:
         for workspace in self.get_workspace_databases().keys():
             workspace_results = {}
 
-            # External → Personal
-            workspace_results["external_to_personal"] = self.sync_external_to_personal(
+            # External → Hub
+            workspace_results["external_to_hub"] = self.sync_external_to_hub(
                 workspace, sync_content=sync_content
             )
 
-            # Personal → External
-            workspace_results["personal_to_external"] = self.sync_personal_to_external(
+            # Hub → External
+            workspace_results["hub_to_external"] = self.sync_hub_to_external(
                 workspace, sync_content=sync_content
             )
 
@@ -1027,17 +1069,15 @@ def main():
         total_errors = 0
         for workspace, workspace_results in results.get("workspaces", {}).items():
             print(f"\n{workspace}:")
-            ext_to_personal = workspace_results.get("external_to_personal", {})
-            personal_to_ext = workspace_results.get("personal_to_external", {})
+            ext_to_hub = workspace_results.get("external_to_hub", {})
+            hub_to_ext = workspace_results.get("hub_to_external", {})
 
             print(
-                f"  External → Personal: {ext_to_personal.get('created', 0)} created, {ext_to_personal.get('updated', 0)} updated"
+                f"  External → Hub: {ext_to_hub.get('created', 0)} created, {ext_to_hub.get('updated', 0)} updated"
             )
-            print(f"  Personal → External: {personal_to_ext.get('updated', 0)} updated")
+            print(f"  Hub → External: {hub_to_ext.get('updated', 0)} updated")
 
-            workspace_errors = ext_to_personal.get("errors", 0) + personal_to_ext.get(
-                "errors", 0
-            )
+            workspace_errors = ext_to_hub.get("errors", 0) + hub_to_ext.get("errors", 0)
             total_errors += workspace_errors
 
             if workspace_errors > 0:

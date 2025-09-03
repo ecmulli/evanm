@@ -10,18 +10,20 @@ Usage:
 
 Environment Variables Required:
     MOTION_API_KEY - Motion AI API token
-    PERSONAL_NOTION_API_KEY - Notion Personal Hub API token
-    LIVEPEER_NOTION_API_KEY - Notion Livepeer API token
-    VANQUISH_NOTION_API_KEY - Notion Vanquish API token
-    PERSONAL_NOTION_DB_ID - Personal hub database ID
-    LIVEPEER_NOTION_DB_ID - Livepeer database ID
-    VANQUISH_NOTION_DB_ID - Vanquish database ID
-    PERSONAL_NOTION_USER_ID - Personal hub user ID
-    LIVEPEER_NOTION_USER_ID - Livepeer user ID
-    VANQUISH_NOTION_USER_ID - Vanquish user ID
-    MOTION_PERSONAL_WORKSPACE_ID - Motion Personal workspace ID
-    MOTION_LIVEPEER_WORKSPACE_ID - Motion Livepeer workspace ID
-    MOTION_VANQUISH_WORKSPACE_ID - Motion Vanquish workspace ID
+    HUB_NOTION_API_KEY - Notion Hub API token
+    HUB_NOTION_DB_ID - Hub database ID
+    HUB_NOTION_USER_ID - Hub user ID
+    MOTION_HUB_WORKSPACE_ID - Motion Hub workspace ID
+
+    Dynamic workspaces (auto-discovered from pattern):
+    <WORKSPACE>_NOTION_API_KEY - External workspace Notion API token
+    <WORKSPACE>_NOTION_DB_ID - External workspace database ID
+    <WORKSPACE>_NOTION_USER_ID - Your user ID in the external workspace
+    MOTION_<WORKSPACE>_WORKSPACE_ID - Motion workspace ID for external workspace
+
+    Examples:
+    LIVEPEER_NOTION_API_KEY, LIVEPEER_NOTION_DB_ID, LIVEPEER_NOTION_USER_ID, MOTION_LIVEPEER_WORKSPACE_ID
+    VANQUISH_NOTION_API_KEY, VANQUISH_NOTION_DB_ID, VANQUISH_NOTION_USER_ID, MOTION_VANQUISH_WORKSPACE_ID
 """
 
 import argparse
@@ -52,28 +54,30 @@ class MotionNotionSync:
 
         # Initialize API clients
         self._init_motion_client()
-        self._init_notion_clients()
-
-        # Motion workspace mappings
-        self.motion_workspaces = {
-            "Personal": os.getenv("MOTION_PERSONAL_WORKSPACE_ID"),
-            "Livepeer": os.getenv("MOTION_LIVEPEER_WORKSPACE_ID"),
-            "Vanquish": os.getenv("MOTION_VANQUISH_WORKSPACE_ID"),
-        }
+        self._init_hub_workspace()
+        self._discover_workspaces()
+        self._validate_workspace_config()
 
         # Motion custom field IDs (tied to specific workspaces)
+        # TODO: These should be moved to environment variables for full dynamic configuration
         self.motion_custom_fields = {
+            "Hub": {
+                "notion_id": "cfi_4G15DQNV797KHaNzQqsxt3",
+                "notion_url": "cfi_RBFEnK3uN2Ho2o8XQXdWfv",
+                "notion_last_sync": "cfi_U1o2VDha6sjs3UFwFH8xC1",  # text type
+            },
+            # Keep backwards compatibility
             "Personal": {
                 "notion_id": "cfi_4G15DQNV797KHaNzQqsxt3",
                 "notion_url": "cfi_RBFEnK3uN2Ho2o8XQXdWfv",
                 "notion_last_sync": "cfi_U1o2VDha6sjs3UFwFH8xC1",  # text type
             },
-            "Livepeer": {
+            "LIVEPEER": {
                 "notion_id": "cfi_rLcNg95UQ1Cggz2YAnYjsL",
                 "notion_url": "cfi_g85FVuj115igtCPLVCo34t",
                 "notion_last_sync": "cfi_1S1Fi4oP3adjT9Ab88U2Ja",  # date type
             },
-            "Vanquish": {
+            "VANQUISH": {
                 "notion_id": "cfi_vS8mS9agZUaCDMX88usZXq",
                 "notion_url": "cfi_eoBPfnbbCWfS3CnbbYCbD4",
                 "notion_last_sync": "cfi_r8AYnDjHMH7XCV5GsK7A8c",  # date type
@@ -106,46 +110,91 @@ class MotionNotionSync:
             "Content-Type": "application/json",
         }
 
-    def _init_notion_clients(self):
-        """Initialize Notion API clients for each workspace."""
-        # Personal Hub client (main client)
-        personal_key = os.getenv("PERSONAL_NOTION_API_KEY")
-        if not personal_key:
-            raise ValueError("PERSONAL_NOTION_API_KEY is required")
-        self.personal_client = Client(auth=personal_key)
+    def _init_hub_workspace(self):
+        """Initialize the hub workspace (main task database)."""
+        # Hub workspace (backwards compatibility: check both HUB and PERSONAL)
+        self.hub_token = os.getenv("HUB_NOTION_API_KEY") or os.getenv(
+            "PERSONAL_NOTION_API_KEY"
+        )
+        self.hub_db_id = os.getenv("HUB_NOTION_DB_ID") or os.getenv(
+            "PERSONAL_NOTION_DB_ID"
+        )
+        self.hub_user_id = os.getenv("HUB_NOTION_USER_ID") or os.getenv(
+            "PERSONAL_NOTION_USER_ID"
+        )
+        self.hub_motion_workspace_id = os.getenv(
+            "MOTION_HUB_WORKSPACE_ID"
+        ) or os.getenv("MOTION_PERSONAL_WORKSPACE_ID")
 
-        # Workspace-specific clients
-        self.workspace_clients = {
-            "Personal": self.personal_client,
-            "Livepeer": Client(auth=os.getenv("LIVEPEER_NOTION_API_KEY")),
-            "Vanquish": Client(auth=os.getenv("VANQUISH_NOTION_API_KEY")),
-        }
+        if not all([self.hub_token, self.hub_db_id, self.hub_user_id]):
+            raise ValueError(
+                "Hub workspace requires HUB_NOTION_API_KEY, HUB_NOTION_DB_ID, and HUB_NOTION_USER_ID"
+            )
 
-        # Database IDs
-        self.notion_databases = {
-            "Personal": os.getenv("PERSONAL_NOTION_DB_ID"),
-            "Livepeer": os.getenv("LIVEPEER_NOTION_DB_ID"),
-            "Vanquish": os.getenv("VANQUISH_NOTION_DB_ID"),
-        }
+        # Initialize hub client
+        self.hub_client = Client(auth=self.hub_token)
 
-        # User IDs for filtering
-        self.notion_user_ids = {
-            "Personal": os.getenv("PERSONAL_NOTION_USER_ID"),
-            "Livepeer": os.getenv("LIVEPEER_NOTION_USER_ID"),
-            "Vanquish": os.getenv("VANQUISH_NOTION_USER_ID"),
-        }
+    def _discover_workspaces(self):
+        """Auto-discover external workspaces from environment variables."""
+        self.workspaces = {}
+        self.workspace_clients = {"Hub": self.hub_client}
+        self.notion_databases = {"Hub": self.hub_db_id}
+        self.notion_user_ids = {"Hub": self.hub_user_id}
+        self.motion_workspaces = {"Hub": self.hub_motion_workspace_id}
 
-        # Validate required environment variables
-        missing_vars = []
-        for workspace, db_id in self.notion_databases.items():
-            if not db_id:
-                missing_vars.append(f"{workspace.upper()}_NOTION_DB_ID")
-        for workspace, user_id in self.notion_user_ids.items():
-            if not user_id:
-                missing_vars.append(f"{workspace.upper()}_NOTION_USER_ID")
+        # Find all *_NOTION_DB_ID patterns
+        for key, value in os.environ.items():
+            if key.endswith("_NOTION_DB_ID") and value:
+                workspace_name = key.replace("_NOTION_DB_ID", "")
 
-        if missing_vars:
-            raise ValueError(f"Missing required environment variables: {missing_vars}")
+                # Skip HUB and PERSONAL (hub workspace, handled separately)
+                if workspace_name in ["HUB", "PERSONAL"]:
+                    continue
+
+                # Check if this workspace has all required vars
+                api_key = os.getenv(f"{workspace_name}_NOTION_API_KEY")
+                user_id = os.getenv(f"{workspace_name}_NOTION_USER_ID")
+                motion_workspace_id = os.getenv(f"MOTION_{workspace_name}_WORKSPACE_ID")
+
+                if api_key and user_id:
+                    # Store workspace configuration
+                    self.workspaces[workspace_name] = {
+                        "api_key": api_key,
+                        "db_id": value,
+                        "user_id": user_id,
+                        "motion_workspace_id": motion_workspace_id,
+                    }
+
+                    # Initialize client and store references
+                    self.workspace_clients[workspace_name] = Client(auth=api_key)
+                    self.notion_databases[workspace_name] = value
+                    self.notion_user_ids[workspace_name] = user_id
+                    self.motion_workspaces[workspace_name] = motion_workspace_id
+
+                    self.logger.info(f"📊 Discovered workspace: {workspace_name}")
+                    if not motion_workspace_id:
+                        self.logger.warning(
+                            f"⚠️ No Motion workspace ID configured for {workspace_name} (MOTION_{workspace_name}_WORKSPACE_ID)"
+                        )
+                else:
+                    missing_vars = []
+                    if not api_key:
+                        missing_vars.append(f"{workspace_name}_NOTION_API_KEY")
+                    if not user_id:
+                        missing_vars.append(f"{workspace_name}_NOTION_USER_ID")
+                    self.logger.warning(
+                        f"⚠️ Incomplete workspace config for {workspace_name}, missing: {missing_vars}"
+                    )
+
+    def _validate_workspace_config(self):
+        """Validate that we have at least the hub workspace configured."""
+        if not self.workspace_clients.get("Hub"):
+            raise ValueError("Hub workspace must be configured")
+
+        workspace_count = len(self.workspaces)
+        self.logger.info(
+            f"✅ Initialized {workspace_count} external workspaces: {list(self.workspaces.keys())}"
+        )
 
     # === FIELD MAPPING HELPERS ===
 
@@ -526,8 +575,8 @@ class MotionNotionSync:
         database_id = self.notion_databases[workspace]
         user_id = self.notion_user_ids[workspace]
 
-        # For Personal hub, skip assignee filtering since all tasks are implicitly yours
-        if workspace == "Personal":
+        # For Hub, skip assignee filtering since all tasks are implicitly yours
+        if workspace in ["Hub", "Personal"]:
             filter_conditions = {
                 "and": [
                     {"property": "Status", "status": {"does_not_equal": "Backlog"}},
@@ -941,10 +990,10 @@ class MotionNotionSync:
                 "Status": "Status",
                 "Motion Last Sync": "Motion Last Sync",
             }
-        else:  # Personal
+        else:  # Hub (default)
             return {
                 "Est Duration Hrs": "Est Duration Hrs",
-                "Due date": "Due date",  # Personal hub uses "Due date" (lowercase 'd')
+                "Due date": "Due date",  # Hub uses "Due date" (lowercase 'd')
                 "Priority": "Priority",
                 "Status": "Status",
                 "Motion Last Sync": "Motion Last Sync",
@@ -1078,10 +1127,13 @@ class MotionNotionSync:
             status_map = self.get_status_mapping()
 
             # Map Notion workspace to Motion workspace ID
-            notion_workspace = notion_data.get("workspace", "Personal")
-            # Default empty/None workspace to Personal
+            notion_workspace = notion_data.get("workspace", "Hub")
+            # Default empty/None workspace to Hub
             if not notion_workspace or notion_workspace.strip() == "":
-                notion_workspace = "Personal"
+                notion_workspace = "Hub"
+            # Handle backwards compatibility
+            if notion_workspace == "Personal":
+                notion_workspace = "Hub"
             motion_workspace_id = self.motion_workspaces.get(notion_workspace)
 
             self.logger.info(
@@ -1321,18 +1373,18 @@ class MotionNotionSync:
             return False
 
     def _update_notion_motion_id(self, notion_id: str, motion_id: str, workspace: str):
-        """Update Notion task with Motion ID - always in Personal hub."""
+        """Update Notion task with Motion ID - always in Hub."""
         try:
-            # Motion IDs should only be stored in the Personal hub
-            personal_client = self.workspace_clients["Personal"]
-            personal_client.pages.update(
+            # Motion IDs should only be stored in the Hub
+            hub_client = self.workspace_clients["Hub"]
+            hub_client.pages.update(
                 page_id=notion_id,
                 properties={
                     "Motion ID": {"rich_text": [{"text": {"content": motion_id}}]}
                 },
             )
             self.logger.info(
-                f"✅ Updated Personal hub task {notion_id} with Motion ID {motion_id}"
+                f"✅ Updated Hub task {notion_id} with Motion ID {motion_id}"
             )
         except Exception as e:
             self.logger.error(f"Failed to update Notion task with Motion ID: {e}")
@@ -1596,9 +1648,9 @@ class MotionNotionSync:
         results = {"workspaces": {}}
 
         # Motion sync needs to check all Motion workspaces since tasks can be in any workspace
-        # but Notion IDs are stored in Personal hub
-        workspace = "Personal"
-        self.logger.info(f"🔄 Syncing Motion ↔ {workspace} Hub")
+        # but Notion IDs are stored in Hub
+        workspace = "Hub"
+        self.logger.info(f"🔄 Syncing Motion ↔ {workspace}")
 
         # Get Motion tasks from ALL configured workspaces and combine them
         all_motion_tasks = []
