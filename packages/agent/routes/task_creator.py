@@ -6,7 +6,7 @@ Task creator route handler.
 import logging
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from models.task_models import (
     ErrorResponse,
     ParsedTaskData,
@@ -14,6 +14,7 @@ from models.task_models import (
     TaskCreationResponse,
 )
 from services.task_creation import TaskCreationService
+from utils.auth import verify_bearer_token
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +25,9 @@ router = APIRouter(prefix="/api/v1", tags=["task_creator"])
 
 
 @router.post("/task_creator", response_model=TaskCreationResponse)
-async def create_task(request: TaskCreationRequest) -> TaskCreationResponse:
+async def create_task(
+    request: TaskCreationRequest, authenticated: bool = Depends(verify_bearer_token)
+) -> TaskCreationResponse:
     """
     Create a new task using AI-powered synthesis.
 
@@ -76,6 +79,8 @@ async def create_task(request: TaskCreationRequest) -> TaskCreationResponse:
             due_date=task_info["due_date"],
             description=task_info["description"],
             acceptance_criteria=task_info["acceptance_criteria"],
+            labels=task_info.get("labels", []),
+            status=task_info.get("status", "Todo"),
         )
 
         # Build success response

@@ -177,7 +177,9 @@ RESPONSE FORMAT (JSON):
     "estimated_hours": <number between 0.25 and 40>,
     "due_date": "YYYY-MM-DD format (e.g., 2025-01-15)",
     "description": "Detailed description of what needs to be done",
-    "acceptance_criteria": "Clear, testable criteria for completion"
+    "acceptance_criteria": "Clear, testable criteria for completion",
+    "labels": ["Label1", "Label2"], // Array of applicable labels
+    "status": "Todo|Completed|Backlog" // Todo for scheduled work, Completed for done work, Backlog for future ideas
 }}
 
 INTELLIGENT PARSING RULES:
@@ -212,6 +214,19 @@ INTELLIGENT PARSING RULES:
    - "in 2 days", "2 days from now" → 2 days from now
    - "by [specific date]" → parse the specific date
    - Default to 7 days from now if no clear due date clues
+
+5. LABEL DETECTION (choose applicable labels from these categories):
+   - "Planned": Scheduled in advance, anticipated work, planned projects, roadmap items
+   - "Fire Drill": Last-minute requests, urgent same-day tasks, emergency fixes, blocking issues
+   - "Support": Helping others, answering questions, code reviews, troubleshooting for teammates
+   - "Strategic": Long-term projects, high-impact initiatives, architecture decisions, planning
+   - "Admin": Routine overhead, reports, scheduling, meetings, expense tracking, documentation
+
+6. STATUS DETECTION (determine work status):
+   - "Completed": "already done", "completed", "finished", "just did", "wrapped up", "accomplished"
+   - "Backlog": "someday", "future idea", "backlog", "maybe", "consider", "explore", "research idea"
+   - "Todo": Default for active/scheduled work, tasks to be done soon
+   - When status is "Completed", adjust task name to past tense if needed
 
 GUIDELINES:
 - Task name should be specific and actionable
@@ -285,6 +300,8 @@ Return only the JSON response with the task information."""
             task_info["workspace"] = task_info.get("workspace", "Personal")
             task_info["priority"] = task_info.get("priority", "Medium")
             task_info["estimated_hours"] = task_info.get("estimated_hours", 1.0)
+            task_info["labels"] = task_info.get("labels", [])
+            task_info["status"] = task_info.get("status", "Todo")
 
             # Default due date to 7 days from now if not provided
             if not task_info.get("due_date"):
@@ -317,6 +334,29 @@ Return only the JSON response with the task information."""
                 )
                 task_info["estimated_hours"] = 1.0
 
+            # Validate labels
+            valid_labels = ["Planned", "Fire Drill", "Support", "Strategic", "Admin"]
+            if not isinstance(task_info["labels"], list):
+                self.logger.warning(f"Invalid labels format, defaulting to empty list")
+                task_info["labels"] = []
+            else:
+                # Filter out invalid labels
+                original_labels = task_info["labels"][:]
+                task_info["labels"] = [
+                    label for label in task_info["labels"] if label in valid_labels
+                ]
+                if len(task_info["labels"]) != len(original_labels):
+                    invalid_labels = set(original_labels) - set(task_info["labels"])
+                    self.logger.warning(f"Removed invalid labels: {invalid_labels}")
+                    self.logger.info(f"Valid labels: {valid_labels}")
+
+            # Validate status
+            if task_info["status"] not in ["Todo", "Completed", "Backlog"]:
+                self.logger.warning(
+                    f"Invalid status '{task_info['status']}', defaulting to Todo"
+                )
+                task_info["status"] = "Todo"
+
             self.logger.info("🤖 AI successfully synthesized task information")
             self.logger.info(f"📋 Task: {task_info.get('task_name', 'Unknown')}")
             self.logger.info(f"🏢 Workspace: {task_info.get('workspace', 'Unknown')}")
@@ -325,6 +365,8 @@ Return only the JSON response with the task information."""
                 f"⏱️  Duration: {task_info.get('estimated_hours', 'Unknown')} hours"
             )
             self.logger.info(f"📅 Due Date: {task_info.get('due_date', 'Unknown')}")
+            self.logger.info(f"🏷️  Labels: {', '.join(task_info.get('labels', []))}")
+            self.logger.info(f"✅ Status: {task_info.get('status', 'Todo')}")
             self.logger.info(
                 f"📝 Description: {task_info.get('description', 'No description')}"
             )
@@ -437,7 +479,12 @@ Return only the JSON response with the task information."""
             "Priority": {"select": {"name": task_info["priority"]}},
             "Est Duration Hrs": {"number": task_info["estimated_hours"]},
             "Due date": {"date": {"start": task_info["due_date"]}},
-            "Status": {"status": {"name": "Todo"}},
+            "Status": {"status": {"name": task_info["status"]}},
+            "Labels": {
+                "multi_select": [
+                    {"name": label} for label in task_info.get("labels", [])
+                ]
+            },
         }
 
         if self.dry_run:

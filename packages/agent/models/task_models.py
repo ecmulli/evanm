@@ -37,6 +37,12 @@ class ParsedTaskData(BaseModel):
     due_date: str
     description: str
     acceptance_criteria: str
+    labels: List[str] = Field(
+        default_factory=list, description="Task labels for categorization"
+    )
+    status: str = Field(
+        default="Todo", description="Task status (Todo, Completed, or Backlog)"
+    )
 
 
 class TaskCreationResponse(BaseModel):

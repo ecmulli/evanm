@@ -20,6 +20,9 @@ class Config:
     PORT: int = int(os.getenv("PORT", "8000"))
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
 
+    # Authentication
+    BEARER_TOKEN: str = os.getenv("BEARER_TOKEN", "")
+
     # OpenAI config
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 
