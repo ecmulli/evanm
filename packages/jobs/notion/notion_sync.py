@@ -261,6 +261,8 @@ class NotionTaskSync:
                 "priority": "Priority",
                 "description": "Description",
                 "external_notion_id": "External Notion ID",
+                "labels": "Labels",
+                "team": "Team",
             }
         else:
             return {
@@ -271,6 +273,8 @@ class NotionTaskSync:
                 "priority": "Priority",
                 "description": "Description",
                 "external_notion_id": "External Notion ID",
+                "labels": "Labels",
+                "team": "Team",
             }
 
     def query_assigned_tasks(
@@ -457,6 +461,12 @@ class NotionTaskSync:
             date_data = prop_data.get("date")
             return date_data.get("start") if date_data else None
 
+        def get_multi_select(prop_data):
+            if not prop_data or prop_data.get("type") != "multi_select":
+                return []
+            multi_select_data = prop_data.get("multi_select", [])
+            return [item.get("name") for item in multi_select_data if item.get("name")]
+
         return {
             "id": page.get("id"),
             "task_name": get_text(props.get("Task name")),
@@ -467,6 +477,8 @@ class NotionTaskSync:
             "priority": get_select(props.get("Priority")),
             "description": get_text(props.get("Description")),
             "external_notion_id": get_text(props.get("External Notion ID")),
+            "labels": get_multi_select(props.get("Labels")),
+            "team": get_select(props.get("Team")),
             "updated_at": page.get("last_edited_time"),
             "url": page.get("url"),
         }
@@ -500,6 +512,12 @@ class NotionTaskSync:
             properties["Description"] = {
                 "rich_text": [{"text": {"content": task_data["description"]}}]
             }
+        if task_data.get("labels"):
+            properties["Labels"] = {
+                "multi_select": [{"name": label} for label in task_data["labels"]]
+            }
+        if task_data.get("team"):
+            properties["Team"] = {"select": {"name": task_data["team"]}}
 
         try:
             response = self.personal_client.pages.create(
@@ -565,6 +583,14 @@ class NotionTaskSync:
                     "external_notion_id", "External Notion ID"
                 )
                 properties[field_name] = {"rich_text": [{"text": {"content": value}}]}
+            elif field == "labels" and value:
+                field_name = field_mapping.get("labels", "Labels")
+                properties[field_name] = {
+                    "multi_select": [{"name": label} for label in value]
+                }
+            elif field == "team" and value:
+                field_name = field_mapping.get("team", "Team")
+                properties[field_name] = {"select": {"name": value}}
 
         if not properties:
             return True
@@ -632,6 +658,14 @@ class NotionTaskSync:
                 properties[field_name] = {
                     "rich_text": [{"text": {"content": task_data["description"]}}]
                 }
+            if task_data.get("labels"):
+                field_name = field_mapping.get("labels", "Labels")
+                properties[field_name] = {
+                    "multi_select": [{"name": label} for label in task_data["labels"]]
+                }
+            if task_data.get("team"):
+                field_name = field_mapping.get("team", "Team")
+                properties[field_name] = {"select": {"name": task_data["team"]}}
 
             # Create the page
             response = client.pages.create(
@@ -840,6 +874,10 @@ class NotionTaskSync:
                         updates["priority"] = personal_data["priority"]
                     if personal_data["description"] != external_data["description"]:
                         updates["description"] = personal_data["description"]
+                    if personal_data["labels"] != external_data["labels"]:
+                        updates["labels"] = personal_data["labels"]
+                    if personal_data["team"] != external_data["team"]:
+                        updates["team"] = personal_data["team"]
 
                     if updates:
                         # There are actual property changes to sync

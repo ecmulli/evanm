@@ -81,6 +81,7 @@ async def create_task(
             acceptance_criteria=task_info["acceptance_criteria"],
             labels=task_info.get("labels", []),
             status=task_info.get("status", "Todo"),
+            team=task_info.get("team", "Personal"),
         )
 
         # Build success response

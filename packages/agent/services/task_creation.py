@@ -179,7 +179,8 @@ RESPONSE FORMAT (JSON):
     "description": "Detailed description of what needs to be done",
     "acceptance_criteria": "Clear, testable criteria for completion",
     "labels": ["Label1", "Label2"], // Array of applicable labels
-    "status": "Todo|Completed|Backlog" // Todo for scheduled work, Completed for done work, Backlog for future ideas
+    "status": "Todo|Completed|Backlog", // Todo for scheduled work, Completed for done work, Backlog for future ideas
+    "team": "Personal|Email/Creative|Ads|DevX|Infra|Product|Marketing|Ops/HR|GTM|BizDev|Ops" // Team responsible for the work
 }}
 
 INTELLIGENT PARSING RULES:
@@ -217,7 +218,7 @@ INTELLIGENT PARSING RULES:
 
 5. LABEL DETECTION (choose applicable labels from these categories):
    - "Planned": Scheduled in advance, anticipated work, planned projects, roadmap items
-   - "Fire Drill": Last-minute requests, urgent same-day tasks, emergency fixes, blocking issues
+   - "Fire Drill": Last-minute requests, urgent same-day tasks, emergency fixes, blocking issues, "same day", "today", "came up", "unexpected", "dropped everything"
    - "Support": Helping others, answering questions, code reviews, troubleshooting for teammates
    - "Strategic": Long-term projects, high-impact initiatives, architecture decisions, planning
    - "Admin": Routine overhead, reports, scheduling, meetings, expense tracking, documentation
@@ -228,12 +229,26 @@ INTELLIGENT PARSING RULES:
    - "Todo": Default for active/scheduled work, tasks to be done soon
    - When status is "Completed", adjust task name to past tense if needed
 
+7. TEAM DETECTION (determine responsible team):
+   - "Personal": Personal tasks, individual work, no team context mentioned
+   - "Email/Creative": Email campaigns, newsletters, creative content, copywriting, design
+   - "Ads": Advertising campaigns, paid media, ad creative, performance marketing
+   - "DevX": Developer experience, SDKs, APIs, documentation, developer tools
+   - "Infra": Infrastructure, deployment, DevOps, system administration, scaling
+   - "Product": Product features, user experience, product strategy, roadmap
+   - "Marketing": Brand marketing, content marketing, SEO, social media, growth
+   - "Ops/HR": Operations, human resources, hiring, processes, administration
+   - "GTM": Go-to-market, sales, partnerships, business development, customer success
+   - "BizDev": Business development, partnerships, strategic alliances, enterprise sales
+   - "Ops": Operational tasks, process optimization, workflow management, efficiency
+
 GUIDELINES:
 - Task name should be specific and actionable
 - Parse the input text carefully for workspace/priority/duration clues
 - Description should be comprehensive but concise
 - Acceptance criteria should be specific, measurable, and formatted as a markdown checklist
 - PRESERVE ALL URLs: Include any URLs found in the input text in the description or acceptance criteria as clickable links
+- PAY SPECIAL ATTENTION to same-day work indicators: "same day", "today", "came up", "dropped everything", "had to do" should trigger "Fire Drill" label
 
 URL HANDLING:
 - If URLs are found in the input, include them in the description as supporting materials
@@ -302,6 +317,7 @@ Return only the JSON response with the task information."""
             task_info["estimated_hours"] = task_info.get("estimated_hours", 1.0)
             task_info["labels"] = task_info.get("labels", [])
             task_info["status"] = task_info.get("status", "Todo")
+            task_info["team"] = task_info.get("team", "Personal")
 
             # Default due date to 7 days from now if not provided
             if not task_info.get("due_date"):
@@ -357,6 +373,26 @@ Return only the JSON response with the task information."""
                 )
                 task_info["status"] = "Todo"
 
+            # Validate team
+            valid_teams = [
+                "Personal",
+                "Email/Creative",
+                "Ads",
+                "DevX",
+                "Infra",
+                "Product",
+                "Marketing",
+                "Ops/HR",
+                "GTM",
+                "BizDev",
+                "Ops",
+            ]
+            if task_info["team"] not in valid_teams:
+                self.logger.warning(
+                    f"Invalid team '{task_info['team']}', defaulting to Personal"
+                )
+                task_info["team"] = "Personal"
+
             self.logger.info("🤖 AI successfully synthesized task information")
             self.logger.info(f"📋 Task: {task_info.get('task_name', 'Unknown')}")
             self.logger.info(f"🏢 Workspace: {task_info.get('workspace', 'Unknown')}")
@@ -367,6 +403,7 @@ Return only the JSON response with the task information."""
             self.logger.info(f"📅 Due Date: {task_info.get('due_date', 'Unknown')}")
             self.logger.info(f"🏷️  Labels: {', '.join(task_info.get('labels', []))}")
             self.logger.info(f"✅ Status: {task_info.get('status', 'Todo')}")
+            self.logger.info(f"👥 Team: {task_info.get('team', 'Personal')}")
             self.logger.info(
                 f"📝 Description: {task_info.get('description', 'No description')}"
             )
@@ -485,6 +522,7 @@ Return only the JSON response with the task information."""
                     {"name": label} for label in task_info.get("labels", [])
                 ]
             },
+            "Team": {"select": {"name": task_info.get("team", "Personal")}},
         }
 
         if self.dry_run:

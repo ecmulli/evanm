@@ -43,6 +43,7 @@ class ParsedTaskData(BaseModel):
     status: str = Field(
         default="Todo", description="Task status (Todo, Completed, or Backlog)"
     )
+    team: str = Field(default="Personal", description="Team responsible for the task")
 
 
 class TaskCreationResponse(BaseModel):
