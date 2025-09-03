@@ -33,7 +33,6 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 
 # Set environment variables
 ENV PYTHONPATH=/app/packages/agent
-ENV PORT=8000
 
 # Run the application
 CMD ["python", "app.py"]
