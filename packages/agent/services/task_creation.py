@@ -30,10 +30,10 @@ class TaskCreationService:
             raise ValueError("OPENAI_API_KEY environment variable is required")
         self.openai_client = openai.OpenAI(api_key=config.OPENAI_API_KEY)
 
-        # Initialize Notion client for personal hub
-        if not config.PERSONAL_NOTION_API_KEY:
-            raise ValueError("PERSONAL_NOTION_API_KEY environment variable is required")
-        self.notion_client = NotionClient(auth=config.PERSONAL_NOTION_API_KEY)
+        # Initialize Notion client for hub
+        if not config.HUB_NOTION_API_KEY:
+            raise ValueError("HUB_NOTION_API_KEY environment variable is required")
+        self.notion_client = NotionClient(auth=config.HUB_NOTION_API_KEY)
 
     def extract_urls_from_text(self, text: str) -> List[str]:
         """Extract URLs from text using regex."""
@@ -425,11 +425,11 @@ Return only the JSON response with the task information."""
         """Create a task in Notion and return the page ID."""
 
         workspace = task_info["workspace"]
-        # Always create in personal database - sync jobs will handle distribution
-        database_id = config.PERSONAL_NOTION_DB_ID
+        # Always create in hub database - sync jobs will handle distribution
+        database_id = config.HUB_NOTION_DB_ID
 
         if not database_id:
-            raise ValueError("PERSONAL_NOTION_DB_ID environment variable is required")
+            raise ValueError("HUB_NOTION_DB_ID environment variable is required")
 
         # Build description content (rich text blocks)
         description_blocks = [

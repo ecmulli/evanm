@@ -27,8 +27,12 @@ class Config:
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 
     # Notion config
-    PERSONAL_NOTION_API_KEY: str = os.getenv("PERSONAL_NOTION_API_KEY", "")
-    PERSONAL_NOTION_DB_ID: str = os.getenv("PERSONAL_NOTION_DB_ID", "")
+    HUB_NOTION_API_KEY: str = os.getenv("HUB_NOTION_API_KEY") or os.getenv(
+        "PERSONAL_NOTION_API_KEY", ""
+    )
+    HUB_NOTION_DB_ID: str = os.getenv("HUB_NOTION_DB_ID") or os.getenv(
+        "PERSONAL_NOTION_DB_ID", ""
+    )
 
     # Optional external workspace configs
     LIVEPEER_NOTION_API_KEY: str = os.getenv("LIVEPEER_NOTION_API_KEY", "")
@@ -42,8 +46,8 @@ class Config:
         """Validate that all required environment variables are set."""
         required_vars = [
             ("OPENAI_API_KEY", cls.OPENAI_API_KEY),
-            ("PERSONAL_NOTION_API_KEY", cls.PERSONAL_NOTION_API_KEY),
-            ("PERSONAL_NOTION_DB_ID", cls.PERSONAL_NOTION_DB_ID),
+            ("HUB_NOTION_API_KEY", cls.HUB_NOTION_API_KEY),
+            ("HUB_NOTION_DB_ID", cls.HUB_NOTION_DB_ID),
         ]
 
         missing_vars = []

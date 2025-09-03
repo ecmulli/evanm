@@ -73,8 +73,8 @@ Create a `.env` file in the agent directory:
 ```env
 # Required
 OPENAI_API_KEY=your_openai_api_key
-PERSONAL_NOTION_API_KEY=your_notion_api_key
-PERSONAL_NOTION_DB_ID=your_notion_database_id
+HUB_NOTION_API_KEY=your_notion_api_key
+HUB_NOTION_DB_ID=your_notion_database_id
 
 # Optional (for external workspaces)
 LIVEPEER_NOTION_API_KEY=livepeer_notion_key

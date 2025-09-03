@@ -490,7 +490,8 @@ class MotionNotionSync:
             return True
 
         try:
-            custom_fields = self.motion_custom_fields[workspace]
+            # Convert workspace to uppercase to match custom field mapping keys
+            custom_fields = self.motion_custom_fields[workspace.upper()]
 
             # Set Notion ID custom field
             notion_id_data = {
@@ -527,7 +528,8 @@ class MotionNotionSync:
 
         try:
             # Check if we have the custom field ID for this workspace
-            custom_fields = self.motion_custom_fields.get(workspace, {})
+            # Convert workspace to uppercase to match custom field mapping keys
+            custom_fields = self.motion_custom_fields.get(workspace.upper(), {})
             notion_sync_field_id = custom_fields.get("notion_last_sync")
 
             if not notion_sync_field_id:
@@ -1134,7 +1136,8 @@ class MotionNotionSync:
             # Handle backwards compatibility
             if notion_workspace == "Personal":
                 notion_workspace = "Hub"
-            motion_workspace_id = self.motion_workspaces.get(notion_workspace)
+            # Convert to uppercase for Motion workspace lookup (matches env var pattern)
+            motion_workspace_id = self.motion_workspaces.get(notion_workspace.upper())
 
             self.logger.info(
                 f"🏢 Mapping Notion workspace '{notion_workspace}' to Motion workspace ID: {motion_workspace_id}"

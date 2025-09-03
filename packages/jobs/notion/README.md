@@ -38,12 +38,12 @@ Set these environment variables (or add to `.env` file):
 
 ```bash
 # Notion API Keys (one for each workspace)
-PERSONAL_NOTION_API_KEY=secret_your_personal_notion_integration_token_here
+HUB_NOTION_API_KEY=secret_your_hub_notion_integration_token_here
 LIVEPEER_NOTION_API_KEY=secret_your_livepeer_notion_integration_token_here
 VANQUISH_NOTION_API_KEY=secret_your_vanquish_notion_integration_token_here
 
 # Database IDs
-PERSONAL_NOTION_DB_ID=your_personal_hub_database_id_here
+HUB_NOTION_DB_ID=your_hub_database_id_here
 LIVEPEER_NOTION_DB_ID=your_livepeer_database_id_here
 VANQUISH_NOTION_DB_ID=your_vanquish_database_id_here
 

@@ -18,8 +18,8 @@
 3. **Set Environment Variables** in Railway dashboard:
    ```
    OPENAI_API_KEY=your_openai_api_key
-   PERSONAL_NOTION_API_KEY=your_notion_api_key  
-   PERSONAL_NOTION_DB_ID=your_notion_database_id
+   HUB_NOTION_API_KEY=your_notion_api_key  
+   HUB_NOTION_DB_ID=your_notion_database_id
    BEARER_TOKEN=your_secure_random_token
    DEBUG=false
    ```

@@ -12,8 +12,8 @@ restartPolicyMaxRetries = 3
 [env]
 # These will be set in Railway dashboard
 # OPENAI_API_KEY = 
-# PERSONAL_NOTION_API_KEY = 
-# PERSONAL_NOTION_DB_ID = 
+# HUB_NOTION_API_KEY = 
+# HUB_NOTION_DB_ID = 
 # BEARER_TOKEN = 
 # LIVEPEER_NOTION_API_KEY = (optional)
 # LIVEPEER_NOTION_DB_ID = (optional)

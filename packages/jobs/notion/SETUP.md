@@ -44,10 +44,10 @@ Your User ID can be found by:
 
 In your GitHub repo, go to Settings → Secrets and variables → Actions → New repository secret:
 
-- `PERSONAL_NOTION_API_KEY` = Your personal workspace integration token
+- `HUB_NOTION_API_KEY` = Your hub workspace integration token
 - `LIVEPEER_NOTION_API_KEY` = Your Livepeer workspace integration token  
 - `VANQUISH_NOTION_API_KEY` = Your Vanquish workspace integration token
-- `PERSONAL_NOTION_DB_ID` = Personal hub database ID
+- `HUB_NOTION_DB_ID` = Hub database ID
 - `LIVEPEER_NOTION_DB_ID` = Livepeer database ID  
 - `VANQUISH_NOTION_DB_ID` = Vanquish database ID
 - `NOTION_USER_ID` = Your user ID from step 4
@@ -114,10 +114,10 @@ cd packages/jobs
 pip install -r requirements.txt
 
 # Set environment variables  
-export PERSONAL_NOTION_API_KEY="your_personal_token_here"
+export HUB_NOTION_API_KEY="your_hub_token_here"
 export LIVEPEER_NOTION_API_KEY="your_livepeer_token_here" 
 export VANQUISH_NOTION_API_KEY="your_vanquish_token_here"
-export PERSONAL_NOTION_DB_ID="your_personal_db_id"
+export HUB_NOTION_DB_ID="your_hub_db_id"
 # ... etc
 
 # Test sync

@@ -69,18 +69,18 @@ Add these to your `.env.dev` file:
 ```bash
 # Motion AI
 MOTION_API_KEY="your_motion_api_key"
-MOTION_PERSONAL_WORKSPACE_ID="workspace_id_1"
+MOTION_HUB_WORKSPACE_ID="workspace_id_1"
 MOTION_LIVEPEER_WORKSPACE_ID="workspace_id_2" 
 MOTION_VANQUISH_WORKSPACE_ID="workspace_id_3"
 
 # Notion (if not already configured)
-PERSONAL_NOTION_API_KEY="your_personal_notion_key"
+HUB_NOTION_API_KEY="your_hub_notion_key"
 LIVEPEER_NOTION_API_KEY="your_livepeer_notion_key"
 VANQUISH_NOTION_API_KEY="your_vanquish_notion_key"
-PERSONAL_NOTION_DB_ID="your_personal_db_id"
+HUB_NOTION_DB_ID="your_hub_db_id"
 LIVEPEER_NOTION_DB_ID="your_livepeer_db_id"
 VANQUISH_NOTION_DB_ID="your_vanquish_db_id"
-PERSONAL_NOTION_USER_ID="your_personal_user_id"
+HUB_NOTION_USER_ID="your_hub_user_id"
 LIVEPEER_NOTION_USER_ID="your_livepeer_user_id"
 VANQUISH_NOTION_USER_ID="your_vanquish_user_id"
 ```
