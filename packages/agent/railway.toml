@@ -2,7 +2,6 @@
 builder = "dockerfile"
 dockerfilePath = "Dockerfile"
 watchPatterns = ["packages/agent/**"]
-`
 [deploy]
 healthcheckPath = "/api/v1/health"
 healthcheckTimeout = 30
