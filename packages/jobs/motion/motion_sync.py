@@ -1158,7 +1158,9 @@ class MotionNotionSync:
             if notion_workspace == "Personal":
                 notion_workspace = "Hub"
             # Convert to uppercase for Motion workspace lookup (matches env var pattern)
-            motion_workspace_id = self.motion_workspaces.get(notion_workspace.upper())
+            # Special case: Hub workspace uses title case key
+            lookup_key = "Hub" if notion_workspace.upper() == "HUB" else notion_workspace.upper()
+            motion_workspace_id = self.motion_workspaces.get(lookup_key)
 
             self.logger.info(
                 f"🏢 Mapping Notion workspace '{notion_workspace}' to Motion workspace ID: {motion_workspace_id}"
