@@ -243,14 +243,24 @@ class MotionNotionSync:
 
     def extract_due_date_start(self, notion_date: Dict[str, Any]) -> Optional[str]:
         """Extract start date from Notion date field."""
+        # Extract due date with timezone handling
+
         if not notion_date:
             return None
 
         # Notion date can be a range or single date
         start_date = notion_date.get("start")
+
         if start_date:
-            # Convert to ISO format that Motion expects
-            return start_date
+            # Extract just the date part (YYYY-MM-DD) to avoid timezone interpretation issues
+            if "T" in start_date:
+                # Has time/timezone component, extract just the date
+                date_only = start_date.split("T")[0]
+                return date_only
+            else:
+                # Already just a date
+                return start_date
+
         return None
 
     def blocks_to_description(self, blocks: List[Dict[str, Any]]) -> str:
@@ -667,16 +677,27 @@ class MotionNotionSync:
                 return None
             return prop.get("date")
 
+        # Extract due date with debug logging
+        due_date_prop = props.get("Due date")
+        due_date_extracted = get_date(due_date_prop)
+
+        # Debug logging for due date extraction
+        task_name = get_title(props.get("Task name"))
+        if task_name:  # Only log if we have a task name
+            self.logger.info(f"🔍 DEBUG - Extracting data for task: {task_name}")
+            self.logger.info(f"🔍 DEBUG - Raw 'Due date' property: {due_date_prop}")
+            self.logger.info(f"🔍 DEBUG - Extracted due_date: {due_date_extracted}")
+
         return {
             "id": page.get("id"),
-            "task_name": get_title(props.get("Task name")),
+            "task_name": task_name,
             "status": get_status(
                 props.get("Status")
             ),  # Use get_status for Status property
             "workspace": get_select(props.get("Workspace")),
             "est_duration_hrs": get_number(props.get("Est Duration Hrs")),
             "actual_duration_hrs": get_number(props.get("Actual Duration")),
-            "due_date": get_date(props.get("Due date")),
+            "due_date": due_date_extracted,
             "priority": get_select(props.get("Priority")),
             "description": get_text(props.get("Description")),
             "motion_id": get_text(props.get("Motion ID")),
@@ -1171,10 +1192,16 @@ class MotionNotionSync:
                         "%Y-%m-%d"
                     )
                     motion_task_data["dueDate"] = default_due
+                    self.logger.info(
+                        f"🔍 DEBUG - No valid due date extracted, defaulting to: {default_due}"
+                    )
             else:
                 # Default due date for auto-scheduled tasks
                 default_due = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
                 motion_task_data["dueDate"] = default_due
+                self.logger.info(
+                    f"🔍 DEBUG - No due_date in notion_data, defaulting to: {default_due}"
+                )
 
             # Custom fields will be set after task creation via separate API call
 
@@ -1272,7 +1299,7 @@ class MotionNotionSync:
             notion_duration = int(notion_duration_hours * 60)  # Convert to minutes
             notion_due_date = normalize_due_date(notion_data.get("due_date"))
 
-            # Debug: Log values for comparison
+            # Debug: Log values for comparison  
             self.logger.info(f"🔍 DEBUG comparison for {notion_data['task_name']}:")
             self.logger.info(
                 f"  due_date: Motion='{motion_due_date}' vs Notion='{notion_due_date}'"
@@ -1291,6 +1318,7 @@ class MotionNotionSync:
                 changes.append(f"duration ({motion_duration} → {notion_duration})")
             if motion_due_date != notion_due_date:
                 changes.append(f"due_date ('{motion_due_date}' → '{notion_due_date}')")
+            
 
             if not changes:
                 self.logger.info(
