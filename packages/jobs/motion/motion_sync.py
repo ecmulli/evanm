@@ -252,14 +252,19 @@ class MotionNotionSync:
         start_date = notion_date.get("start")
 
         if start_date:
-            # Extract just the date part (YYYY-MM-DD) to avoid timezone interpretation issues
+            # Extract the date part and add 6 hours to prevent timezone shift
             if "T" in start_date:
                 # Has time/timezone component, extract just the date
                 date_only = start_date.split("T")[0]
-                return date_only
             else:
                 # Already just a date
-                return start_date
+                date_only = start_date
+
+            # Add 6 hours to prevent Motion from interpreting UTC midnight as previous day
+            # This ensures the date displays correctly in user's local timezone (UTC-5)
+            result = f"{date_only}T06:00:00.000Z"
+            self.logger.info(f"🔍 DEBUG - Sending due date to Motion: {result}")
+            return result
 
         return None
 
@@ -500,8 +505,8 @@ class MotionNotionSync:
             return True
 
         try:
-            # Convert workspace to uppercase to match custom field mapping keys
-            custom_fields = self.motion_custom_fields[workspace.upper()]
+            # Use workspace key directly (already processed by caller)
+            custom_fields = self.motion_custom_fields[workspace]
 
             # Set Notion ID custom field
             notion_id_data = {
@@ -538,8 +543,8 @@ class MotionNotionSync:
 
         try:
             # Check if we have the custom field ID for this workspace
-            # Convert workspace to uppercase to match custom field mapping keys
-            custom_fields = self.motion_custom_fields.get(workspace.upper(), {})
+            # Use workspace key directly (already processed by caller)
+            custom_fields = self.motion_custom_fields.get(workspace, {})
             notion_sync_field_id = custom_fields.get("notion_last_sync")
 
             if not notion_sync_field_id:
@@ -1159,7 +1164,9 @@ class MotionNotionSync:
                 notion_workspace = "Hub"
             # Convert to uppercase for Motion workspace lookup (matches env var pattern)
             # Special case: Hub workspace uses title case key
-            lookup_key = "Hub" if notion_workspace.upper() == "HUB" else notion_workspace.upper()
+            lookup_key = (
+                "Hub" if notion_workspace.upper() == "HUB" else notion_workspace.upper()
+            )
             motion_workspace_id = self.motion_workspaces.get(lookup_key)
 
             self.logger.info(
@@ -1188,6 +1195,9 @@ class MotionNotionSync:
                 due_date = self.extract_due_date_start(notion_data["due_date"])
                 if due_date:
                     motion_task_data["dueDate"] = due_date
+                    self.logger.info(
+                        f"🔍 DEBUG - Motion task payload dueDate: {due_date}"
+                    )
                 else:
                     # Default due date if none provided but auto-scheduling is enabled
                     default_due = (datetime.now() + timedelta(days=7)).strftime(
@@ -1216,7 +1226,7 @@ class MotionNotionSync:
             if motion_id:
                 # Set custom fields for back-reference to Notion
                 if self.set_motion_custom_fields(
-                    motion_id, notion_workspace, notion_data["id"], notion_data["url"]
+                    motion_id, lookup_key, notion_data["id"], notion_data["url"]
                 ):
                     # Update Notion with Motion ID
                     if not self.dry_run:
@@ -1301,7 +1311,7 @@ class MotionNotionSync:
             notion_duration = int(notion_duration_hours * 60)  # Convert to minutes
             notion_due_date = normalize_due_date(notion_data.get("due_date"))
 
-            # Debug: Log values for comparison  
+            # Debug: Log values for comparison
             self.logger.info(f"🔍 DEBUG comparison for {notion_data['task_name']}:")
             self.logger.info(
                 f"  due_date: Motion='{motion_due_date}' vs Notion='{notion_due_date}'"
@@ -1320,7 +1330,6 @@ class MotionNotionSync:
                 changes.append(f"duration ({motion_duration} → {notion_duration})")
             if motion_due_date != notion_due_date:
                 changes.append(f"due_date ('{motion_due_date}' → '{notion_due_date}')")
-            
 
             if not changes:
                 self.logger.info(
