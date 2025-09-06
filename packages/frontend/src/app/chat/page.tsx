@@ -380,47 +380,115 @@ export default function ChatPage() {
 
       {/* Confirmation Dialog */}
       {confirmation.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Confirm Task Creation</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">📋 Confirm Task Creation</h3>
+            </div>
             
             {confirmation.taskData && (
-              <div className="space-y-3 mb-6">
-                <div>
-                  <strong className="text-gray-700">Task Name:</strong>
-                  <div className="text-gray-900">{confirmation.taskData.task_name}</div>
-                </div>
-                <div>
-                  <strong className="text-gray-700">Workspace:</strong>
-                  <div className="text-gray-900">{confirmation.taskData.workspace}</div>
-                </div>
-                <div>
-                  <strong className="text-gray-700">Priority:</strong>
-                  <div className="text-gray-900">{confirmation.taskData.priority}</div>
-                </div>
-                <div>
-                  <strong className="text-gray-700">Estimated Hours:</strong>
-                  <div className="text-gray-900">{confirmation.taskData.estimated_hours}</div>
-                </div>
-                <div>
-                  <strong className="text-gray-700">Description:</strong>
-                  <div className="text-gray-900 text-sm">{confirmation.taskData.description}</div>
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="space-y-6">
+                  {/* Task Header */}
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <h4 className="text-lg font-semibold text-blue-900 mb-3">
+                      {confirmation.taskData.task_name}
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span className="text-blue-700 font-medium">🏢 Workspace:</span>
+                        <div className="text-blue-900">{confirmation.taskData.workspace}</div>
+                      </div>
+                      <div>
+                        <span className="text-blue-700 font-medium">⚡ Priority:</span>
+                        <div className="text-blue-900">{confirmation.taskData.priority}</div>
+                      </div>
+                      <div>
+                        <span className="text-blue-700 font-medium">⏱️ Duration:</span>
+                        <div className="text-blue-900">{confirmation.taskData.estimated_hours} hours</div>
+                      </div>
+                      <div>
+                        <span className="text-blue-700 font-medium">📅 Due Date:</span>
+                        <div className="text-blue-900">{confirmation.taskData.due_date || 'Not set'}</div>
+                      </div>
+                    </div>
+                    {confirmation.taskData.labels && confirmation.taskData.labels.length > 0 && (
+                      <div className="mt-3">
+                        <span className="text-blue-700 font-medium text-sm">🏷️ Labels:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {confirmation.taskData.labels.map((label: string, idx: number) => (
+                            <span key={idx} className="bg-blue-200 text-blue-800 text-xs px-2 py-1 rounded">
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <h5 className="font-semibold text-gray-900 mb-3">📝 Description</h5>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="text-gray-800 whitespace-pre-wrap leading-relaxed">
+                        {confirmation.taskData.description}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Acceptance Criteria */}
+                  {confirmation.taskData.acceptance_criteria && (
+                    <div>
+                      <h5 className="font-semibold text-gray-900 mb-3">✅ Acceptance Criteria</h5>
+                      <div className="bg-green-50 rounded-lg p-4">
+                        <div className="text-gray-800 whitespace-pre-wrap leading-relaxed">
+                          {confirmation.taskData.acceptance_criteria.split('\n').map((line: string, idx: number) => {
+                            if (line.trim().startsWith('- [ ]')) {
+                              return (
+                                <div key={idx} className="flex items-start space-x-2 mb-2">
+                                  <input type="checkbox" className="mt-1 rounded" disabled />
+                                  <span className="text-gray-700">{line.replace('- [ ]', '').trim()}</span>
+                                </div>
+                              );
+                            } else if (line.trim()) {
+                              return (
+                                <div key={idx} className="text-gray-700 mb-1">{line}</div>
+                              );
+                            }
+                            return <div key={idx} className="mb-1"></div>;
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Additional Info */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <span className="font-medium text-gray-700">✅ Status:</span>
+                      <span className="ml-2 text-gray-900">{confirmation.taskData.status}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">👥 Team:</span>
+                      <span className="ml-2 text-gray-900">{confirmation.taskData.team}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
             
-            <div className="flex justify-end space-x-3">
+            <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
               <button
                 onClick={confirmation.onCancel}
-                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-6 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmation.onConfirm}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
               >
-                Create Task
+                ✅ Create Task
               </button>
             </div>
           </div>
