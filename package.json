@@ -13,10 +13,16 @@
 		"jobs:run": "cd packages/jobs && python -m jobs",
 		"agent:install": "cd packages/agent && pip install -r requirements.txt",
 		"agent:run": "cd packages/agent && venv/bin/python app.py",
-		"agent": "cd packages/agent && venv/bin/python app.py"
+		"agent": "cd packages/agent && venv/bin/python app.py",
+		"frontend:install": "cd packages/frontend && npm install",
+		"frontend:dev": "cd packages/frontend && npm run dev",
+		"frontend:build": "cd packages/frontend && npm run build",
+		"frontend:start": "cd packages/frontend && npm run start",
+		"dev": "concurrently \"npm run agent\" \"npm run frontend:dev\""
 	},
 	"devDependencies": {
-		"@types/node": "^20.0.0"
+		"@types/node": "^20.0.0",
+		"concurrently": "^8.2.2"
 	},
 	"engines": {
 		"node": ">=18.0.0",

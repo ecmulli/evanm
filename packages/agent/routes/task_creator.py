@@ -124,3 +124,9 @@ async def create_task(
 async def health_check() -> Dict[str, str]:
     """Health check endpoint."""
     return {"status": "healthy", "service": "agent"}
+
+
+@router.get("/auth/validate")
+async def validate_auth(authenticated: bool = Depends(verify_bearer_token)) -> Dict[str, str]:
+    """Simple endpoint to validate authentication token."""
+    return {"status": "authenticated", "message": "Token is valid"}
