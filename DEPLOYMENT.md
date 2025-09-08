@@ -3,8 +3,8 @@
 ## Railway Deployment Setup
 
 This monorepo contains two services that need to be deployed to Railway:
-1. **Backend**: FastAPI Python server (`packages/agent/`)
-2. **Frontend**: Next.js React app (`packages/frontend/`)
+1. **Backend**: FastAPI Python server (`apps/agent/`)
+2. **Frontend**: Next.js React app (`apps/web/`)
 
 ### Prerequisites
 - Railway account
@@ -12,7 +12,7 @@ This monorepo contains two services that need to be deployed to Railway:
 
 ### Backend Deployment
 
-The backend is already configured with `packages/agent/railway.toml`. 
+The backend is already configured with `apps/agent/railway.toml`. 
 
 **Environment Variables Needed:**
 ```
@@ -28,7 +28,7 @@ VANQUISH_NOTION_DB_ID=optional
 
 ### Frontend Deployment
 
-The frontend is configured with `packages/frontend/railway.toml`.
+The frontend is configured with `apps/web/railway.toml`.
 
 **Environment Variables Needed:**
 ```
@@ -56,7 +56,7 @@ NODE_ENV=production
    npm run agent
    
    # Frontend only
-   npm run frontend:dev
+   npm run web:dev
    ```
 
 ### API Routes

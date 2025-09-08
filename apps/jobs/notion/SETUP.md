@@ -110,7 +110,7 @@ The GitHub Action runs:
 
 ```bash
 # Install dependencies
-cd packages/jobs
+cd apps/jobs
 pip install -r requirements.txt
 
 # Set environment variables  
