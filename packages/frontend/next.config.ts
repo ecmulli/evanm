@@ -5,15 +5,12 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   
   async rewrites() {
-    const backendUrl = process.env.BACKEND_URL || 
-      (process.env.NODE_ENV === 'production' 
-        ? 'https://agent-evanm.railway.app'
-        : 'http://localhost:8000');
-        
     return [
       {
         source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
+        destination: process.env.NODE_ENV === 'production' 
+          ? '/api/:path*'  // Same domain, let Railway handle routing
+          : 'http://localhost:8000/api/:path*',
       },
     ];
   },
