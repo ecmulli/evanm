@@ -1,6 +1,7 @@
 [build]
 builder = "nixpacks"
-buildCommand = "cd packages/frontend && npm ci && npm run build"
+installCommand = "cd packages/frontend && npm ci"
+buildCommand = "cd packages/frontend && npm run build"
 watchPatterns = ["packages/frontend/**"]
 
 [deploy]
