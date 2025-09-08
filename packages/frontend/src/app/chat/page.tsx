@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Upload, Check, AlertCircle, Clock, User, Bot, LogOut } from 'lucide-react';
+import { Send, Upload, Check, AlertCircle, Clock, User, Bot, LogOut, Menu, X } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -42,6 +42,7 @@ export default function ChatPage() {
     onCancel: () => {}
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -207,12 +208,41 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 relative">
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsSidebarOpen(true)}
+        className="md:hidden fixed top-4 left-4 z-40 p-2 rounded-lg bg-white border border-gray-200 shadow-lg"
+      >
+        <Menu size={20} className="text-gray-600" />
+      </button>
+
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <h1 className="text-xl font-semibold text-gray-900">Task Creator</h1>
-          <p className="text-sm text-gray-600">Create tasks with AI assistance</p>
+      <div className={`
+        fixed md:static inset-y-0 left-0 z-50 w-80 bg-white border-r border-gray-200 flex flex-col
+        transform transition-transform duration-300 ease-in-out
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">Task Creator</h1>
+            <p className="text-sm text-gray-600">Create tasks with AI assistance</p>
+          </div>
+          {/* Close button for mobile */}
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="md:hidden p-1 rounded-lg hover:bg-gray-100"
+          >
+            <X size={20} className="text-gray-600" />
+          </button>
         </div>
         
         <div className="flex-1 overflow-y-auto p-4">
@@ -240,15 +270,15 @@ export default function ChatPage() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col md:ml-0">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 pt-16 md:pt-4">
           {messages.map((message) => (
             <div
               key={message.id}
               className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div className={`flex max-w-3xl ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+              <div className={`flex max-w-full md:max-w-3xl ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                 <div className={`flex-shrink-0 ${message.type === 'user' ? 'ml-3' : 'mr-3'}`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                     message.type === 'user' 
@@ -311,7 +341,7 @@ export default function ChatPage() {
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-gray-200 bg-white p-4">
+        <div className="border-t border-gray-200 bg-white p-4 pb-safe">
           {selectedFiles.length > 0 && (
             <div className="mb-3 flex flex-wrap gap-2">
               {selectedFiles.map((file, index) => (
@@ -328,13 +358,13 @@ export default function ChatPage() {
             </div>
           )}
           
-          <form onSubmit={handleSubmit} className="flex items-end space-x-3">
+          <form onSubmit={handleSubmit} className="flex items-end space-x-2 md:space-x-3">
             <div className="flex-1">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Describe the task you want to create..."
-                className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full resize-none rounded-lg border border-gray-300 px-3 md:px-4 py-2 text-sm md:text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 rows={3}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -345,7 +375,7 @@ export default function ChatPage() {
               />
             </div>
             
-            <div className="flex space-x-2">
+            <div className="flex space-x-1 md:space-x-2">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -359,7 +389,7 @@ export default function ChatPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
               >
-                <Upload size={20} className="text-gray-600" />
+                <Upload size={18} className="text-gray-600 md:w-5 md:h-5" />
               </button>
               
               <button
@@ -367,7 +397,7 @@ export default function ChatPage() {
                 disabled={(!input.trim() && selectedFiles.length === 0) || isLoading}
                 className="p-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <Send size={20} />
+                <Send size={18} className="md:w-5 md:h-5" />
               </button>
             </div>
           </form>
@@ -380,21 +410,21 @@ export default function ChatPage() {
 
       {/* Confirmation Dialog */}
       {confirmation.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-xl font-semibold text-gray-900">📋 Confirm Task Creation</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
+          <div className="bg-white rounded-lg max-w-full md:max-w-4xl w-full max-h-[95vh] md:max-h-[90vh] flex flex-col m-2 md:m-0">
+            <div className="p-4 md:p-6 border-b border-gray-200">
+              <h3 className="text-lg md:text-xl font-semibold text-gray-900">📋 Confirm Task Creation</h3>
             </div>
             
             {confirmation.taskData && (
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="space-y-6">
+              <div className="flex-1 overflow-y-auto p-4 md:p-6">
+                <div className="space-y-4 md:space-y-6">
                   {/* Task Header */}
                   <div className="bg-blue-50 rounded-lg p-4">
                     <h4 className="text-lg font-semibold text-blue-900 mb-3">
                       {confirmation.taskData.task_name}
                     </h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 text-sm">
                       <div>
                         <span className="text-blue-700 font-medium">🏢 Workspace:</span>
                         <div className="text-blue-900">{confirmation.taskData.workspace}</div>
@@ -477,16 +507,16 @@ export default function ChatPage() {
               </div>
             )}
             
-            <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
+            <div className="p-4 md:p-6 border-t border-gray-200 flex flex-col sm:flex-row justify-end gap-3 sm:space-x-3">
               <button
                 onClick={confirmation.onCancel}
-                className="px-6 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 md:px-6 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors order-2 sm:order-1"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmation.onConfirm}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                className="px-4 md:px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium order-1 sm:order-2"
               >
                 ✅ Create Task
               </button>

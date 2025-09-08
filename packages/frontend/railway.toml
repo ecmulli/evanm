@@ -1,5 +1,7 @@
 [build]
-builder = "NIXPACKS"
+builder = "dockerfile"
+dockerfilePath = "packages/frontend/Dockerfile"
+watchPatterns = ["packages/frontend/**"]
 
 [deploy]
 startCommand = "npm start"
