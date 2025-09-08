@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { getEnvironmentInfo } from "@/utils/environment";
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const { agentDomain } = getEnvironmentInfo();
 
   useEffect(() => {
     // Check if user is authenticated (check both localStorage and cookies)

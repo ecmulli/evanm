@@ -5,10 +5,21 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   
   async rewrites() {
-    const backendUrl = process.env.BACKEND_URL || 
-      (process.env.NODE_ENV === 'production' 
-        ? 'https://agent.evanm.xyz'
-        : 'http://localhost:8000');
+    // Determine backend URL based on environment
+    let backendUrl = process.env.BACKEND_URL;
+    
+    if (!backendUrl) {
+      if (process.env.NODE_ENV === 'production') {
+        // Check if we're on staging domain
+        const isStaging = process.env.RAILWAY_PUBLIC_DOMAIN?.includes('staging') || 
+                         process.env.VERCEL_URL?.includes('staging');
+        backendUrl = isStaging 
+          ? 'https://staging.agent.evanm.xyz'
+          : 'https://agent.evanm.xyz';
+      } else {
+        backendUrl = 'http://localhost:8000';
+      }
+    }
         
     return [
       {
