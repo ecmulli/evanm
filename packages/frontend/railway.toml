@@ -1,0 +1,19 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "packages/frontend/Dockerfile"
+watchPatterns = ["packages/frontend/**"]
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[[services]]
+name = "frontend"
+source = "."
+
+[services.envVars]
+NEXT_PUBLIC_BEARER_TOKEN = { $ref = "BEARER_TOKEN" }
+NODE_ENV = "production"
