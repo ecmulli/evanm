@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
       {
         source: '/api/:path*',
         destination: process.env.NODE_ENV === 'production' 
-          ? '/api/:path*'  // Same domain, let Railway handle routing
+          ? 'https://evanm-evanm-pr-2.up.railway.app/api/:path*'  // Backend service URL
           : 'http://localhost:8000/api/:path*',
       },
     ];
