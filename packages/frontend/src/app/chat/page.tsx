@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Upload, Check, AlertCircle, Clock, User, Bot, LogOut, Menu, X } from 'lucide-react';
+import { Send, Upload, AlertCircle, Clock, User, Bot, LogOut, Menu, X } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -19,7 +19,18 @@ interface Message {
 
 interface ConfirmationDialog {
   isOpen: boolean;
-  taskData: any;
+  taskData: {
+    task_name: string;
+    workspace: string;
+    priority: string;
+    estimated_hours: number;
+    due_date?: string;
+    description: string;
+    acceptance_criteria?: string;
+    labels?: string[];
+    status: string;
+    team: string;
+  } | null;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -120,7 +131,7 @@ export default function ChatPage() {
         };
         setMessages(prev => [...prev, errorMessage]);
       }
-    } catch (error) {
+    } catch {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: 'Failed to connect to the server. Please try again.',
@@ -141,7 +152,7 @@ export default function ChatPage() {
     console.log('🔑 Token being used:', token ? `${token.substring(0, 10)}...` : 'No token found');
     
     // Add files for OCR if any
-    let imageUrls: string[] = [];
+    const imageUrls: string[] = [];
     if (files.length > 0) {
       for (const file of files) {
         // In a real implementation, you'd upload to cloud storage first
