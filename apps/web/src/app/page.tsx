@@ -55,7 +55,7 @@ export default function Home() {
           
           <div className="mt-8 pt-8 border-t border-gray-200">
             <div className="text-xs text-gray-400">
-              Connected to agent.evanm.xyz
+              Connected to {agentDomain}
             </div>
           </div>
         </div>
