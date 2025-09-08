@@ -13,7 +13,3 @@ restartPolicyMaxRetries = 10
 [[services]]
 name = "frontend"
 source = "."
-
-[services.envVars]
-NEXT_PUBLIC_BEARER_TOKEN = { $ref = "BEARER_TOKEN" }
-NODE_ENV = "production"
