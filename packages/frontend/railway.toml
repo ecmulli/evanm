@@ -1,10 +1,10 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm run frontend:build"
+buildCommand = "cd packages/frontend && npm ci && npm run build"
 watchPatterns = ["packages/frontend/**"]
 
 [deploy]
-startCommand = "npm run frontend:start"
+startCommand = "cd packages/frontend && npm start"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
