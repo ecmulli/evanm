@@ -7,9 +7,10 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package.json and package-lock.json from frontend directory
-COPY packages/frontend/package*.json ./
-RUN npm ci
+# Copy package.json from frontend directory
+COPY packages/frontend/package.json ./
+# Use npm install since we don't have package-lock.json
+RUN npm install
 
 # Rebuild the source code only when needed
 FROM base AS builder
