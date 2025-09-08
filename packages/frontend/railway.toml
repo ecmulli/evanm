@@ -1,11 +1,9 @@
 [build]
-builder = "nixpacks"
-installCommand = "cd packages/frontend && npm ci"
-buildCommand = "cd packages/frontend && npm run build"
+builder = "dockerfile"
+dockerfilePath = "packages/frontend/Dockerfile"
 watchPatterns = ["packages/frontend/**"]
 
 [deploy]
-startCommand = "cd packages/frontend && npm start"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
