@@ -9,7 +9,9 @@ Future features will include content generation, task analysis, and meeting summ
 import logging
 from contextlib import asynccontextmanager
 
-import uvicorn
+import asyncio
+from hypercorn.config import Config as HypercornConfig
+from hypercorn.asyncio import serve
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -113,14 +115,26 @@ async def api_info():
 
 
 def main():
-    """Run the server."""
-    uvicorn.run(
-        "app:app",
-        host=config.HOST,
-        port=config.PORT,
-        reload=config.DEBUG,
-        log_level="info",
-    )
+    """Run the server with Hypercorn for dual-stack binding."""
+    # Create Hypercorn config
+    hypercorn_config = HypercornConfig()
+    
+    # Dual-stack binding for Railway: IPv4 for public + healthcheck, IPv6 for private networking
+    hypercorn_config.bind = [
+        f"0.0.0.0:{config.PORT}",  # IPv4 for public access and healthcheck
+        f"[::]:{config.PORT}"       # IPv6 for Railway private networking
+    ]
+    
+    hypercorn_config.loglevel = "info"
+    
+    # Log configuration
+    logger.info(f"🌐 Hypercorn dual-stack binding:")
+    logger.info(f"   - IPv4: 0.0.0.0:{config.PORT}")
+    logger.info(f"   - IPv6: [::]:{config.PORT}")
+    logger.info(f"🐛 Debug mode: {config.DEBUG}")
+    
+    # Run server
+    asyncio.run(serve(app, hypercorn_config))
 
 
 if __name__ == "__main__":
