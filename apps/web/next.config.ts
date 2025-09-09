@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   
   env: {
-    NEXT_PUBLIC_RAILWAY_DOMAIN: process.env.RAILWAY_PUBLIC_DOMAIN,
+    NEXT_PUBLIC_ENVIRONMENT: process.env.ENVIRONMENT,
   },
   
   async rewrites() {
@@ -28,15 +28,17 @@ const nextConfig: NextConfig = {
     
     if (!backendUrl) {
       if (nodeEnv === 'production') {
-        // Check if we're on staging domain
-        const isStaging = railwayDomain.includes('staging') || 
-                         railwayDomain.includes('-pr-') ||
-                         process.env.VERCEL_URL?.includes('staging');
+        // Check environment variable we set manually
+        const isStaging = process.env.ENVIRONMENT === 'staging';
         backendUrl = isStaging 
           ? 'https://staging.agent.evanm.xyz'
           : 'https://agent.evanm.xyz';
           
-        console.log('🎯 Backend URL Decision:', { isStaging, backendUrl });
+        console.log('🎯 Backend URL Decision:', { 
+          ENVIRONMENT: process.env.ENVIRONMENT,
+          isStaging, 
+          backendUrl 
+        });
       } else {
         backendUrl = 'http://localhost:8000';
       }
