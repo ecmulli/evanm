@@ -4,6 +4,10 @@ const nextConfig: NextConfig = {
   // Enable standalone mode for Docker
   output: 'standalone',
   
+  env: {
+    NEXT_PUBLIC_RAILWAY_DOMAIN: process.env.RAILWAY_PUBLIC_DOMAIN,
+  },
+  
   async rewrites() {
     // Determine backend URL based on environment
     let backendUrl = process.env.BACKEND_URL;

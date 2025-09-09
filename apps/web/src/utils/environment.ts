@@ -1,17 +1,25 @@
 export function getEnvironmentInfo() {
   if (typeof window === 'undefined') {
-    // Server-side - assume production
+    // Server-side - check Railway environment
+    const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN || '';
+    const isStaging = railwayDomain.includes('staging') || railwayDomain.includes('-pr-');
+    
     return {
-      isStaging: false,
+      isStaging,
       isLocal: false,
-      agentDomain: 'agent.evanm.xyz'
+      agentDomain: isStaging ? 'staging.agent.evanm.xyz' : 'agent.evanm.xyz'
     };
   }
   
   // Client-side
   const hostname = window.location.hostname;
   const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('localhost');
-  const isStaging = hostname.includes('staging');
+  
+  // Check for staging using Railway's public domain variable or hostname patterns
+  const railwayDomain = process.env.NEXT_PUBLIC_RAILWAY_DOMAIN || '';
+  const isStaging = hostname.includes('staging') || 
+                   railwayDomain.includes('staging') ||
+                   railwayDomain.includes('-pr-');
   
   return {
     isStaging,
