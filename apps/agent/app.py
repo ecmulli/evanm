@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
         logger.error(f"❌ Environment validation failed: {e}")
         raise
 
-    logger.info(f"🌐 Server configured for host: {config.HOST}:{config.PORT}")
+    logger.info(f"🌐 Server configured for port: {config.PORT}")
     logger.info(f"🔧 Debug mode: {config.DEBUG}")
 
     yield
