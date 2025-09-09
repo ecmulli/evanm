@@ -1,43 +1,33 @@
 export function getEnvironmentInfo() {
   if (typeof window === 'undefined') {
-    // Server-side - check environment variable
-    const isStaging = process.env.ENVIRONMENT === 'staging';
-    
-    console.log('🖥️ SERVER Environment Detection:', {
-      ENVIRONMENT: process.env.ENVIRONMENT,
-      isStaging,
-      NODE_ENV: process.env.NODE_ENV
-    });
-    
+    // Server-side - for display purposes only
     return {
-      isStaging,
+      isStaging: false,
       isLocal: false,
-      agentDomain: isStaging ? 'staging.agent.evanm.xyz' : 'agent.evanm.xyz'
+      agentDomain: 'agent.evanm.xyz' // Default display
     };
   }
   
-  // Client-side
+  // Client-side - determine display domain from hostname
   const hostname = window.location.hostname;
-  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('localhost');
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+  const isStaging = hostname.includes('staging');
+  const isPR = hostname.includes('railway.app') && !isLocal;
   
-  // Check for staging using environment variable or hostname patterns
-  const environment = process.env.NEXT_PUBLIC_ENVIRONMENT || '';
-  const isStaging = hostname.includes('staging') || environment === 'staging';
-  
-  console.log('🌐 CLIENT Environment Detection:', {
-    hostname,
-    environment,
-    isLocal,
-    isStaging,
-    allPublicVars: Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC')).reduce((obj, key) => {
-      obj[key] = process.env[key];
-      return obj;
-    }, {} as Record<string, string | undefined>)
-  });
+  let displayDomain: string;
+  if (isLocal) {
+    displayDomain = 'localhost:8000';
+  } else if (isStaging) {
+    displayDomain = 'staging.agent.evanm.xyz';
+  } else if (isPR) {
+    displayDomain = 'agent (internal)';
+  } else {
+    displayDomain = 'agent.evanm.xyz';
+  }
   
   return {
     isStaging,
     isLocal,
-    agentDomain: isLocal ? 'localhost:8000' : (isStaging ? 'staging.agent.evanm.xyz' : 'agent.evanm.xyz')
+    agentDomain: displayDomain
   };
 }

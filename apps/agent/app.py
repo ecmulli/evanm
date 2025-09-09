@@ -9,7 +9,9 @@ Future features will include content generation, task analysis, and meeting summ
 import logging
 from contextlib import asynccontextmanager
 
-import uvicorn
+import asyncio
+from hypercorn.config import Config as HypercornConfig
+from hypercorn.asyncio import serve
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -37,7 +39,7 @@ async def lifespan(app: FastAPI):
         logger.error(f"❌ Environment validation failed: {e}")
         raise
 
-    logger.info(f"🌐 Server configured for host: {config.HOST}:{config.PORT}")
+    logger.info(f"🌐 Server configured for port: {config.PORT}")
     logger.info(f"🔧 Debug mode: {config.DEBUG}")
 
     yield
@@ -113,14 +115,21 @@ async def api_info():
 
 
 def main():
-    """Run the server."""
-    uvicorn.run(
-        "app:app",
-        host=config.HOST,
-        port=config.PORT,
-        reload=config.DEBUG,
-        log_level="info",
-    )
+    """Run the server with Hypercorn for dual-stack binding."""
+    # Create Hypercorn config
+    hypercorn_config = HypercornConfig()
+    
+    # IPv6 binding that accepts both IPv4 and IPv6 connections
+    hypercorn_config.bind = [f"[::]:{config.PORT}"]
+    
+    hypercorn_config.loglevel = "info"
+    
+    # Log configuration
+    logger.info(f"🌐 Hypercorn IPv6 binding: [::]:{config.PORT}")
+    logger.info(f"🐛 Debug mode: {config.DEBUG}")
+    
+    # Run server
+    asyncio.run(serve(app, hypercorn_config))
 
 
 if __name__ == "__main__":
