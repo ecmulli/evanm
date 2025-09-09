@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Loader } from 'lucide-react';
+import { getEnvironmentInfo } from '@/utils/environment';
 
 export default function LoginPage() {
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const router = useRouter();
+  const { agentDomain } = getEnvironmentInfo();
 
   const validateToken = async (tokenToValidate: string) => {
     try {
@@ -133,7 +135,7 @@ export default function LoginPage() {
 
         <div className="mt-8 pt-8 border-t border-gray-200 text-center">
           <div className="text-xs text-gray-400">
-            agent.evanm.xyz
+            {agentDomain}
           </div>
         </div>
       </div>

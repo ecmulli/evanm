@@ -6,17 +6,25 @@ A personal monorepo containing multiple applications and utilities.
 
 ```
 evanm/
-├── packages/
+├── apps/
+│   ├── web/           # Next.js website
+│   ├── agent/         # Python FastAPI agent service
 │   ├── jobs/          # Python scripts for scheduled jobs
-│   └── ...            # Future packages
+│   └── ...            # Future apps
 ├── package.json       # Root package configuration
 └── README.md
 ```
 
-## Packages
+## Apps
 
-### Jobs Package
-Located in `packages/jobs/`, this package contains Python scripts designed to run various scheduled jobs and automation tasks.
+### Web App
+Located in `apps/web/`, this is the main Next.js website for evanm.xyz.
+
+### Agent Service
+Located in `apps/agent/`, this contains the Python FastAPI service for AI agent functionality.
+
+### Jobs Service
+Located in `apps/jobs/`, this contains Python scripts designed to run various scheduled jobs and automation tasks.
 
 ## Getting Started
 
@@ -54,7 +62,7 @@ This monorepo uses npm workspaces to manage multiple packages. Each package can 
 
 ### Adding New Packages
 
-1. Create a new directory in `packages/`
+1. Create a new directory in `apps/`
 2. Add appropriate configuration files
 3. Update root package.json scripts if needed
 

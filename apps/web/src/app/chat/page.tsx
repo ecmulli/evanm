@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Send, Upload, AlertCircle, Clock, User, Bot, LogOut, Menu, X } from 'lucide-react';
+import { getEnvironmentInfo } from '@/utils/environment';
 
 interface Message {
   id: string;
@@ -46,6 +47,7 @@ export default function ChatPage() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { agentDomain } = getEnvironmentInfo();
   const [confirmation, setConfirmation] = useState<ConfirmationDialog>({
     isOpen: false,
     taskData: null,
@@ -275,7 +277,7 @@ export default function ChatPage() {
             <span>Logout</span>
           </button>
           <div className="text-xs text-gray-500 mt-2 text-center">
-            Connected to agent.evanm.xyz
+            Connected to {agentDomain}
           </div>
         </div>
       </div>

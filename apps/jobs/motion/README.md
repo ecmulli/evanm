@@ -89,7 +89,7 @@ VANQUISH_NOTION_USER_ID="your_vanquish_user_id"
 
 ### Test Mode (Dry Run)
 ```bash
-cd packages/jobs
+cd apps/jobs
 python motion/motion_sync.py --mode test
 ```
 

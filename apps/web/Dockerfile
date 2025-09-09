@@ -7,8 +7,8 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package.json from frontend directory
-COPY packages/frontend/package.json ./
+# Copy package.json from web directory
+COPY apps/web/package.json ./
 # Use npm install since we don't have package-lock.json
 RUN npm install
 
@@ -16,7 +16,11 @@ RUN npm install
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY packages/frontend ./
+COPY apps/web ./
+
+# Accept build argument for environment
+ARG ENVIRONMENT
+ENV ENVIRONMENT=${ENVIRONMENT}
 
 RUN npm run build
 

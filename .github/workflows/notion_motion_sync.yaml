@@ -36,7 +36,7 @@ jobs:
           
       - name: Install dependencies
         run: |
-          cd packages/jobs
+          cd apps/jobs
           pip install -r requirements.txt
           
       - name: Determine sync mode
@@ -60,7 +60,7 @@ jobs:
           LIVEPEER_NOTION_USER_ID: ${{ secrets.LIVEPEER_NOTION_USER_ID }}
           VANQUISH_NOTION_USER_ID: ${{ secrets.VANQUISH_NOTION_USER_ID }}
         run: |
-          cd packages/jobs/notion
+          cd apps/jobs/notion
           python notion_sync.py --mode ${{ steps.sync-mode.outputs.mode }}
       - name: Run Motion sync
         env:
@@ -80,7 +80,7 @@ jobs:
           LIVEPEER_NOTION_USER_ID: ${{ secrets.LIVEPEER_NOTION_USER_ID }}
           VANQUISH_NOTION_USER_ID: ${{ secrets.VANQUISH_NOTION_USER_ID }}
         run: |
-          cd packages/jobs
+          cd apps/jobs
           python motion/motion_sync.py --mode ${{ steps.sync-mode.outputs.mode }}
           
       - name: Upload logs on failure
@@ -89,6 +89,6 @@ jobs:
         with:
           name: sync-logs-${{ github.run_id }}
           path: |
-            packages/jobs/notion/*.log
-            packages/jobs/motion/*.log
+            apps/jobs/notion/*.log
+            apps/jobs/motion/*.log
           retention-days: 7
