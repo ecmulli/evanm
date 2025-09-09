@@ -18,6 +18,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY apps/web ./
 
+# Accept build argument for environment
+ARG ENVIRONMENT
+ENV ENVIRONMENT=${ENVIRONMENT}
+
 RUN npm run build
 
 # Production image, copy all the files and run next

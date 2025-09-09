@@ -36,6 +36,7 @@ const nextConfig: NextConfig = {
           
         console.log('🎯 Backend URL Decision:', { 
           ENVIRONMENT: process.env.ENVIRONMENT,
+          hostname: process.env.RAILWAY_PUBLIC_DOMAIN,
           isStaging, 
           backendUrl 
         });
