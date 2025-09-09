@@ -4,46 +4,15 @@ const nextConfig: NextConfig = {
   // Enable standalone mode for Docker
   output: 'standalone',
   
-  env: {
-    NEXT_PUBLIC_ENVIRONMENT: process.env.ENVIRONMENT,
-  },
-  
   async rewrites() {
-    // Determine backend URL based on environment
-    let backendUrl = process.env.BACKEND_URL;
+    // Simple backend URL determination
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
     
-    const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN || '';
-    const nodeEnv = process.env.NODE_ENV;
-    
-    console.log('🔧 NEXT.CONFIG Environment Check:', {
-      BACKEND_URL: backendUrl,
-      NODE_ENV: nodeEnv,
-      RAILWAY_PUBLIC_DOMAIN: railwayDomain,
-      VERCEL_URL: process.env.VERCEL_URL,
-      allRailwayVars: Object.keys(process.env).filter(key => key.includes('RAILWAY')).reduce((obj, key) => {
-        obj[key] = process.env[key];
-        return obj;
-      }, {} as Record<string, string | undefined>)
+    console.log('🔧 Backend URL:', {
+      BACKEND_URL: process.env.BACKEND_URL,
+      resolvedUrl: backendUrl,
+      NODE_ENV: process.env.NODE_ENV
     });
-    
-    if (!backendUrl) {
-      if (nodeEnv === 'production') {
-        // Check environment variable we set manually
-        const isStaging = process.env.ENVIRONMENT === 'staging';
-        backendUrl = isStaging 
-          ? 'https://staging.agent.evanm.xyz'
-          : 'https://agent.evanm.xyz';
-          
-        console.log('🎯 Backend URL Decision:', { 
-          ENVIRONMENT: process.env.ENVIRONMENT,
-          hostname: process.env.RAILWAY_PUBLIC_DOMAIN,
-          isStaging, 
-          backendUrl 
-        });
-      } else {
-        backendUrl = 'http://localhost:8000';
-      }
-    }
         
     return [
       {
