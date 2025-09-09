@@ -12,14 +12,31 @@ const nextConfig: NextConfig = {
     // Determine backend URL based on environment
     let backendUrl = process.env.BACKEND_URL;
     
+    const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN || '';
+    const nodeEnv = process.env.NODE_ENV;
+    
+    console.log('🔧 NEXT.CONFIG Environment Check:', {
+      BACKEND_URL: backendUrl,
+      NODE_ENV: nodeEnv,
+      RAILWAY_PUBLIC_DOMAIN: railwayDomain,
+      VERCEL_URL: process.env.VERCEL_URL,
+      allRailwayVars: Object.keys(process.env).filter(key => key.includes('RAILWAY')).reduce((obj, key) => {
+        obj[key] = process.env[key];
+        return obj;
+      }, {} as Record<string, string | undefined>)
+    });
+    
     if (!backendUrl) {
-      if (process.env.NODE_ENV === 'production') {
+      if (nodeEnv === 'production') {
         // Check if we're on staging domain
-        const isStaging = process.env.RAILWAY_PUBLIC_DOMAIN?.includes('staging') || 
+        const isStaging = railwayDomain.includes('staging') || 
+                         railwayDomain.includes('-pr-') ||
                          process.env.VERCEL_URL?.includes('staging');
         backendUrl = isStaging 
           ? 'https://staging.agent.evanm.xyz'
           : 'https://agent.evanm.xyz';
+          
+        console.log('🎯 Backend URL Decision:', { isStaging, backendUrl });
       } else {
         backendUrl = 'http://localhost:8000';
       }

@@ -4,6 +4,16 @@ export function getEnvironmentInfo() {
     const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN || '';
     const isStaging = railwayDomain.includes('staging') || railwayDomain.includes('-pr-');
     
+    console.log('🖥️ SERVER Environment Detection:', {
+      railwayDomain,
+      isStaging,
+      NODE_ENV: process.env.NODE_ENV,
+      allRailwayVars: Object.keys(process.env).filter(key => key.includes('RAILWAY')).reduce((obj, key) => {
+        obj[key] = process.env[key];
+        return obj;
+      }, {} as Record<string, string | undefined>)
+    });
+    
     return {
       isStaging,
       isLocal: false,
@@ -20,6 +30,17 @@ export function getEnvironmentInfo() {
   const isStaging = hostname.includes('staging') || 
                    railwayDomain.includes('staging') ||
                    railwayDomain.includes('-pr-');
+  
+  console.log('🌐 CLIENT Environment Detection:', {
+    hostname,
+    railwayDomain,
+    isLocal,
+    isStaging,
+    allPublicVars: Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC')).reduce((obj, key) => {
+      obj[key] = process.env[key];
+      return obj;
+    }, {} as Record<string, string | undefined>)
+  });
   
   return {
     isStaging,
