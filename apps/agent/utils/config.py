@@ -15,8 +15,9 @@ load_dotenv()
 class Config:
     """Configuration class for the Agent server."""
 
-    # Server config
-    HOST: str = os.getenv("HOST", "::")
+    # Server config - use 0.0.0.0 for Railway compatibility
+    # Railway's private networking will still work with this binding
+    HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", "8000"))
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
 

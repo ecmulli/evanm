@@ -4,10 +4,10 @@ dockerfilePath = "apps/agent/Dockerfile"
 watchPatterns = ["apps/agent/**"]
 
 [deploy]
-# healthcheckPath = "/api/v1/health"
-# healthcheckTimeout = 30
-# restartPolicyType = "always"
-# restartPolicyMaxRetries = 3
+healthcheckPath = "/api/v1/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
 
 [env]
 # These will be set in Railway dashboard
