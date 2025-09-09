@@ -18,9 +18,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY apps/web ./
 
-# Accept build argument for environment
+# Accept build arguments
 ARG ENVIRONMENT
+ARG BACKEND_URL
 ENV ENVIRONMENT=${ENVIRONMENT}
+ENV BACKEND_URL=${BACKEND_URL}
 
 RUN npm run build
 
