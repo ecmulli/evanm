@@ -119,18 +119,13 @@ def main():
     # Create Hypercorn config
     hypercorn_config = HypercornConfig()
     
-    # Dual-stack binding for Railway: IPv4 for public + healthcheck, IPv6 for private networking
-    hypercorn_config.bind = [
-        f"0.0.0.0:{config.PORT}",  # IPv4 for public access and healthcheck
-        f"[::]:{config.PORT}"       # IPv6 for Railway private networking
-    ]
+    # IPv6 binding that accepts both IPv4 and IPv6 connections
+    hypercorn_config.bind = [f"[::]:{config.PORT}"]
     
     hypercorn_config.loglevel = "info"
     
     # Log configuration
-    logger.info(f"🌐 Hypercorn dual-stack binding:")
-    logger.info(f"   - IPv4: 0.0.0.0:{config.PORT}")
-    logger.info(f"   - IPv6: [::]:{config.PORT}")
+    logger.info(f"🌐 Hypercorn IPv6 binding: [::]:{config.PORT}")
     logger.info(f"🐛 Debug mode: {config.DEBUG}")
     
     # Run server
