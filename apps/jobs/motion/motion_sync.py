@@ -317,6 +317,16 @@ class MotionNotionSync:
                 if text.strip():
                     description_parts.append(f"1. {text}")
 
+            elif block_type == "to_do":
+                text = self._extract_rich_text(
+                    block.get("to_do", {}).get("rich_text", [])
+                )
+                if text.strip():
+                    # Check if the to-do item is checked or unchecked
+                    is_checked = block.get("to_do", {}).get("checked", False)
+                    checkbox = "[x]" if is_checked else "[ ]"
+                    description_parts.append(f"- {checkbox} {text}")
+
         return "\n\n".join(description_parts) if description_parts else ""
 
     def _extract_rich_text(self, rich_text_array: List[Dict[str, Any]]) -> str:
@@ -717,6 +727,7 @@ class MotionNotionSync:
         workspace: str,
         max_tasks: Optional[int] = None,
         cached_motion_tasks: Optional[List[Dict[str, Any]]] = None,
+        cached_notion_tasks: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> Dict[str, int]:
         """Sync ONLY completed tasks from Motion to Notion (simplified architecture)."""
         stats = {"updated": 0, "skipped": 0, "errors": 0}
@@ -808,21 +819,10 @@ class MotionNotionSync:
                 notion_id = motion_task["customFieldValues"]["Notion ID"]["value"]
                 processed_notion_ids.append(notion_id)
 
-                # Get current Notion task
-                try:
-                    notion_page = self.workspace_clients[workspace].pages.retrieve(
-                        page_id=notion_id
-                    )
-                except Exception as e:
-                    self.logger.warning(
-                        f"Notion task {notion_id} not found, skipping completed Motion task {motion_task['id']}"
-                    )
-                    stats["skipped"] += 1
-                    continue
-
                 # Update Notion with completion status and actual duration
+                # Note: _update_notion_from_completed_motion will handle cache lookup and fallback
                 if self._update_notion_from_completed_motion(
-                    motion_task, notion_id, workspace
+                    motion_task, notion_id, workspace, cached_notion_tasks
                 ):
                     stats["updated"] += 1
                 else:
@@ -845,7 +845,8 @@ class MotionNotionSync:
         return stats
 
     def _update_notion_from_completed_motion(
-        self, motion_task: Dict[str, Any], notion_id: str, workspace: str
+        self, motion_task: Dict[str, Any], notion_id: str, workspace: str, 
+        cached_notion_tasks: Optional[Dict[str, Dict[str, Any]]] = None
     ) -> bool:
         """Update Notion task with ONLY status=Completed and actual duration from Motion."""
         try:
@@ -854,9 +855,17 @@ class MotionNotionSync:
             actual_duration_hours = motion_duration_minutes / 60.0
 
             # Get current Notion status to check if already completed
-            notion_page = self.workspace_clients[workspace].pages.retrieve(
-                page_id=notion_id
-            )
+            if cached_notion_tasks and notion_id in cached_notion_tasks:
+                # Use cached data to avoid API call
+                notion_page = cached_notion_tasks[notion_id]
+                self.logger.debug(f"Using cached Notion data for {notion_id}")
+            else:
+                # Fallback to API call if not in cache
+                notion_page = self.workspace_clients[workspace].pages.retrieve(
+                    page_id=notion_id
+                )
+                self.logger.debug(f"Cache miss, fetching Notion data via API for {notion_id}")
+            
             notion_data = self.extract_notion_task_data(notion_page)
             current_status = notion_data.get("status", "")
 
@@ -1033,11 +1042,19 @@ class MotionNotionSync:
         max_tasks: Optional[int] = None,
         skip_notion_ids: Optional[List[str]] = None,
         cached_motion_tasks_by_id: Optional[Dict[str, Dict[str, Any]]] = None,
+        cached_notion_tasks: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, int]:
         """Sync tasks from Notion to Motion."""
         stats = {"created": 0, "updated": 0, "skipped": 0, "errors": 0}
 
-        notion_tasks = self.get_notion_tasks(workspace)
+        # Use cached Notion tasks if available, otherwise fetch them
+        if cached_notion_tasks is not None:
+            notion_tasks = cached_notion_tasks
+            self.logger.debug(f"Using cached Notion tasks ({len(notion_tasks)} tasks)")
+        else:
+            notion_tasks = self.get_notion_tasks(workspace)
+            self.logger.debug(f"Fetched Notion tasks via API ({len(notion_tasks)} tasks)")
+            
         motion_workspace_id = self.motion_workspaces[workspace]
 
         if not motion_workspace_id:
@@ -1096,15 +1113,24 @@ class MotionNotionSync:
         workspace: str,
         notion_id: str,
         cached_motion_tasks_by_id: Optional[Dict[str, Dict[str, Any]]] = None,
+        cached_notion_tasks_dict: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> Dict[str, int]:
         """Sync a specific Notion task to Motion (used in test mode for coordination)."""
         stats = {"created": 0, "updated": 0, "skipped": 0, "errors": 0}
 
         try:
             # Get the specific Notion task
-            notion_page = self.workspace_clients[workspace].pages.retrieve(
-                page_id=notion_id
-            )
+            if cached_notion_tasks_dict and notion_id in cached_notion_tasks_dict:
+                # Use cached data to avoid API call
+                notion_page = cached_notion_tasks_dict[notion_id]
+                self.logger.debug(f"Using cached Notion data for {notion_id}")
+            else:
+                # Fallback to API call if not in cache
+                notion_page = self.workspace_clients[workspace].pages.retrieve(
+                    page_id=notion_id
+                )
+                self.logger.debug(f"Cache miss, fetching Notion data via API for {notion_id}")
+                
             notion_data = self.extract_notion_task_data(notion_page)
             motion_id = notion_data.get("motion_id")
 
@@ -1179,15 +1205,15 @@ class MotionNotionSync:
                 )
                 return False
 
+            # Single task creation
             motion_task_data = {
                 "workspaceId": motion_workspace_id,
                 "name": notion_data["task_name"],
                 "description": self.blocks_to_description(blocks),
                 "priority": priority_map.get(notion_data["priority"], "MEDIUM"),
                 "status": status_map.get(notion_data["status"], "TODO"),
-                "duration": self.convert_hours_to_minutes(
-                    notion_data["est_duration_hrs"]
-                ),
+                "duration": self.convert_hours_to_minutes(notion_data["est_duration_hrs"]),
+                "maxWorkSession": 60,  # Limit work sessions to 1 hour chunks
             }
 
             # Add due date (required for auto-scheduled tasks)
@@ -1217,8 +1243,11 @@ class MotionNotionSync:
 
             # Custom fields will be set after task creation via separate API call
 
-            # Set auto-scheduling for work hours
-            motion_task_data["autoScheduled"] = {"schedule": "Work Hours"}
+            # Set auto-scheduling with proper deadline configuration
+            motion_task_data["autoScheduled"] = {
+                "schedule": "Work Hours",
+                "deadlineType": "SOFT"  # Set deadline type so Motion properly handles due dates
+            }
 
             # Create Motion task
             motion_id = self.create_motion_task(motion_task_data)
@@ -1242,6 +1271,7 @@ class MotionNotionSync:
         except Exception as e:
             self.logger.error(f"Failed to create Motion task from Notion: {e}")
             return False
+
 
     def _update_motion_from_notion(
         self,
@@ -1380,6 +1410,7 @@ class MotionNotionSync:
                 "duration": self.convert_hours_to_minutes(
                     notion_data["est_duration_hrs"]
                 ),
+                "maxWorkSession": 60,  # Limit work sessions to 1 hour chunks
             }
 
             # Add due date if present
@@ -1388,8 +1419,11 @@ class MotionNotionSync:
                 if due_date:
                     updates["dueDate"] = due_date
 
-            # Set auto-scheduling for work hours
-            updates["autoScheduled"] = {"schedule": "Work Hours"}
+            # Set auto-scheduling with proper deadline configuration
+            updates["autoScheduled"] = {
+                "schedule": "Work Hours",
+                "deadlineType": "SOFT"  # Set deadline type so Motion properly handles due dates
+            }
 
             self.logger.info(
                 f"🔄 OVERWRITING Motion task from Notion: {notion_data['task_name']}"
@@ -1716,11 +1750,20 @@ class MotionNotionSync:
         }
 
         workspace_results = {}
+        
+        # Fetch Notion tasks once and cache them to avoid redundant API calls
+        self.logger.info(f"📊 Fetching and caching Notion tasks from {workspace}")
+        notion_tasks_list = self.get_notion_tasks(workspace)
+        
+        # Create lookup dictionary by Notion ID for fast access (for Motion → Notion sync)
+        cached_notion_tasks_dict = {task.get("id"): task for task in notion_tasks_list if task.get("id")}
+        self.logger.info(f"📊 Cached {len(cached_notion_tasks_dict)} Notion tasks for optimization")
 
         # Motion → Notion sync first (to capture user changes from Motion)
         max_tasks = 1 if test_mode else None
         workspace_results["motion_to_notion"] = self.sync_motion_to_notion(
-            workspace, max_tasks=max_tasks, cached_motion_tasks=motion_tasks
+            workspace, max_tasks=max_tasks, cached_motion_tasks=motion_tasks, 
+            cached_notion_tasks=cached_notion_tasks_dict
         )
 
         # Get list of Notion IDs that were just processed by Motion → Notion
@@ -1736,7 +1779,8 @@ class MotionNotionSync:
             # Process only the same Notion task that Motion → Notion just processed
             processed_id = workspace_results["motion_to_notion"]["processed_notion_id"]
             workspace_results["notion_to_motion"] = self.sync_specific_notion_task(
-                workspace, processed_id, cached_motion_tasks_by_id=motion_tasks_by_id
+                workspace, processed_id, cached_motion_tasks_by_id=motion_tasks_by_id,
+                cached_notion_tasks_dict=cached_notion_tasks_dict
             )
         else:
             # Skip tasks that were just processed by Motion → Notion to avoid overwriting changes
@@ -1745,6 +1789,7 @@ class MotionNotionSync:
                 max_tasks=max_tasks,
                 skip_notion_ids=processed_notion_ids,
                 cached_motion_tasks_by_id=motion_tasks_by_id,
+                cached_notion_tasks=notion_tasks_list,
             )
 
         results["workspaces"] = {workspace: workspace_results}
