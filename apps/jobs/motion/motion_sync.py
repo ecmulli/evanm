@@ -1213,7 +1213,6 @@ class MotionNotionSync:
                 "priority": priority_map.get(notion_data["priority"], "MEDIUM"),
                 "status": status_map.get(notion_data["status"], "TODO"),
                 "duration": self.convert_hours_to_minutes(notion_data["est_duration_hrs"]),
-                "maxWorkSession": 60,  # Limit work sessions to 1 hour chunks
             }
 
             # Add due date (required for auto-scheduled tasks)
@@ -1410,7 +1409,6 @@ class MotionNotionSync:
                 "duration": self.convert_hours_to_minutes(
                     notion_data["est_duration_hrs"]
                 ),
-                "maxWorkSession": 60,  # Limit work sessions to 1 hour chunks
             }
 
             # Add due date if present
