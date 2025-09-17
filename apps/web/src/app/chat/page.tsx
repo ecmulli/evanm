@@ -15,6 +15,7 @@ interface Message {
     priority: string;
     estimatedHours: number;
     status: string;
+    notionUrl?: string;
   };
 }
 
@@ -108,6 +109,7 @@ export default function ChatPage() {
                 priority: actualResponse.parsed_data.priority,
                 estimatedHours: actualResponse.parsed_data.estimated_hours,
                 status: actualResponse.parsed_data.status,
+                notionUrl: actualResponse.task_url,
               } : undefined,
             };
             
@@ -322,6 +324,19 @@ export default function ChatPage() {
                         <div><strong>Priority:</strong> {message.taskInfo.priority}</div>
                         <div><strong>Estimated Hours:</strong> {message.taskInfo.estimatedHours}</div>
                         <div><strong>Status:</strong> {message.taskInfo.status}</div>
+                        {message.taskInfo.notionUrl && (
+                          <div>
+                            <strong>Notion URL:</strong>{' '}
+                            <a 
+                              href={message.taskInfo.notionUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 underline"
+                            >
+                              Open in Notion →
+                            </a>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

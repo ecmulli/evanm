@@ -421,8 +421,8 @@ Return only the JSON response with the task information."""
             self.logger.error(f"Error synthesizing task info: {e}")
             raise
 
-    def create_notion_task(self, task_info: Dict[str, Any]) -> Optional[str]:
-        """Create a task in Notion and return the page ID."""
+    def create_notion_task(self, task_info: Dict[str, Any]) -> tuple[Optional[str], Optional[str]]:
+        """Create a task in Notion and return the page ID and page URL."""
 
         workspace = task_info["workspace"]
         # Always create in hub database - sync jobs will handle distribution
@@ -527,7 +527,7 @@ Return only the JSON response with the task information."""
 
         if self.dry_run:
             self.logger.info(f"🧪 DRY RUN: Would create task in {workspace} database")
-            return None
+            return None, None
 
         try:
             # Create the page
@@ -545,7 +545,7 @@ Return only the JSON response with the task information."""
             )
             self.logger.info(f"📝 Notion URL: {page_url}")
 
-            return page_id
+            return page_id, page_url
 
         except Exception as e:
             self.logger.error(f"Error creating Notion task: {e}")
@@ -574,12 +574,10 @@ Return only the JSON response with the task information."""
         )
 
         # Create the task
-        page_id = self.create_notion_task(task_info)
+        page_id, page_url = self.create_notion_task(task_info)
 
         return {
             "task_info": task_info,
             "page_id": page_id,
-            "page_url": (
-                f"https://www.notion.so/{page_id.replace('-', '')}" if page_id else None
-            ),
+            "page_url": page_url,  # Use the actual URL from Notion API response
         }
