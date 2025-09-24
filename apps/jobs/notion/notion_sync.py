@@ -41,7 +41,7 @@ class NotionTaskSync:
     def get_block_content(self, page_id: str, client=None) -> List[Dict[str, Any]]:
         """Get all blocks (content) from a page."""
         if not client:
-            client = self.personal_client
+            client = self.hub_client
 
         blocks = []
         cursor = None
@@ -104,9 +104,9 @@ class NotionTaskSync:
     ) -> bool:
         """Sync blocks from source page to target page."""
         if not source_client:
-            source_client = self.personal_client
+            source_client = self.hub_client
         if not target_client:
-            target_client = self.personal_client
+            target_client = self.hub_client
 
         # Get source and target blocks
         source_blocks = self.get_block_content(source_page_id, source_client)
@@ -541,13 +541,17 @@ class NotionTaskSync:
         }
 
     def create_task_in_hub(
-        self, task_data: Dict, workspace: str, external_id: str
+        self, task_data: Dict, workspace: str, external_id: str, sync_content: bool = True
     ) -> Optional[str]:
         """Create a new task in the hub."""
         if self.dry_run:
             self.logger.info(
                 f"🧪 DRY RUN: Would create task '{task_data['task_name']}' in hub"
             )
+            if sync_content:
+                self.logger.info(
+                    f"🧪 DRY RUN: Would also sync content blocks from {external_id}"
+                )
             return "dry_run_id"
 
         properties = {
@@ -576,8 +580,25 @@ class NotionTaskSync:
             response = self.hub_client.pages.create(
                 parent={"database_id": self.hub_db_id}, properties=properties
             )
+            new_task_id = response.get("id")
             self.logger.info(f"✅ Created task '{task_data['task_name']}' in hub")
-            return response.get("id")
+            
+            # Sync content blocks from external workspace to hub
+            if sync_content and new_task_id:
+                try:
+                    external_client = self.get_workspace_client(workspace)
+                    blocks_synced = self.sync_blocks(
+                        source_page_id=external_id,
+                        target_page_id=new_task_id,
+                        source_client=external_client,
+                        target_client=self.hub_client,
+                    )
+                    if blocks_synced:
+                        self.logger.info(f"📝 Synced content blocks from {workspace} to hub")
+                except Exception as e:
+                    self.logger.warning(f"⚠️ Failed to sync content blocks: {e}")
+            
+            return new_task_id
         except Exception as e:
             self.logger.error(f"❌ Error creating task in hub: {e}")
             return None
@@ -807,7 +828,7 @@ class NotionTaskSync:
             else:
                 # Create new task in hub
                 new_task_id = self.create_task_in_hub(
-                    external_data, workspace, external_id
+                    external_data, workspace, external_id, sync_content
                 )
                 if new_task_id:
                     stats["created"] += 1
