@@ -898,7 +898,8 @@ class MotionNotionSync:
             return False
 
     def _update_notion_from_motion(
-        self, motion_task: Dict[str, Any], notion_id: str, workspace: str
+        self, motion_task: Dict[str, Any], notion_id: str, workspace: str,
+        cached_notion_tasks: Optional[Dict[str, Dict[str, Any]]] = None
     ) -> bool:
         """Update Notion task with Motion task data."""
         try:
@@ -911,9 +912,15 @@ class MotionNotionSync:
                         motion_updated.replace("Z", "+00:00")
                     )
 
-                    # Get the Notion task to check motion_last_sync_time
-                    client = self.workspace_clients[workspace]
-                    notion_page = client.pages.retrieve(page_id=notion_id)
+                    # Get the Notion task to check motion_last_sync_time (use cache if available)
+                    if cached_notion_tasks and notion_id in cached_notion_tasks:
+                        notion_page = cached_notion_tasks[notion_id]
+                        self.logger.debug(f"🚀 Using cached Notion data for {notion_id}")
+                    else:
+                        # Fallback to API call if not in cache
+                        client = self.workspace_clients[workspace]
+                        notion_page = client.pages.retrieve(page_id=notion_id)
+                        self.logger.debug(f"⚠️ FALLBACK: Individual API call for {notion_id}")
 
                     # Get motion_last_sync_time from Notion properties
                     field_mapping = self.get_workspace_field_mapping(workspace)

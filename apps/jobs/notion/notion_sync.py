@@ -306,7 +306,6 @@ class NotionTaskSync:
                 "task_name": "Task name",
                 "status": "Status",
                 "priority": "Priority",
-                "description": "Description",
                 "external_notion_id": "External Notion ID",
                 "labels": "Labels",
                 "team": "Team",
@@ -318,7 +317,6 @@ class NotionTaskSync:
                 "task_name": "Task name",
                 "status": "Status",
                 "priority": "Priority",
-                "description": "Description",
                 "external_notion_id": "External Notion ID",
                 "labels": "Labels",
                 "team": "Team",
@@ -335,28 +333,40 @@ class NotionTaskSync:
             workspace: Workspace name to determine which client to use
             since_date: Only get tasks updated since this date (for incremental sync)
         """
+        return self.query_workspace_tasks(database_id, workspace, assigned_only=True, since_date=since_date)
+
+    def query_workspace_tasks(
+        self, database_id: str, workspace: str, assigned_only: bool = True, since_date: Optional[datetime] = None, include_completed: bool = False
+    ) -> List[Dict]:
+        """
+        Query tasks from a database, optionally filtered by assignment.
+
+        Args:
+            database_id: Notion database ID
+            workspace: Workspace name to determine which client to use
+            assigned_only: If True, only get tasks assigned to user. If False, get all tasks.
+            since_date: Only get tasks updated since this date (for incremental sync)
+            include_completed: If True, include completed/backlog/canceled tasks. If False, exclude them.
+        """
         user_id = self.get_workspace_user_id(workspace)
-        filter_conditions = {
-            "and": [
-                {
-                    "property": "Assignee",
-                    "people": {"contains": user_id},
-                },
-                {
-                    "and": [
-                        {"property": "Status", "status": {"does_not_equal": "Backlog"}},
-                        {
-                            "property": "Status",
-                            "status": {"does_not_equal": "Completed"},
-                        },
-                        {
-                            "property": "Status",
-                            "status": {"does_not_equal": "Canceled"},
-                        },
-                    ]
-                },
-            ]
-        }
+        filter_conditions = {"and": []}
+        
+        # Add assignment filter if requested
+        if assigned_only:
+            filter_conditions["and"].append({
+                "property": "Assignee", 
+                "people": {"contains": user_id}
+            })
+        
+        # Exclude completed statuses unless explicitly requested
+        if not include_completed:
+            filter_conditions["and"].append({
+                "and": [
+                    {"property": "Status", "status": {"does_not_equal": "Backlog"}},
+                    {"property": "Status", "status": {"does_not_equal": "Completed"}},
+                    {"property": "Status", "status": {"does_not_equal": "Canceled"}},
+                ]
+            })
 
         # Note: since_date filtering is not implemented due to Notion API limitations
         # The "Last edited time" property cannot be used in database queries
@@ -523,7 +533,6 @@ class NotionTaskSync:
             "est_duration_hrs": get_number(props.get("Est Duration Hrs")),
             "due_date": get_date(props.get("Due date")),
             "priority": get_select(props.get("Priority")),
-            "description": get_text(props.get("Description")),
             "external_notion_id": get_text(props.get("External Notion ID")),
             "labels": get_multi_select(props.get("Labels")),
             "team": get_select(props.get("Team")),
@@ -556,10 +565,6 @@ class NotionTaskSync:
             properties["Due date"] = {"date": {"start": task_data["due_date"]}}
         if task_data.get("priority"):
             properties["Priority"] = {"select": {"name": task_data["priority"]}}
-        if task_data.get("description"):
-            properties["Description"] = {
-                "rich_text": [{"text": {"content": task_data["description"]}}]
-            }
         if task_data.get("labels"):
             properties["Labels"] = {
                 "multi_select": [{"name": label} for label in task_data["labels"]]
@@ -621,9 +626,6 @@ class NotionTaskSync:
             elif field == "priority" and value:
                 field_name = field_mapping.get("priority", "Priority")
                 properties[field_name] = {"select": {"name": value}}
-            elif field == "description" and value:
-                field_name = field_mapping.get("description", "Description")
-                properties[field_name] = {"rich_text": [{"text": {"content": value}}]}
             elif field == "external_notion_id" and value:
                 field_name = field_mapping.get(
                     "external_notion_id", "External Notion ID"
@@ -699,11 +701,6 @@ class NotionTaskSync:
             if task_data.get("priority"):
                 field_name = field_mapping.get("priority", "Priority")
                 properties[field_name] = {"select": {"name": task_data["priority"]}}
-            if task_data.get("description"):
-                field_name = field_mapping.get("description", "Description")
-                properties[field_name] = {
-                    "rich_text": [{"text": {"content": task_data["description"]}}]
-                }
             if task_data.get("labels"):
                 field_name = field_mapping.get("labels", "Labels")
                 properties[field_name] = {
@@ -834,6 +831,18 @@ class NotionTaskSync:
 
         # Get hub tasks for this workspace
         hub_tasks = self.query_hub_tasks(workspace, since_date)
+        
+        # OPTIMIZATION: Bulk fetch all external tasks upfront to avoid individual API calls
+        # Include completed tasks to handle hub→external status syncing (e.g. completed tasks)
+        self.logger.info(f"📦 Bulk fetching external tasks from {workspace} (including completed)...")
+        all_external_tasks = self.query_workspace_tasks(workspace_db_id, workspace, assigned_only=False, since_date=since_date, include_completed=True)
+        
+        # Create mapping of external_id -> external_task_data for fast lookup
+        external_tasks_map = {}
+        for ext_task in all_external_tasks:
+            external_tasks_map[ext_task["id"]] = self.extract_task_data(ext_task)
+        
+        self.logger.info(f"📦 Cached {len(external_tasks_map)} external tasks from {workspace}")
 
         for hub_task in hub_tasks:
             hub_data = self.extract_task_data(hub_task)
@@ -866,11 +875,13 @@ class NotionTaskSync:
                     stats["errors"] += 1
                 continue
 
-            # Get the external task
+            # Get the external task from our pre-fetched mapping (no API call needed!)
             try:
-                client = self.get_workspace_client(workspace)
-                external_task = client.pages.retrieve(external_id)
-                external_data = self.extract_task_data(external_task)
+                external_data = external_tasks_map.get(external_id)
+                if not external_data:
+                    self.logger.warning(f"⚠️ External task {external_id} not found in {workspace} (may have been deleted)")
+                    stats["errors"] += 1
+                    continue
 
                 # Check if sync is needed based on updated_at timestamp
                 hub_updated = hub_data.get("updated_at")
@@ -916,8 +927,6 @@ class NotionTaskSync:
                         updates["due_date"] = hub_data["due_date"]
                     if hub_data["priority"] != external_data["priority"]:
                         updates["priority"] = hub_data["priority"]
-                    if hub_data["description"] != external_data["description"]:
-                        updates["description"] = hub_data["description"]
                     if hub_data["labels"] != external_data["labels"]:
                         updates["labels"] = hub_data["labels"]
                     if hub_data["team"] != external_data["team"]:
