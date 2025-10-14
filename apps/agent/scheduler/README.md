@@ -131,11 +131,11 @@ Tasks are sorted by the "Rank" column (ascending):
 - Tasks are scheduled into consecutive slots based on duration
 
 ### Timezone Handling
-The scheduler automatically detects timezone from your Notion database:
-- Queries existing tasks and extracts timezone from date properties
-- Maps UTC offsets to IANA timezone names (e.g., UTC-04:00 → America/New_York)
-- Falls back to UTC if detection fails
-- Can be manually overridden with `TIMEZONE` environment variable
+The scheduler uses configured timezone for all scheduling operations:
+- Default timezone: `America/Chicago` (Central Time)
+- Automatically handles Daylight Saving Time transitions
+- Configure via `TIMEZONE` environment variable
+- Supports all IANA timezone names (e.g., America/New_York, America/Los_Angeles, Europe/London, UTC)
 
 ## Integration with Notion
 

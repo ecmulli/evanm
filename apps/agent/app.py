@@ -95,7 +95,7 @@ async def lifespan(app: FastAPI):
                 work_end_hour=int(os.getenv("WORK_END_HOUR", "17")),
                 slot_duration_minutes=int(os.getenv("SLOT_DURATION_MINUTES", "15")),
                 schedule_days_ahead=int(os.getenv("SCHEDULE_DAYS_AHEAD", "7")),
-                timezone=os.getenv("TIMEZONE"),  # None = auto-detect from Notion
+                timezone=os.getenv("TIMEZONE", "America/Chicago"),
             )
             # Set the service in the routes module
             set_scheduler_service(scheduler_service)
