@@ -109,7 +109,54 @@ Add scheduling configuration to your `.env` file:
 MY_CUSTOM_SCHEDULE=every(1).hours
 ```
 
-## Available Jobs
+## Available Services
+
+This package includes several specialized automation services:
+
+### Notion Sync (`notion/`)
+Bidirectional task synchronization between Notion workspaces.
+- Syncs tasks between personal hub and external workspaces (Livepeer, Vanquish)
+- Maintains workspace labels and external IDs
+- Handles property mapping across databases
+
+**Usage:**
+```bash
+cd notion
+python notion_sync.py --mode full
+```
+
+See [notion/README.md](notion/README.md) for details.
+
+### Motion Sync (`motion/`)
+Bidirectional synchronization between Motion AI and Notion.
+- Syncs tasks between Notion and Motion's AI-powered scheduling
+- Handles priority and status mapping
+- Supports multiple workspaces
+
+**Usage:**
+```bash
+cd motion
+python motion_sync.py --mode full
+```
+
+See [motion/README.md](motion/README.md) for details.
+
+### Notion Calendar Auto-Scheduler (`scheduler/`) ✨ NEW
+Automatically schedules Notion tasks into calendar time slots with continuous rescheduling.
+- Schedules tasks based on priority ranking
+- 15-minute time slots during work hours (9am-5pm, Mon-Fri)
+- Automatically reschedules incomplete tasks
+- Integrates directly with Notion Calendar app
+
+**Usage:**
+```bash
+cd scheduler
+python calendar_scheduler.py --mode continuous
+```
+
+See [scheduler/README.md](scheduler/README.md) and [scheduler/SETUP.md](scheduler/SETUP.md) for details.
+
+### Available Jobs
 
 ### Hello World Job
 - **Name**: `hello_world`
