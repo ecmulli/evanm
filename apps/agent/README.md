@@ -119,6 +119,7 @@ WORK_START_HOUR=9
 WORK_END_HOUR=17
 SLOT_DURATION_MINUTES=15
 SCHEDULE_DAYS_AHEAD=7
+# TIMEZONE=America/New_York  # Optional - auto-detects from Notion if not set
 ```
 
 ### Installation

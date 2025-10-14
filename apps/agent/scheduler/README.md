@@ -125,10 +125,17 @@ Tasks are sorted by the "Rank" column (ascending):
 4. **Update Notion**: Save scheduled date/time back to database
 
 ### Work Hours
-- Default: Monday-Friday, 9 AM - 5 PM (local timezone)
+- Default: Monday-Friday, 9 AM - 5 PM
 - Configurable via environment variables
 - Slots are 15 minutes by default
 - Tasks are scheduled into consecutive slots based on duration
+
+### Timezone Handling
+The scheduler automatically detects timezone from your Notion database:
+- Queries existing tasks and extracts timezone from date properties
+- Maps UTC offsets to IANA timezone names (e.g., UTC-04:00 → America/New_York)
+- Falls back to UTC if detection fails
+- Can be manually overridden with `TIMEZONE` environment variable
 
 ## Integration with Notion
 
