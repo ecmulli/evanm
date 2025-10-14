@@ -137,21 +137,21 @@ class TaskScheduler:
                     stats["skipped"] += 1
                     continue
 
-                # Check if task needs rescheduling
-                needs_scheduling = self._needs_scheduling(task_data)
-
-                if not needs_scheduling:
-                    # Task is already scheduled and doesn't need rescheduling
-                    # Mark its slots as occupied
-                    if task_data["scheduled_date"]:
-                        self.time_slot_manager.mark_slots_occupied(
-                            task_data["scheduled_date"]["start"],
-                            task_data["scheduled_date"]["end"],
-                            task_data["id"],
-                        )
-                    stats["skipped"] += 1
-                    continue
-
+                # Always reschedule based on current priority order
+                # This ensures tasks are optimally scheduled when priorities/due dates change
+                
+                # Determine if this is a new schedule or reschedule
+                is_reschedule = task_data["scheduled_date"] is not None
+                
+                if is_reschedule:
+                    old_start = task_data["scheduled_date"]["start"]
+                    self.logger.info(
+                        f"📅 Rescheduling '{task_data['task_name']}' "
+                        f"(was: {old_start.strftime('%Y-%m-%d %H:%M')})"
+                    )
+                else:
+                    self.logger.info(f"🆕 Scheduling new task '{task_data['task_name']}'")
+                
                 # Find available slots for this task
                 available_slots = self.time_slot_manager.get_available_slots(all_slots)
 
@@ -173,9 +173,6 @@ class TaskScheduler:
 
                 if slot_range:
                     start_time, end_time = slot_range
-
-                    # Determine if this is a new schedule or reschedule
-                    is_reschedule = task_data["scheduled_date"] is not None
 
                     # Update Notion with the scheduled time
                     if self._update_scheduled_date(
