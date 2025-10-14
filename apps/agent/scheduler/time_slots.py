@@ -9,6 +9,7 @@ Handles slot availability tracking and task duration fitting.
 import logging
 from datetime import datetime, time, timedelta
 from typing import List, Optional, Tuple
+from zoneinfo import ZoneInfo
 
 
 class TimeSlot:
@@ -38,11 +39,13 @@ class TimeSlotManager:
         work_end_hour: int = 17,
         slot_duration_minutes: int = 15,
         schedule_days_ahead: int = 7,
+        timezone: str = "UTC",
     ):
         self.work_start_hour = work_start_hour
         self.work_end_hour = work_end_hour
         self.slot_duration_minutes = slot_duration_minutes
         self.schedule_days_ahead = schedule_days_ahead
+        self.timezone = ZoneInfo(timezone)
         self.logger = logging.getLogger(__name__)
 
         # Track occupied slots (slot -> task_id mapping)
@@ -62,8 +65,8 @@ class TimeSlotManager:
             List of TimeSlot objects during work hours (Mon-Fri only)
         """
         if start_date is None:
-            # Use local timezone (matches Notion's display timezone)
-            start_date = datetime.now().astimezone()
+            # Use configured timezone
+            start_date = datetime.now(self.timezone)
 
         if days is None:
             days = self.schedule_days_ahead
@@ -81,7 +84,7 @@ class TimeSlotManager:
             current_date += timedelta(days=1)
 
         # Filter out slots that are in the past
-        now = datetime.now().astimezone()
+        now = datetime.now(self.timezone)
         slots = [slot for slot in slots if slot.start >= now]
 
         return slots

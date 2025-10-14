@@ -8,8 +8,10 @@ Core scheduling logic for assigning tasks to time slots based on priority rankin
 import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
+from zoneinfo import ZoneInfo
 
 from notion_client import Client
+
 from .time_slots import TimeSlotManager
 
 
@@ -27,6 +29,7 @@ class TaskScheduler:
         self.database_id = database_id
         self.time_slot_manager = time_slot_manager
         self.dry_run = dry_run
+        self.timezone = time_slot_manager.timezone
         self.logger = logging.getLogger(__name__)
 
     def fetch_schedulable_tasks(self) -> List[Dict[str, Any]]:
@@ -73,8 +76,7 @@ class TaskScheduler:
                     schedulable_tasks.append(task)
 
             self.logger.info(
-                f"Fetched {len(schedulable_tasks)} schedulable tasks "
-                f"(out of {len(tasks)} active tasks)"
+                f"Found {len(schedulable_tasks)} schedulable tasks (of {len(tasks)} active)"
             )
 
             return schedulable_tasks
@@ -122,7 +124,7 @@ class TaskScheduler:
 
         # Generate all available time slots
         all_slots = self.time_slot_manager.generate_work_slots()
-        self.logger.info(f"Generated {len(all_slots)} total work hour slots")
+        self.logger.info(f"Generated {len(all_slots)} work slots")
 
         # Process each task in rank order (highest rank first)
         for task in tasks:
@@ -139,19 +141,19 @@ class TaskScheduler:
 
                 # Always reschedule based on current priority order
                 # This ensures tasks are optimally scheduled when priorities/due dates change
-                
+
                 # Determine if this is a new schedule or reschedule
                 is_reschedule = task_data["scheduled_date"] is not None
-                
+
                 if is_reschedule:
                     old_start = task_data["scheduled_date"]["start"]
                     self.logger.info(
-                        f"📅 Rescheduling '{task_data['task_name']}' "
-                        f"(was: {old_start.strftime('%Y-%m-%d %H:%M')})"
+                        f"Rescheduling: {task_data['task_name']} "
+                        f"(was {old_start.strftime('%m/%d %H:%M')})"
                     )
                 else:
-                    self.logger.info(f"🆕 Scheduling new task '{task_data['task_name']}'")
-                
+                    self.logger.info(f"Scheduling: {task_data['task_name']}")
+
                 # Find available slots for this task
                 available_slots = self.time_slot_manager.get_available_slots(all_slots)
 
@@ -215,7 +217,7 @@ class TaskScheduler:
             return True
 
         # Scheduled time has passed but task isn't completed = needs rescheduling
-        now = datetime.now().astimezone()
+        now = datetime.now(self.timezone)
         scheduled_start = task_data["scheduled_date"]["start"]
 
         if scheduled_start < now and task_data["status"] != "Completed":
@@ -263,23 +265,19 @@ class TaskScheduler:
                 properties={
                     "Scheduled Date": {"date": {"start": start_iso, "end": end_iso}},
                     "Last Scheduled": {
-                        "date": {"start": datetime.now().astimezone().isoformat()}
+                        "date": {"start": datetime.now(self.timezone).isoformat()}
                     },
                 },
             )
 
             self.logger.info(
-                f"✅ Scheduled '{task_name}' "
-                f"from {start_time.strftime('%Y-%m-%d %H:%M')} "
-                f"to {end_time.strftime('%H:%M')}"
+                f"Scheduled: {task_name} -> {start_time.strftime('%m/%d %H:%M')}-{end_time.strftime('%H:%M')}"
             )
 
             return True
 
         except Exception as e:
-            self.logger.error(
-                f"❌ Failed to update scheduled date for '{task_name}': {e}"
-            )
+            self.logger.error(f"Failed to update scheduled date for '{task_name}': {e}")
             return False
 
     # Helper methods for extracting Notion property values

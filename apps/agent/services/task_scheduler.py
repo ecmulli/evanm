@@ -7,6 +7,7 @@ Manages automatic scheduling of Notion tasks into calendar time slots.
 import logging
 from datetime import datetime
 from typing import Dict, Optional
+from zoneinfo import ZoneInfo
 
 from notion_client import Client
 from scheduler.scheduling_algorithm import TaskScheduler
@@ -26,6 +27,7 @@ class TaskSchedulerService:
         work_end_hour: int = 17,
         slot_duration_minutes: int = 15,
         schedule_days_ahead: int = 7,
+        timezone: str = "America/Chicago",
     ):
         """
         Initialize the task scheduler service.
@@ -37,9 +39,11 @@ class TaskSchedulerService:
             work_end_hour: Work day end hour (default: 17)
             slot_duration_minutes: Time slot duration in minutes (default: 15)
             schedule_days_ahead: How many days ahead to schedule (default: 7)
+            timezone: Timezone name (default: America/Chicago, handles DST automatically)
         """
         self.notion_client = Client(auth=notion_api_key)
         self.database_id = database_id
+        self.timezone = ZoneInfo(timezone)
 
         # Initialize time slot manager
         self.time_slot_manager = TimeSlotManager(
@@ -47,6 +51,7 @@ class TaskSchedulerService:
             work_end_hour=work_end_hour,
             slot_duration_minutes=slot_duration_minutes,
             schedule_days_ahead=schedule_days_ahead,
+            timezone=timezone,
         )
 
         # Initialize task scheduler
@@ -60,10 +65,10 @@ class TaskSchedulerService:
         self.last_run: Optional[datetime] = None
         self.last_stats: Optional[Dict] = None
 
-        logger.info("✅ Task Scheduler Service initialized")
-        logger.info(f"  Work hours: {work_start_hour}:00 - {work_end_hour}:00")
-        logger.info(f"  Slot duration: {slot_duration_minutes} minutes")
-        logger.info(f"  Days ahead: {schedule_days_ahead}")
+        logger.info("Task Scheduler Service initialized")
+        logger.info(
+            f"Work hours: {work_start_hour}:00-{work_end_hour}:00, Slot: {slot_duration_minutes}min, Days ahead: {schedule_days_ahead}, TZ: {timezone}"
+        )
 
     def run_scheduling_cycle(self) -> Dict[str, int]:
         """
@@ -72,8 +77,8 @@ class TaskSchedulerService:
         Returns:
             Statistics dictionary with scheduling results
         """
-        logger.info("🔄 Starting scheduling cycle...")
-        cycle_start = datetime.now().astimezone()
+        logger.info("Starting scheduling cycle")
+        cycle_start = datetime.now(self.timezone)
 
         try:
             # Fetch all schedulable tasks
@@ -91,20 +96,18 @@ class TaskSchedulerService:
             self.last_stats = stats
 
             # Log results
-            cycle_duration = (datetime.now().astimezone() - cycle_start).total_seconds()
+            cycle_duration = (datetime.now(self.timezone) - cycle_start).total_seconds()
 
-            logger.info("📊 Scheduling cycle complete:")
-            logger.info(f"  ✅ Scheduled: {stats['scheduled']}")
-            logger.info(f"  🔄 Rescheduled: {stats['rescheduled']}")
-            logger.info(f"  ⏭️  Skipped: {stats['skipped']}")
-            if stats["errors"] > 0:
-                logger.warning(f"  ❌ Errors: {stats['errors']}")
-            logger.info(f"  ⏱️  Duration: {cycle_duration:.2f}s")
+            logger.info(
+                f"Cycle complete: scheduled={stats['scheduled']}, "
+                f"rescheduled={stats['rescheduled']}, skipped={stats['skipped']}, "
+                f"errors={stats['errors']}, duration={cycle_duration:.1f}s"
+            )
 
             return stats
 
         except Exception as e:
-            logger.error(f"❌ Error during scheduling cycle: {e}", exc_info=True)
+            logger.error(f"Error during scheduling cycle: {e}", exc_info=True)
             return {"scheduled": 0, "rescheduled": 0, "skipped": 0, "errors": 1}
 
     def get_status(self) -> Dict:

@@ -6,24 +6,29 @@ This server provides intelligent task creation capabilities using OpenAI and Not
 Future features will include content generation, task analysis, and meeting summarization.
 """
 
-import logging
-from contextlib import asynccontextmanager
-import os
-
 import asyncio
-from hypercorn.config import Config as HypercornConfig
-from hypercorn.asyncio import serve
+import logging
+import os
+import sys
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from hypercorn.asyncio import serve
+from hypercorn.config import Config as HypercornConfig
+from routes.scheduler import router as scheduler_router
+from routes.scheduler import set_scheduler_service
 from routes.task_creator import router as task_creator_router
-from routes.scheduler import router as scheduler_router, set_scheduler_service
 from services.task_scheduler import TaskSchedulerService
 from utils.config import config
 
-# Set up logging
+# Set up logging - simplified format, output to stdout
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="[%(levelname)s] %(name)s: %(message)s",
+    stream=sys.stdout,
+    force=True,
 )
 logger = logging.getLogger(__name__)
 
@@ -40,13 +45,14 @@ async def run_scheduler_loop():
     interval_minutes = int(os.getenv("SCHEDULER_INTERVAL_MINUTES", "10"))
     interval_seconds = interval_minutes * 60
 
-    logger.info(f"📅 Scheduler background task started (interval: {interval_minutes} min)")
+    logger.info(f"Scheduler loop started (interval: {interval_minutes} min)")
 
     while True:
         try:
             if scheduler_service:
-                logger.info("🔄 Running scheduled task scheduling cycle...")
-                scheduler_service.run_scheduling_cycle()
+                logger.info("Running scheduling cycle...")
+                # Run the synchronous method in a thread pool to avoid blocking
+                await asyncio.to_thread(scheduler_service.run_scheduling_cycle)
             else:
                 logger.warning("Scheduler service not initialized")
         except Exception as e:
@@ -62,18 +68,18 @@ async def lifespan(app: FastAPI):
     global scheduler_service, scheduler_task
 
     # Startup
-    logger.info("🚀 Starting Agent Server")
+    logger.info("Starting Agent Server")
 
     try:
         # Validate required environment variables
         config.validate_required_env_vars()
-        logger.info("✅ Environment variables validated")
+        logger.info("Environment variables validated")
     except ValueError as e:
-        logger.error(f"❌ Environment validation failed: {e}")
+        logger.error(f"Environment validation failed: {e}")
         raise
 
-    logger.info(f"🌐 Server configured for port: {config.PORT}")
-    logger.info(f"🔧 Debug mode: {config.DEBUG}")
+    logger.info(f"Server configured for port: {config.PORT}")
+    logger.info(f"Debug mode: {config.DEBUG}")
 
     # Initialize task scheduler if Livepeer credentials are available
     livepeer_api_key = os.getenv("LIVEPEER_NOTION_API_KEY")
@@ -81,7 +87,7 @@ async def lifespan(app: FastAPI):
 
     if livepeer_api_key and livepeer_db_id:
         try:
-            logger.info("📅 Initializing Task Scheduler Service...")
+            logger.info("Initializing Task Scheduler Service...")
             scheduler_service = TaskSchedulerService(
                 notion_api_key=livepeer_api_key,
                 database_id=livepeer_db_id,
@@ -89,23 +95,26 @@ async def lifespan(app: FastAPI):
                 work_end_hour=int(os.getenv("WORK_END_HOUR", "17")),
                 slot_duration_minutes=int(os.getenv("SLOT_DURATION_MINUTES", "15")),
                 schedule_days_ahead=int(os.getenv("SCHEDULE_DAYS_AHEAD", "7")),
+                timezone=os.getenv("TIMEZONE", "America/Chicago"),
             )
             # Set the service in the routes module
             set_scheduler_service(scheduler_service)
 
             # Start background scheduler task
             scheduler_task = asyncio.create_task(run_scheduler_loop())
-            logger.info("✅ Task Scheduler Service started")
+            logger.info("Task Scheduler Service started")
         except Exception as e:
-            logger.error(f"❌ Failed to initialize Task Scheduler: {e}")
+            logger.error(f"Failed to initialize Task Scheduler: {e}")
             # Don't fail startup if scheduler fails
     else:
-        logger.info("ℹ️  Task Scheduler not configured (LIVEPEER_NOTION_API_KEY/DB_ID not set)")
+        logger.info(
+            "Task Scheduler not configured (LIVEPEER_NOTION_API_KEY/DB_ID not set)"
+        )
 
     yield
 
     # Shutdown
-    logger.info("🛑 Shutting down Agent Server")
+    logger.info("Shutting down Agent Server")
 
     # Cancel scheduler task if running
     if scheduler_task and not scheduler_task.done():
@@ -114,7 +123,7 @@ async def lifespan(app: FastAPI):
         try:
             await scheduler_task
         except asyncio.CancelledError:
-            logger.info("✅ Scheduler task stopped")
+            logger.info("Scheduler task stopped")
 
 
 # Create FastAPI application
@@ -144,7 +153,7 @@ app.include_router(scheduler_router)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler."""
-    logger.error(f"❌ Unhandled exception: {exc}", exc_info=True)
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
         content={
@@ -191,16 +200,16 @@ def main():
     """Run the server with Hypercorn for dual-stack binding."""
     # Create Hypercorn config
     hypercorn_config = HypercornConfig()
-    
+
     # IPv6 binding that accepts both IPv4 and IPv6 connections
     hypercorn_config.bind = [f"[::]:{config.PORT}"]
-    
+
     hypercorn_config.loglevel = "info"
-    
+
     # Log configuration
-    logger.info(f"🌐 Hypercorn IPv6 binding: [::]:{config.PORT}")
-    logger.info(f"🐛 Debug mode: {config.DEBUG}")
-    
+    logger.info(f"Hypercorn IPv6 binding: [::]:{config.PORT}")
+    logger.info(f"Debug mode: {config.DEBUG}")
+
     # Run server
     asyncio.run(serve(app, hypercorn_config))
 
