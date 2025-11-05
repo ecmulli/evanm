@@ -37,6 +37,7 @@ class Config:
     # Optional external workspace configs
     LIVEPEER_NOTION_API_KEY: str = os.getenv("LIVEPEER_NOTION_API_KEY", "")
     LIVEPEER_NOTION_DB_ID: str = os.getenv("LIVEPEER_NOTION_DB_ID", "")
+    LIVEPEER_NOTION_USER_ID: str = os.getenv("LIVEPEER_NOTION_USER_ID", "")
 
     VANQUISH_NOTION_API_KEY: str = os.getenv("VANQUISH_NOTION_API_KEY", "")
     VANQUISH_NOTION_DB_ID: str = os.getenv("VANQUISH_NOTION_DB_ID", "")

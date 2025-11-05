@@ -28,6 +28,7 @@ class TaskSchedulerService:
         slot_duration_minutes: int = 15,
         schedule_days_ahead: int = 7,
         timezone: str = "America/Chicago",
+        user_id: Optional[str] = None,
     ):
         """
         Initialize the task scheduler service.
@@ -40,6 +41,7 @@ class TaskSchedulerService:
             slot_duration_minutes: Time slot duration in minutes (default: 15)
             schedule_days_ahead: How many days ahead to schedule (default: 7)
             timezone: Timezone name (default: America/Chicago, handles DST automatically)
+            user_id: Notion user ID to filter tasks by assignee (optional)
         """
         self.notion_client = Client(auth=notion_api_key)
         self.database_id = database_id
@@ -60,6 +62,7 @@ class TaskSchedulerService:
             database_id=self.database_id,
             time_slot_manager=self.time_slot_manager,
             dry_run=False,
+            user_id=user_id,
         )
 
         self.last_run: Optional[datetime] = None

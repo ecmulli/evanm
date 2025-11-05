@@ -88,6 +88,15 @@ async def lifespan(app: FastAPI):
     if livepeer_api_key and livepeer_db_id:
         try:
             logger.info("Initializing Task Scheduler Service...")
+            # Get user ID for filtering tasks by assignee
+            livepeer_user_id = os.getenv("LIVEPEER_NOTION_USER_ID")
+            if livepeer_user_id:
+                logger.info("Filtering tasks by assignee (user ID configured)")
+            else:
+                logger.warning(
+                    "LIVEPEER_NOTION_USER_ID not set - will schedule all tasks regardless of assignee"
+                )
+            
             scheduler_service = TaskSchedulerService(
                 notion_api_key=livepeer_api_key,
                 database_id=livepeer_db_id,
@@ -96,6 +105,7 @@ async def lifespan(app: FastAPI):
                 slot_duration_minutes=int(os.getenv("SLOT_DURATION_MINUTES", "15")),
                 schedule_days_ahead=int(os.getenv("SCHEDULE_DAYS_AHEAD", "7")),
                 timezone=os.getenv("TIMEZONE", "America/Chicago"),
+                user_id=livepeer_user_id,
             )
             # Set the service in the routes module
             set_scheduler_service(scheduler_service)
