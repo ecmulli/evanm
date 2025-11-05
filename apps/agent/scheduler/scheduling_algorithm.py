@@ -24,11 +24,13 @@ class TaskScheduler:
         database_id: str,
         time_slot_manager: TimeSlotManager,
         dry_run: bool = False,
+        user_id: Optional[str] = None,
     ):
         self.notion_client = notion_client
         self.database_id = database_id
         self.time_slot_manager = time_slot_manager
         self.dry_run = dry_run
+        self.user_id = user_id
         self.timezone = time_slot_manager.timezone
         self.logger = logging.getLogger(__name__)
 
@@ -39,19 +41,27 @@ class TaskScheduler:
         Criteria:
         - Status NOT IN (Completed, Canceled, Backlog)
         - Auto Schedule = true (or missing/unchecked = default true)
+        - Assigned to user (if user_id is provided)
         - Sorted by Rank (ASC) - lower rank = higher priority (scheduled first)
 
         Returns:
             List of Notion page objects sorted by rank (ascending)
         """
         # Build filter for schedulable tasks
-        filter_query = {
-            "and": [
-                {"property": "Status", "status": {"does_not_equal": "Completed"}},
-                {"property": "Status", "status": {"does_not_equal": "Canceled"}},
-                {"property": "Status", "status": {"does_not_equal": "Backlog"}},
-            ]
-        }
+        filter_conditions = [
+            {"property": "Status", "status": {"does_not_equal": "Completed"}},
+            {"property": "Status", "status": {"does_not_equal": "Canceled"}},
+            {"property": "Status", "status": {"does_not_equal": "Backlog"}},
+        ]
+
+        # Add assignee filter if user_id is provided
+        if self.user_id:
+            filter_conditions.append(
+                {"property": "Assignee", "people": {"contains": self.user_id}}
+            )
+            self.logger.info(f"Filtering tasks assigned to user: {self.user_id}")
+
+        filter_query = {"and": filter_conditions}
 
         # Query the database
         try:
@@ -64,6 +74,7 @@ class TaskScheduler:
             tasks = response.get("results", [])
 
             # Filter out tasks where Auto Schedule is explicitly false
+            # Also verify assignee filter if user_id is set
             schedulable_tasks = []
             for task in tasks:
                 auto_schedule = self._get_checkbox_value(
@@ -73,6 +84,20 @@ class TaskScheduler:
                 # If Auto Schedule checkbox doesn't exist or is checked, include it
                 # Only exclude if explicitly unchecked
                 if auto_schedule is None or auto_schedule is True:
+                    # Double-check assignee if user_id is configured
+                    if self.user_id:
+                        assignees = self._get_people_value(
+                            task.get("properties", {}).get("Assignee")
+                        )
+                        if not assignees or self.user_id not in assignees:
+                            task_name = self._get_title_text(
+                                task.get("properties", {}).get("Task name")
+                            )
+                            self.logger.info(
+                                f"Skipping task '{task_name}' - not assigned to user (assignees: {assignees})"
+                            )
+                            continue
+
                     schedulable_tasks.append(task)
 
             self.logger.info(
@@ -336,3 +361,10 @@ class TaskScheduler:
         if not prop or prop.get("type") != "checkbox":
             return None
         return prop.get("checkbox")
+
+    def _get_people_value(self, prop: Optional[Dict]) -> List[str]:
+        """Extract list of user IDs from people property."""
+        if not prop or prop.get("type") != "people":
+            return []
+        people_list = prop.get("people", [])
+        return [person.get("id") for person in people_list if person.get("id")]
