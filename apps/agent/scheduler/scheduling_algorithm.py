@@ -120,6 +120,8 @@ class TaskScheduler:
         due_date = self._get_date_value(props.get("Due date"))
         scheduled_date = self._get_date_value(props.get("Scheduled Date"))
         status = self._get_status_value(props.get("Status"))
+        # Extract "Blocked by" relation - try both possible property names
+        blocked_by = self._get_relation_value(props.get("Blocked by")) or self._get_relation_value(props.get("Blocked By"))
 
         return {
             "id": task.get("id"),
@@ -129,8 +131,72 @@ class TaskScheduler:
             "due_date": due_date,
             "scheduled_date": scheduled_date,
             "status": status,
+            "blocking_task_ids": blocked_by,
             "url": task.get("url"),
         }
+
+    def _build_dependency_graph(self, tasks: List[Dict[str, Any]]) -> tuple[Dict[str, List[str]], Dict[str, Dict[str, Any]]]:
+        """
+        Build a dependency graph mapping task IDs to their blocking task IDs.
+        
+        Args:
+            tasks: List of Notion task pages
+            
+        Returns:
+            Tuple of (dependency_graph, task_id_to_data) where:
+            - dependency_graph: Dictionary mapping task_id -> list of blocking task IDs
+            - task_id_to_data: Dictionary mapping task_id -> extracted task data
+        """
+        dependency_graph = {}
+        task_id_to_data = {}
+        
+        # First pass: extract all task data and build initial graph
+        for task in tasks:
+            task_data = self.extract_task_data(task)
+            task_id = task_data["id"]
+            task_id_to_data[task_id] = task_data
+            dependency_graph[task_id] = task_data.get("blocking_task_ids", [])
+        
+        return dependency_graph, task_id_to_data
+    
+    def _resolve_all_blocking_tasks(
+        self, task_id: str, dependency_graph: Dict[str, List[str]], visited: Optional[set] = None
+    ) -> List[str]:
+        """
+        Resolve all blocking tasks for a given task, including transitive dependencies.
+        
+        Args:
+            task_id: The task ID to resolve dependencies for
+            dependency_graph: Dictionary mapping task_id -> list of blocking task IDs
+            visited: Set of visited task IDs (to detect cycles)
+            
+        Returns:
+            List of all blocking task IDs (including transitive)
+        """
+        if visited is None:
+            visited = set()
+        
+        # Detect circular dependencies
+        if task_id in visited:
+            self.logger.warning(
+                f"Circular dependency detected involving task {task_id}. "
+                "Scheduling will proceed but dependencies may not be fully respected."
+            )
+            return []
+        
+        visited.add(task_id)
+        
+        blocking_tasks = dependency_graph.get(task_id, [])
+        all_blocking = set(blocking_tasks)
+        
+        # Recursively resolve transitive dependencies
+        for blocking_id in blocking_tasks:
+            transitive_blocking = self._resolve_all_blocking_tasks(
+                blocking_id, dependency_graph, visited.copy()
+            )
+            all_blocking.update(transitive_blocking)
+        
+        return list(all_blocking)
 
     def schedule_tasks(self, tasks: List[Dict[str, Any]]) -> Dict[str, int]:
         """
@@ -151,10 +217,17 @@ class TaskScheduler:
         all_slots = self.time_slot_manager.generate_work_slots()
         self.logger.info(f"Generated {len(all_slots)} work slots")
 
+        # Build dependency graph and task data mapping
+        dependency_graph, task_id_to_data = self._build_dependency_graph(tasks)
+        
+        # Track scheduled tasks by ID for dependency checking
+        scheduled_tasks = {}  # task_id -> (start_time, end_time)
+
         # Process each task in rank order (highest rank first)
         for task in tasks:
             try:
                 task_data = self.extract_task_data(task)
+                task_id = task_data["id"]
 
                 # Skip if no duration (can't schedule)
                 if not task_data["duration_hrs"]:
@@ -163,6 +236,66 @@ class TaskScheduler:
                     )
                     stats["skipped"] += 1
                     continue
+
+                # Check for blocking tasks
+                blocking_task_ids = self._resolve_all_blocking_tasks(
+                    task_id, dependency_graph
+                )
+                
+                minimum_start_time = None
+                if blocking_task_ids:
+                    # Find the latest scheduled end time among blocking tasks
+                    blocking_end_times = []
+                    unscheduled_blockers = []
+                    non_schedulable_blockers = []
+                    
+                    for blocking_id in blocking_task_ids:
+                        if blocking_id in scheduled_tasks:
+                            _, blocking_end_time = scheduled_tasks[blocking_id]
+                            blocking_end_times.append(blocking_end_time)
+                        elif blocking_id in task_id_to_data:
+                            # Blocking task exists but hasn't been scheduled yet
+                            # We need to schedule blocking tasks first
+                            unscheduled_blockers.append(blocking_id)
+                        else:
+                            # Blocking task is not in the schedulable tasks list
+                            # (might be completed, canceled, or not assigned)
+                            non_schedulable_blockers.append(blocking_id)
+                    
+                    # If there are non-schedulable blockers, skip this task
+                    if non_schedulable_blockers:
+                        blocker_info = []
+                        for bid in non_schedulable_blockers:
+                            # Try to fetch blocking task info from Notion if possible
+                            blocker_info.append(f"task {bid}")
+                        self.logger.warning(
+                            f"Task '{task_data['task_name']}' is blocked by tasks not in "
+                            f"schedulable list: {', '.join(blocker_info)}. Skipping scheduling."
+                        )
+                        stats["skipped"] += 1
+                        continue
+                    
+                    # If there are unscheduled blockers in the current batch, skip this task for now
+                    # It will be rescheduled in a later cycle after blockers are scheduled
+                    if unscheduled_blockers:
+                        blocker_names = [
+                            task_id_to_data.get(bid, {}).get("task_name", bid)
+                            for bid in unscheduled_blockers
+                        ]
+                        self.logger.info(
+                            f"Skipping '{task_data['task_name']}' - waiting for blocking tasks "
+                            f"to be scheduled first: {', '.join(blocker_names)}"
+                        )
+                        stats["skipped"] += 1
+                        continue
+                    
+                    # If we have scheduled blocking tasks, use the latest end time
+                    if blocking_end_times:
+                        minimum_start_time = max(blocking_end_times)
+                        self.logger.info(
+                            f"Task '{task_data['task_name']}' must start after blocking tasks "
+                            f"complete at {minimum_start_time.strftime('%Y-%m-%d %H:%M')}"
+                        )
 
                 # Always reschedule based on current priority order
                 # This ensures tasks are optimally scheduled when priorities/due dates change
@@ -195,7 +328,10 @@ class TaskScheduler:
 
                 # Find a suitable time slot range
                 slot_range = self.time_slot_manager.find_available_slot_range(
-                    available_slots, task_data["duration_hrs"], prefer_before
+                    available_slots, 
+                    task_data["duration_hrs"], 
+                    prefer_before,
+                    minimum_start_time
                 )
 
                 if slot_range:
@@ -209,6 +345,9 @@ class TaskScheduler:
                         self.time_slot_manager.mark_slots_occupied(
                             start_time, end_time, task_data["id"]
                         )
+                        
+                        # Track scheduled task for dependency checking
+                        scheduled_tasks[task_id] = (start_time, end_time)
 
                         if is_reschedule:
                             stats["rescheduled"] += 1
@@ -221,6 +360,12 @@ class TaskScheduler:
                         f"No available slots for task '{task_data['task_name']}' "
                         f"({task_data['duration_hrs']}h)"
                     )
+                    if minimum_start_time:
+                        self.logger.warning(
+                            f"  Note: Task requires start time after "
+                            f"{minimum_start_time.strftime('%Y-%m-%d %H:%M')} "
+                            f"due to blocking tasks"
+                        )
                     stats["skipped"] += 1
 
             except Exception as e:
@@ -368,3 +513,10 @@ class TaskScheduler:
             return []
         people_list = prop.get("people", [])
         return [person.get("id") for person in people_list if person.get("id")]
+
+    def _get_relation_value(self, prop: Optional[Dict]) -> List[str]:
+        """Extract list of page IDs from relation property."""
+        if not prop or prop.get("type") != "relation":
+            return []
+        relation_list = prop.get("relation", [])
+        return [relation.get("id") for relation in relation_list if relation.get("id")]

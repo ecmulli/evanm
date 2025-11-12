@@ -115,6 +115,7 @@ class TimeSlotManager:
         slots: List[TimeSlot],
         duration_hours: float,
         prefer_before: Optional[datetime] = None,
+        minimum_start_time: Optional[datetime] = None,
     ) -> Optional[Tuple[datetime, datetime]]:
         """
         Find a contiguous range of available slots that can fit the task duration.
@@ -123,6 +124,7 @@ class TimeSlotManager:
             slots: List of available time slots
             duration_hours: Task duration in hours
             prefer_before: Prefer slots before this datetime (soft constraint)
+            minimum_start_time: Hard constraint - do not schedule before this datetime
 
         Returns:
             Tuple of (start_time, end_time) or None if no suitable range found
@@ -134,6 +136,14 @@ class TimeSlotManager:
             f"Looking for {slots_needed} slots ({duration_hours}h) "
             f"in {len(slots)} available slots"
         )
+
+        # Filter slots by minimum_start_time if provided (hard constraint)
+        if minimum_start_time:
+            slots = [s for s in slots if s.start >= minimum_start_time]
+            self.logger.debug(
+                f"Filtered to {len(slots)} slots after minimum_start_time "
+                f"({minimum_start_time.strftime('%Y-%m-%d %H:%M')})"
+            )
 
         # Try to find contiguous slots before the preferred date first
         if prefer_before:
