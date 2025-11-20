@@ -234,6 +234,7 @@ class TaskScheduler:
                     self.logger.warning(
                         f"Skipping task '{task_data['task_name']}' - no duration set"
                     )
+                    self._preserve_existing_schedule(task_data)
                     stats["skipped"] += 1
                     continue
 
@@ -272,6 +273,7 @@ class TaskScheduler:
                             f"Task '{task_data['task_name']}' is blocked by tasks not in "
                             f"schedulable list: {', '.join(blocker_info)}. Skipping scheduling."
                         )
+                        self._preserve_existing_schedule(task_data)
                         stats["skipped"] += 1
                         continue
                     
@@ -286,6 +288,7 @@ class TaskScheduler:
                             f"Skipping '{task_data['task_name']}' - waiting for blocking tasks "
                             f"to be scheduled first: {', '.join(blocker_names)}"
                         )
+                        self._preserve_existing_schedule(task_data)
                         stats["skipped"] += 1
                         continue
                     
@@ -328,10 +331,10 @@ class TaskScheduler:
 
                 # Find a suitable time slot range
                 slot_range = self.time_slot_manager.find_available_slot_range(
-                    available_slots, 
-                    task_data["duration_hrs"], 
+                    available_slots,
+                    task_data["duration_hrs"],
                     prefer_before,
-                    minimum_start_time
+                    minimum_start_time,
                 )
 
                 if slot_range:
@@ -345,7 +348,7 @@ class TaskScheduler:
                         self.time_slot_manager.mark_slots_occupied(
                             start_time, end_time, task_data["id"]
                         )
-                        
+
                         # Track scheduled task for dependency checking
                         scheduled_tasks[task_id] = (start_time, end_time)
 
@@ -354,6 +357,7 @@ class TaskScheduler:
                         else:
                             stats["scheduled"] += 1
                     else:
+                        self._preserve_existing_schedule(task_data)
                         stats["errors"] += 1
                 else:
                     self.logger.warning(
@@ -366,6 +370,7 @@ class TaskScheduler:
                             f"{minimum_start_time.strftime('%Y-%m-%d %H:%M')} "
                             f"due to blocking tasks"
                         )
+                    self._preserve_existing_schedule(task_data)
                     stats["skipped"] += 1
 
             except Exception as e:
@@ -399,6 +404,46 @@ class TaskScheduler:
 
         # Task is scheduled in the future = no need to reschedule
         return False
+
+    def _preserve_existing_schedule(self, task_data: Dict[str, Any]) -> None:
+        """
+        Re-mark a task's current scheduled window as occupied so other tasks
+        won't be placed on top of it when we skip rescheduling.
+        """
+        scheduled = task_data.get("scheduled_date")
+        if not scheduled:
+            return
+
+        if isinstance(scheduled, dict):
+            start_time = scheduled.get("start")
+            end_time = scheduled.get("end")
+        else:
+            start_time = scheduled
+            end_time = None
+
+        if start_time and not end_time:
+            end_time = start_time + timedelta(
+                minutes=self.time_slot_manager.slot_duration_minutes
+            )
+
+        if not start_time or not end_time:
+            return
+
+        now = datetime.now(self.timezone)
+        if end_time <= now:
+            return
+
+        if start_time < now:
+            start_time = now
+
+        self.time_slot_manager.mark_slots_occupied(
+            start_time, end_time, task_data["id"]
+        )
+        self.logger.debug(
+            f"Preserving existing schedule for '{task_data['task_name']}' "
+            f"from {start_time.strftime('%Y-%m-%d %H:%M')} "
+            f"to {end_time.strftime('%H:%M')}"
+        )
 
     def _update_scheduled_date(
         self, task_id: str, start_time: datetime, end_time: datetime, task_name: str
