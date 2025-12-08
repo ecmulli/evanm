@@ -1,3 +1,7 @@
+# NOTE: This file is kept for backwards compatibility.
+# For new projects, use pyproject.toml with uv: `uv sync --dev`
+# This file can be generated with: `uv pip compile pyproject.toml -o requirements.txt`
+
 # Core dependencies
 schedule==1.2.0
 python-dotenv==1.0.0

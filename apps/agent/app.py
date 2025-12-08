@@ -88,15 +88,19 @@ async def lifespan(app: FastAPI):
     if livepeer_api_key and livepeer_db_id:
         try:
             logger.info("Initializing Task Scheduler Service...")
-            # Get user ID for filtering tasks by assignee
-            livepeer_user_id = os.getenv("LIVEPEER_NOTION_USER_ID")
-            if livepeer_user_id:
-                logger.info("Filtering tasks by assignee (user ID configured)")
-            else:
-                logger.warning(
-                    "LIVEPEER_NOTION_USER_ID not set - will schedule all tasks regardless of assignee"
-                )
-            
+            # Get user name for filtering tasks by assignee (required)
+            # Can be a name like "evan" or a Notion user ID
+            livepeer_user_id = os.getenv("LIVEPEER_NOTION_USER_ID", "evan")
+            logger.info(
+                f"Scheduler will only schedule tasks assigned to: {livepeer_user_id}"
+            )
+            logger.info(
+                f"Using Livepeer database ID: {livepeer_db_id[:8]}...{livepeer_db_id[-8:]}"
+            )
+            logger.info(
+                f"Using Livepeer API key: {livepeer_api_key[:10]}...{livepeer_api_key[-4:]}"
+            )
+
             scheduler_service = TaskSchedulerService(
                 notion_api_key=livepeer_api_key,
                 database_id=livepeer_db_id,

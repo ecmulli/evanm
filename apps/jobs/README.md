@@ -14,6 +14,26 @@ A Python package for running scheduled jobs and automation tasks.
 
 ### Installation
 
+#### Using uv (Recommended)
+
+```bash
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies
+uv sync
+
+# Activate the virtual environment
+source .venv/bin/activate  # On macOS/Linux
+# or
+.venv\Scripts\activate  # On Windows
+
+# Install in editable mode
+uv pip install -e .
+```
+
+#### Using pip (Alternative)
+
 ```bash
 # Install dependencies
 pip install -r requirements.txt
@@ -313,6 +333,23 @@ LOG_LEVEL=INFO          # DEBUG, INFO, WARNING, ERROR
 LOG_FILE=logs/jobs.log  # Optional file output
 ```
 
+## Scripts
+
+### Tennis Tournament Visualization (`scripts/tennisviz.py`)
+
+Generates an interactive HTML visualization of a tennis tournament bracket using NetworkX and Pyvis.
+
+**Usage:**
+```bash
+# Using uv
+uv run python scripts/tennisviz.py
+
+# Or with activated venv
+python scripts/tennisviz.py
+```
+
+The script will automatically save the HTML file to `apps/web/public/tennis_tournament_bracket.html` if the web app directory exists, otherwise it saves to the scripts directory.
+
 ## Project Structure
 
 ```
@@ -323,6 +360,8 @@ jobs/
 ├── scheduler.py        # Job scheduler
 ├── config.py          # Configuration management
 ├── example_jobs.py     # Example job implementations
+├── scripts/            # Standalone scripts
+│   └── tennisviz.py   # Tennis tournament visualization
 └── tests/              # Test suite
     ├── __init__.py
     ├── test_base_job.py

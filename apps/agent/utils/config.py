@@ -71,10 +71,7 @@ class Config:
         else:
             logger.info("ℹ️  Livepeer workspace not configured (optional)")
 
-        if cls.VANQUISH_NOTION_API_KEY and cls.VANQUISH_NOTION_DB_ID:
-            logger.info("✅ Vanquish workspace configuration found")
-        else:
-            logger.info("ℹ️  Vanquish workspace not configured (optional)")
+        # Vanquish configuration ignored for now
 
 
 config = Config()
