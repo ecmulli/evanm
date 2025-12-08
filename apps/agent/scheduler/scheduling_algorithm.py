@@ -40,74 +40,130 @@ class TaskScheduler:
 
         Criteria:
         - Status NOT IN (Completed, Canceled, Backlog)
-        - Auto Schedule = true (or missing/unchecked = default true)
-        - Assigned to user (if user_id is provided)
+        - Assigned to user (by name, case-insensitive)
+        - Has a due date set
         - Sorted by Rank (ASC) - lower rank = higher priority (scheduled first)
 
         Returns:
             List of Notion page objects sorted by rank (ascending)
         """
-        # Build filter for schedulable tasks
-        filter_conditions = [
-            {"property": "Status", "status": {"does_not_equal": "Completed"}},
-            {"property": "Status", "status": {"does_not_equal": "Canceled"}},
-            {"property": "Status", "status": {"does_not_equal": "Backlog"}},
-        ]
+        # If user_id is provided, use it as a name filter (case-insensitive)
+        assignee_name = self.user_id.lower() if self.user_id else None
+        if assignee_name:
+            self.logger.info(f"Filtering tasks assigned to: {assignee_name}")
 
-        # Add assignee filter if user_id is provided
-        if self.user_id:
-            filter_conditions.append(
-                {"property": "Assignee", "people": {"contains": self.user_id}}
-            )
-            self.logger.info(f"Filtering tasks assigned to user: {self.user_id}")
-
-        filter_query = {"and": filter_conditions}
-
-        # Query the database
+        # Query the database using the Notion API
+        # As of Sept 2025, Notion split databases and data sources
+        # We need to: 1) Get the database to find data source ID, 2) Query the data source
         try:
-            response = self.notion_client.databases.query(
-                database_id=self.database_id,
-                filter=filter_query,
-                sorts=[{"property": "Rank", "direction": "ascending"}],
+            self.logger.info(f"Retrieving database {self.database_id} to get data source ID")
+            
+            # First, retrieve the database to get its data sources
+            database = self.notion_client.databases.retrieve(database_id=self.database_id)
+            data_sources = database.get("data_sources", [])
+            
+            if not data_sources:
+                self.logger.error(f"Database {self.database_id} has no data sources")
+                return []
+            
+            # Use the first data source (most databases have one)
+            data_source_id = data_sources[0]["id"]
+            self.logger.info(f"Querying data source {data_source_id}")
+            
+            # Build filter conditions for the query
+            # Filter by due date (must exist) and status (not completed/canceled/backlog)
+            filter_conditions = {
+                "and": [
+                    {"property": "Due date", "date": {"is_not_empty": True}},
+                    {"property": "Status", "status": {"does_not_equal": "Completed"}},
+                    {"property": "Status", "status": {"does_not_equal": "Canceled"}},
+                    {"property": "Status", "status": {"does_not_equal": "Backlog"}},
+                ]
+            }
+            
+            # Query the data source with filters
+            self.logger.info(f"Querying data source with filters: due date required, status filters applied")
+            response = self.notion_client.data_sources.query(
+                data_source_id=data_source_id,
+                filter=filter_conditions,
+                sorts=[{"property": "Rank", "direction": "ascending"}]
             )
+            
+            # Handle response - it might be a dict or the response might need unwrapping
+            if isinstance(response, dict):
+                tasks = response.get("results", [])
+            else:
+                # If response is not a dict, try to get results from it
+                self.logger.warning(f"Unexpected response type: {type(response)}")
+                tasks = getattr(response, "results", [])
 
-            tasks = response.get("results", [])
-
-            # Filter out tasks where Auto Schedule is explicitly false
-            # Also verify assignee filter if user_id is set
+            # Filter tasks by assignee name and verify due date
             schedulable_tasks = []
             for task in tasks:
-                auto_schedule = self._get_checkbox_value(
-                    task.get("properties", {}).get("Auto Schedule")
-                )
-
-                # If Auto Schedule checkbox doesn't exist or is checked, include it
-                # Only exclude if explicitly unchecked
-                if auto_schedule is None or auto_schedule is True:
-                    # Double-check assignee if user_id is configured
-                    if self.user_id:
-                        assignees = self._get_people_value(
-                            task.get("properties", {}).get("Assignee")
+                # Verify assignee by name (case-insensitive) or ID
+                if assignee_name:
+                    assignee_prop = task.get("properties", {}).get("Assignee")
+                    assignee_names = self._get_people_names(assignee_prop)
+                    assignee_ids = self._get_people_ids(assignee_prop)
+                    task_name = self._get_title_text(
+                        task.get("properties", {}).get("Task name")
+                    )
+                    
+                    # Check if assignee matches by name (case-insensitive) or ID
+                    name_matches = assignee_name in [name.lower() for name in assignee_names]
+                    id_matches = assignee_name.lower() in [id.lower() for id in assignee_ids]
+                    
+                    if not name_matches and not id_matches:
+                        self.logger.debug(
+                            f"Skipping task '{task_name}' - not assigned to '{assignee_name}' "
+                            f"(assignees: {assignee_names}, IDs: {assignee_ids})"
                         )
-                        if not assignees or self.user_id not in assignees:
-                            task_name = self._get_title_text(
-                                task.get("properties", {}).get("Task name")
-                            )
-                            self.logger.info(
-                                f"Skipping task '{task_name}' - not assigned to user (assignees: {assignees})"
-                            )
-                            continue
+                        continue
 
-                    schedulable_tasks.append(task)
+                # Verify due date exists
+                due_date = self._get_date_value(
+                    task.get("properties", {}).get("Due date")
+                )
+                if not due_date:
+                    task_name = self._get_title_text(
+                        task.get("properties", {}).get("Task name")
+                    )
+                    self.logger.debug(
+                        f"Skipping task '{task_name}' - no due date set"
+                    )
+                    continue
+
+                schedulable_tasks.append(task)
 
             self.logger.info(
-                f"Found {len(schedulable_tasks)} schedulable tasks (of {len(tasks)} active)"
+                f"Found {len(schedulable_tasks)} schedulable tasks (of {len(tasks)} matching filters)"
             )
 
             return schedulable_tasks
 
         except Exception as e:
             self.logger.error(f"Error fetching tasks: {e}")
+            # Log more details about the error - especially for APIResponseError
+            if hasattr(e, 'response'):
+                response = e.response
+                self.logger.error(f"Response status: {getattr(response, 'status_code', 'unknown')}")
+                try:
+                    response_text = response.text if hasattr(response, 'text') else str(response)
+                    response_json = response.json() if hasattr(response, 'json') else None
+                    self.logger.error(f"Response text: {response_text}")
+                    if response_json:
+                        self.logger.error(f"Response JSON: {response_json}")
+                except Exception as parse_error:
+                    self.logger.error(f"Could not parse response: {parse_error}")
+            # Check if it's an APIResponseError with more details
+            if hasattr(e, 'code'):
+                self.logger.error(f"Notion error code: {e.code}")
+            if hasattr(e, 'message'):
+                self.logger.error(f"Notion error message: {e.message}")
+            if hasattr(e, 'additional_data'):
+                self.logger.error(f"Notion additional data: {e.additional_data}")
+            if hasattr(e, 'request_id'):
+                self.logger.error(f"Notion request ID: {e.request_id}")
             return []
 
     def extract_task_data(self, task: Dict[str, Any]) -> Dict[str, Any]:
@@ -558,6 +614,23 @@ class TaskScheduler:
             return []
         people_list = prop.get("people", [])
         return [person.get("id") for person in people_list if person.get("id")]
+
+    def _get_people_names(self, prop: Optional[Dict]) -> List[str]:
+        """Extract list of user names from people property."""
+        if not prop or prop.get("type") != "people":
+            return []
+        people_list = prop.get("people", [])
+        names = []
+        for person in people_list:
+            # Try to get name from person object
+            name = person.get("name")
+            if name:
+                names.append(name)
+        return names
+    
+    def _get_people_ids(self, prop: Optional[Dict]) -> List[str]:
+        """Extract list of user IDs from people property (alias for _get_people_value for clarity)."""
+        return self._get_people_value(prop)
 
     def _get_relation_value(self, prop: Optional[Dict]) -> List[str]:
         """Extract list of page IDs from relation property."""

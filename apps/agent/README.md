@@ -105,6 +105,7 @@ HUB_NOTION_DB_ID=your_notion_database_id
 # Optional (for external workspaces)
 LIVEPEER_NOTION_API_KEY=livepeer_notion_key
 LIVEPEER_NOTION_DB_ID=livepeer_database_id
+LIVEPEER_NOTION_USER_ID=evan  # Required for scheduler - only schedules tasks assigned to this user (name or user ID, defaults to "evan")
 VANQUISH_NOTION_API_KEY=vanquish_notion_key
 VANQUISH_NOTION_DB_ID=vanquish_database_id
 
@@ -125,9 +126,40 @@ TIMEZONE=America/Chicago  # Default: America/Chicago (handles DST automatically)
 
 ### Installation
 
+#### Using uv (Recommended)
+
+1. **Install uv if you haven't already:**
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   cd apps/agent
+   uv sync
+   ```
+
+3. **Run the server:**
+   ```bash
+   # Activate the virtual environment
+   source .venv/bin/activate  # On macOS/Linux
+   # or
+   .venv\Scripts\activate  # On Windows
+   
+   # Run the server
+   python app.py
+   ```
+
+   Or with uvicorn directly:
+   ```bash
+   uv run uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
+#### Using pip (Alternative)
+
 1. **Install dependencies:**
    ```bash
-   cd packages/agent
+   cd apps/agent
    pip install -r requirements.txt
    ```
 

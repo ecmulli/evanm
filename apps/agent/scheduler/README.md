@@ -19,6 +19,7 @@ Add these environment variables to your `.env` file or Railway configuration:
 # Livepeer Notion Credentials
 LIVEPEER_NOTION_API_KEY=secret_xxxxx
 LIVEPEER_NOTION_DB_ID=xxxxxxxx
+LIVEPEER_NOTION_USER_ID=evan  # Required - scheduler only schedules tasks assigned to this user (name or user ID)
 ```
 
 ### Optional (with defaults)
@@ -104,7 +105,10 @@ Check if scheduler is running properly.
 The scheduler runs automatically in the background when the Agent service starts:
 1. Starts on application startup
 2. Runs every 10 minutes (configurable via `SCHEDULER_INTERVAL_MINUTES`)
-3. Fetches all tasks that need scheduling
+3. Fetches tasks that:
+   - Are assigned to the configured user (LIVEPEER_NOTION_USER_ID)
+   - Have a due date set
+   - Are not completed, canceled, or in backlog
 4. Assigns them to available time slots based on priority
 5. Updates Notion with scheduled dates
 6. Logs statistics
@@ -144,10 +148,11 @@ Your Notion database must have these properties:
 
 1. **Rank** (Number): Priority ranking (lower = higher priority)
 2. **Duration** (Number): Task duration in minutes
-3. **Due Date** (Date): Optional soft deadline
-4. **Status** (Select): Must include "Done" option
-5. **Scheduled Date** (Date with time): Auto-populated by scheduler
-6. **Last Scheduled** (Date with time): Timestamp of last scheduling
+3. **Due Date** (Date): **Required** - Tasks must have a due date to be scheduled
+4. **Assignee** (People): **Required** - Tasks must be assigned to the configured user
+5. **Status** (Select): Must include "Done" option
+6. **Scheduled Date** (Date with time): Auto-populated by scheduler
+7. **Last Scheduled** (Date with time): Timestamp of last scheduling
 
 ### Notion Calendar Integration
 The scheduler updates the "Scheduled Date" property which Notion Calendar uses to display tasks on your calendar.

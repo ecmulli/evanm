@@ -1,21 +1,30 @@
-# Use Python 3.11 slim image
-FROM python:3.11-slim
+# Use Python 3.12 slim image
+FROM python:3.12-slim
 
-# Install system dependencies
+# Install system dependencies and uv
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install uv
 
 # Set working directory
 WORKDIR /app
 
-# Copy requirements first for better caching
-COPY apps/agent/requirements.txt ./apps/agent/
+# Copy pyproject.toml first for better caching
+COPY apps/agent/pyproject.toml ./apps/agent/
 
-# Install Python dependencies
+# Install Python dependencies using uv
 WORKDIR /app/apps/agent
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip install --system --no-cache \
+    fastapi>=0.115.6 \
+    hypercorn>=0.17.3 \
+    python-dotenv>=1.0.1 \
+    requests>=2.32.3 \
+    notion-client>=2.2.1 \
+    openai>=1.57.3 \
+    pydantic>=2.10.5 \
+    python-multipart>=0.0.17
 
 # Copy application code
 WORKDIR /app
