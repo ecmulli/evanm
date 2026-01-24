@@ -94,3 +94,11 @@ jspm_packages/
 # Temporary folders
 tmp/
 temp/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# Cursor IDE
+.cursor/
