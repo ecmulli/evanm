@@ -27,8 +27,11 @@ export interface WindowContextType {
   topZIndex: number;
   openWindow: (config: OpenWindowConfig) => void;
   closeWindow: (id: string) => void;
+  closeTopWindow: () => void;
+  closeAllWindows: () => void;
   focusWindow: (id: string) => void;
   minimizeWindow: (id: string) => void;
+  arrangeWindows: (mode: 'cascade' | 'tile') => void;
 }
 
 export interface DesktopIconConfig {

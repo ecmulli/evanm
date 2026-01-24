@@ -8,6 +8,7 @@ import SimpleText from './apps/SimpleText';
 import Stickies from './apps/Stickies';
 import Folder from './apps/Folder';
 import { useWindow } from '@/hooks/useWindow';
+import { useView } from '@/context/ViewContext';
 import { desktopIcons } from '@/data/content';
 import { WindowState } from '@/types/window';
 
@@ -39,6 +40,7 @@ function getWindowDimensions(appType: string): { width: number; height: number }
 
 export default function Desktop() {
   const { visibleWindows, closeWindow, openWindow } = useWindow();
+  const { settings } = useView();
 
   // Open "About Me.txt" window centered on page load
   useEffect(() => {
@@ -79,21 +81,23 @@ export default function Desktop() {
         }}
       >
         {/* Stars layer */}
-        <div className="stars" />
+        {settings.showStars && <div className="stars" />}
 
         {/* Sun */}
-        <div className="pixel-sun" />
+        {settings.showSun && <div className="pixel-sun" />}
 
         {/* Mountains */}
-        <div className="pixel-mountains">
-          <div className="mountain mountain-1" />
-          <div className="mountain mountain-2" />
-          <div className="mountain mountain-3" />
-          <div className="mountain mountain-4" />
-        </div>
+        {settings.showMountains && (
+          <div className="pixel-mountains">
+            <div className="mountain mountain-1" />
+            <div className="mountain mountain-2" />
+            <div className="mountain mountain-3" />
+            <div className="mountain mountain-4" />
+          </div>
+        )}
 
         {/* Grid overlay */}
-        <div className="pixel-grid" />
+        {settings.showGrid && <div className="pixel-grid" />}
 
         {/* Desktop Icons */}
         <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">

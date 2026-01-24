@@ -30,6 +30,21 @@ export function WindowProvider({ children }: WindowProviderProps) {
     setWindows(prev => prev.filter(w => w.id !== id));
   }, []);
 
+  const closeTopWindow = useCallback(() => {
+    setWindows(prev => {
+      if (prev.length === 0) return prev;
+      // Find the window with the highest zIndex
+      const topWindow = prev.reduce((top, w) => 
+        w.zIndex > top.zIndex ? w : top
+      , prev[0]);
+      return prev.filter(w => w.id !== topWindow.id);
+    });
+  }, []);
+
+  const closeAllWindows = useCallback(() => {
+    setWindows([]);
+  }, []);
+
   const focusWindow = useCallback((id: string) => {
     setWindows(prev => {
       const window = prev.find(w => w.id === id);
@@ -52,6 +67,34 @@ export function WindowProvider({ children }: WindowProviderProps) {
         w.id === id ? { ...w, isMinimized: true } : w
       )
     );
+  }, []);
+
+  const arrangeWindows = useCallback((mode: 'cascade' | 'tile') => {
+    setWindows(prev => {
+      if (prev.length === 0) return prev;
+      
+      if (mode === 'cascade') {
+        return prev.map((w, i) => ({
+          ...w,
+          position: { x: 50 + i * 30, y: 50 + i * 30 },
+          zIndex: 100 + i,
+        }));
+      } else {
+        // Tile mode - arrange in grid
+        const cols = Math.ceil(Math.sqrt(prev.length));
+        const windowWidth = Math.floor((window.innerWidth - 100) / cols);
+        const windowHeight = Math.floor((window.innerHeight - 132) / Math.ceil(prev.length / cols));
+        
+        return prev.map((w, i) => ({
+          ...w,
+          position: { 
+            x: 50 + (i % cols) * windowWidth, 
+            y: 50 + Math.floor(i / cols) * windowHeight 
+          },
+          zIndex: 100 + i,
+        }));
+      }
+    });
   }, []);
 
   const openWindow = useCallback((config: OpenWindowConfig) => {
@@ -90,8 +133,11 @@ export function WindowProvider({ children }: WindowProviderProps) {
     topZIndex,
     openWindow,
     closeWindow,
+    closeTopWindow,
+    closeAllWindows,
     focusWindow,
     minimizeWindow,
+    arrangeWindows,
   };
 
   return (
