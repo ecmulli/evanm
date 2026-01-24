@@ -6,12 +6,15 @@ import MenuDropdown from './MenuDropdown';
 import { useWindowContext } from '@/context/WindowContext';
 import { useView } from '@/context/ViewContext';
 
+type MenuId = 'file' | 'edit' | 'view' | 'special' | null;
+
 export default function MenuBar() {
   const [time, setTime] = useState<string>('');
   const [showAboutMac, setShowAboutMac] = useState(false);
   const [showSleep, setShowSleep] = useState(false);
   const [showRestart, setShowRestart] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [openMenu, setOpenMenu] = useState<MenuId>(null);
 
   const { 
     windows, 
@@ -141,16 +144,45 @@ export default function MenuBar() {
           </div>
 
           {/* File Menu */}
-          <MenuDropdown label="File" items={fileMenuItems} bold />
+          <MenuDropdown 
+            label="File" 
+            items={fileMenuItems} 
+            bold 
+            isOpen={openMenu === 'file'}
+            onOpen={() => setOpenMenu('file')}
+            onClose={() => setOpenMenu(null)}
+            isAnyMenuOpen={openMenu !== null}
+          />
           
           {/* Edit Menu */}
-          <MenuDropdown label="Edit" items={editMenuItems} />
+          <MenuDropdown 
+            label="Edit" 
+            items={editMenuItems}
+            isOpen={openMenu === 'edit'}
+            onOpen={() => setOpenMenu('edit')}
+            onClose={() => setOpenMenu(null)}
+            isAnyMenuOpen={openMenu !== null}
+          />
           
           {/* View Menu */}
-          <MenuDropdown label="View" items={viewMenuItems} />
+          <MenuDropdown 
+            label="View" 
+            items={viewMenuItems}
+            isOpen={openMenu === 'view'}
+            onOpen={() => setOpenMenu('view')}
+            onClose={() => setOpenMenu(null)}
+            isAnyMenuOpen={openMenu !== null}
+          />
           
           {/* Special Menu */}
-          <MenuDropdown label="Special" items={specialMenuItems} />
+          <MenuDropdown 
+            label="Special" 
+            items={specialMenuItems}
+            isOpen={openMenu === 'special'}
+            onOpen={() => setOpenMenu('special')}
+            onClose={() => setOpenMenu(null)}
+            isAnyMenuOpen={openMenu !== null}
+          />
         </div>
 
         {/* Spacer */}
