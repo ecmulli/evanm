@@ -26,21 +26,6 @@ export function WindowProvider({ children }: WindowProviderProps) {
   const [windows, setWindows] = useState<WindowState[]>([]);
   const [topZIndex, setTopZIndex] = useState(100);
 
-  const openWindow = useCallback((config: OpenWindowConfig) => {
-    const newWindow: WindowState = {
-      id: generateWindowId(),
-      appType: config.appType,
-      title: config.title,
-      position: config.position || getDefaultPosition(windows.length),
-      zIndex: topZIndex + 1,
-      isMinimized: false,
-      contentId: config.contentId,
-    };
-
-    setTopZIndex(prev => prev + 1);
-    setWindows(prev => [...prev, newWindow]);
-  }, [windows.length, topZIndex]);
-
   const closeWindow = useCallback((id: string) => {
     setWindows(prev => prev.filter(w => w.id !== id));
   }, []);
@@ -68,6 +53,37 @@ export function WindowProvider({ children }: WindowProviderProps) {
       )
     );
   }, []);
+
+  const openWindow = useCallback((config: OpenWindowConfig) => {
+    // Check if a window with the same contentId is already open
+    setWindows(prev => {
+      const existingWindow = prev.find(w => 
+        w.contentId === config.contentId && w.appType === config.appType
+      );
+      
+      if (existingWindow) {
+        // Focus existing window by bringing it to top
+        const newTopZ = topZIndex + 1;
+        setTopZIndex(newTopZ);
+        return prev.map(w =>
+          w.id === existingWindow.id ? { ...w, zIndex: newTopZ } : w
+        );
+      }
+
+      const newWindow: WindowState = {
+        id: generateWindowId(),
+        appType: config.appType,
+        title: config.title,
+        position: config.position || getDefaultPosition(prev.length),
+        zIndex: topZIndex + 1,
+        isMinimized: false,
+        contentId: config.contentId,
+      };
+
+      setTopZIndex(p => p + 1);
+      return [...prev, newWindow];
+    });
+  }, [topZIndex]);
 
   const value: WindowContextType = {
     windows,
