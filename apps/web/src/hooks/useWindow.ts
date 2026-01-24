@@ -4,7 +4,7 @@ import { useWindowContext } from '@/context/WindowContext';
 import { OpenWindowConfig, WindowState } from '@/types/window';
 
 export function useWindow() {
-  const { windows, topZIndex, openWindow, closeWindow, focusWindow, minimizeWindow } = useWindowContext();
+  const { windows, topZIndex, openWindow, closeWindow, focusWindow, minimizeWindow, updateWindowPosition } = useWindowContext();
 
   // Get only visible (non-minimized) windows
   const visibleWindows = windows.filter(w => !w.isMinimized);
@@ -39,6 +39,7 @@ export function useWindow() {
     closeWindow,
     focusWindow,
     minimizeWindow,
+    updateWindowPosition,
     isWindowFocused,
     getWindow,
     restoreWindow,

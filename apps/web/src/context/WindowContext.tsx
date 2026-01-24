@@ -82,19 +82,29 @@ export function WindowProvider({ children }: WindowProviderProps) {
       } else {
         // Tile mode - arrange in grid
         const cols = Math.ceil(Math.sqrt(prev.length));
-        const windowWidth = Math.floor((window.innerWidth - 100) / cols);
-        const windowHeight = Math.floor((window.innerHeight - 132) / Math.ceil(prev.length / cols));
+        const screenWidth = typeof globalThis.window !== 'undefined' ? globalThis.window.innerWidth : 1200;
+        const screenHeight = typeof globalThis.window !== 'undefined' ? globalThis.window.innerHeight : 800;
+        const tileWidth = Math.floor((screenWidth - 100) / cols);
+        const tileHeight = Math.floor((screenHeight - 132) / Math.ceil(prev.length / cols));
         
         return prev.map((w, i) => ({
           ...w,
           position: { 
-            x: 50 + (i % cols) * windowWidth, 
-            y: 50 + Math.floor(i / cols) * windowHeight 
+            x: 50 + (i % cols) * tileWidth, 
+            y: 50 + Math.floor(i / cols) * tileHeight 
           },
           zIndex: 100 + i,
         }));
       }
     });
+  }, []);
+
+  const updateWindowPosition = useCallback((id: string, position: { x: number; y: number }) => {
+    setWindows(prev =>
+      prev.map(w =>
+        w.id === id ? { ...w, position } : w
+      )
+    );
   }, []);
 
   const openWindow = useCallback((config: OpenWindowConfig) => {
@@ -138,6 +148,7 @@ export function WindowProvider({ children }: WindowProviderProps) {
     focusWindow,
     minimizeWindow,
     arrangeWindows,
+    updateWindowPosition,
   };
 
   return (

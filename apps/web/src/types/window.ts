@@ -32,6 +32,7 @@ export interface WindowContextType {
   focusWindow: (id: string) => void;
   minimizeWindow: (id: string) => void;
   arrangeWindows: (mode: 'cascade' | 'tile') => void;
+  updateWindowPosition: (id: string, position: Position) => void;
 }
 
 export interface DesktopIconConfig {

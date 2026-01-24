@@ -9,33 +9,41 @@ interface WindowFrameProps {
   id: string;
   title: string;
   children: ReactNode;
-  initialPosition: Position;
+  position: Position;
   zIndex: number;
   width?: number;
   height?: number;
   minWidth?: number;
   minHeight?: number;
   onClose: () => void;
+  onPositionChange?: (position: Position) => void;
 }
 
 export default function WindowFrame({
   id,
   title,
   children,
-  initialPosition,
+  position,
   zIndex,
   width = 400,
   height = 300,
   minWidth = 200,
   minHeight = 150,
   onClose,
+  onPositionChange,
 }: WindowFrameProps) {
   const { focusWindow, isWindowFocused } = useWindow();
   const nodeRef = useRef<HTMLDivElement>(null);
   const isActive = isWindowFocused(id);
 
-  const handleDragStart = (e: DraggableEvent, data: DraggableData) => {
+  const handleDragStart = () => {
     focusWindow(id);
+  };
+
+  const handleDragStop = (_e: DraggableEvent, data: DraggableData) => {
+    if (onPositionChange) {
+      onPositionChange({ x: data.x, y: data.y });
+    }
   };
 
   const handleMouseDown = () => {
@@ -46,9 +54,10 @@ export default function WindowFrame({
     <Draggable
       nodeRef={nodeRef}
       handle=".window-handle"
-      defaultPosition={initialPosition}
+      position={position}
       bounds="parent"
       onStart={handleDragStart}
+      onStop={handleDragStop}
     >
       <div
         ref={nodeRef}

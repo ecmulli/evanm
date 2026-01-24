@@ -39,7 +39,7 @@ function getWindowDimensions(appType: string): { width: number; height: number }
 }
 
 export default function Desktop() {
-  const { visibleWindows, closeWindow, openWindow } = useWindow();
+  const { visibleWindows, closeWindow, openWindow, updateWindowPosition } = useWindow();
   const { settings } = useView();
 
   // Open "About Me.txt" window centered on page load
@@ -107,20 +107,21 @@ export default function Desktop() {
         </div>
 
         {/* Open Windows */}
-        {visibleWindows.map((window) => {
-          const dimensions = getWindowDimensions(window.appType);
+        {visibleWindows.map((win) => {
+          const dimensions = getWindowDimensions(win.appType);
           return (
             <WindowFrame
-              key={window.id}
-              id={window.id}
-              title={window.title}
-              initialPosition={window.position}
-              zIndex={window.zIndex}
+              key={win.id}
+              id={win.id}
+              title={win.title}
+              position={win.position}
+              zIndex={win.zIndex}
               width={dimensions.width}
               height={dimensions.height}
-              onClose={() => closeWindow(window.id)}
+              onClose={() => closeWindow(win.id)}
+              onPositionChange={(pos) => updateWindowPosition(win.id, pos)}
             >
-              <WindowContent window={window} />
+              <WindowContent window={win} />
             </WindowFrame>
           );
         })}
