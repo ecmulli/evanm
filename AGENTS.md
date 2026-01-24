@@ -12,171 +12,101 @@ evanm.xyz/login      → Authentication
 
 The site is a Next.js app with a retro Mac OS desktop interface. Content appears as files and folders on the desktop.
 
-## Content Location
+## Content System
 
-All site content lives in a single file:
+Content is **file-based**. The directory structure mirrors the website:
 
 ```
-apps/web/src/data/content.ts
+apps/web/src/content/
+├── about-me.txt              → Desktop file "About Me.txt"
+├── projects/                 → Desktop folder "Projects"
+│   ├── evanm-xyz.txt         → File inside Projects folder
+│   └── task-agent.txt        → File inside Projects folder
+└── thoughts/                 → Desktop folder "Thoughts"
+    ├── on-simplicity.txt     → File inside Thoughts folder
+    ├── digital-gardens.txt   → File inside Thoughts folder
+    └── hello-world.txt       → File inside Thoughts folder
 ```
 
-## Content Types
+**Adding content is as simple as adding a file to the appropriate directory.**
 
-### 1. Text Files (SimpleText)
-Used for: About Me, Thoughts, Projects, any text content
+## File Format
 
-```typescript
-// Add to textContents object
-'my-content-id': {
-  id: 'my-content-id',
-  title: 'Display Title.txt',
-  content: `Your content here.
+Each `.txt` file uses a simple frontmatter format:
 
-Use backticks for multi-line strings.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ (decorative line)
-
-Content supports plain text formatting.
-`,
-},
+```
+---
+title: Display Title.txt
+---
+Your content here...
 ```
 
-### 2. Folders
-Used for: Grouping related files (Projects, Thoughts, etc.)
+### Example: Adding a New Thought
 
-```typescript
-// Add to folderContents object
-'my-folder': {
-  id: 'my-folder',
-  title: 'Folder Name',
-  items: [
-    {
-      id: 'item-1-icon',
-      label: 'File Name.txt',
-      iconType: 'file',
-      appType: 'simpletext',
-      contentId: 'my-content-id',  // References textContents
-    },
-    // More items...
-  ],
-},
+Create `apps/web/src/content/thoughts/my-new-thought.txt`:
+
 ```
-
-### 3. Desktop Icons
-Files and folders that appear on the desktop background.
-
-```typescript
-// Add to desktopIcons array
-{
-  id: 'my-icon',
-  label: 'Display Name',
-  iconType: 'file' | 'folder' | 'app',
-  appType: 'simpletext' | 'folder' | 'stickies',
-  contentId: 'content-or-folder-id',  // Optional for 'stickies'
-},
-```
-
-## How to Add Content
-
-### Adding a New Thought
-
-1. Add the text content:
-```typescript
-// In textContents:
-'thought-new': {
-  id: 'thought-new',
-  title: 'My New Thought.txt',
-  content: `Title Here
+---
+title: My New Thought.txt
+---
+Title Here
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Date: Month Day, Year
+Date: January 24, 2026
 
 Your thought content here...
 
 - End of file -
-`,
-},
 ```
 
-2. Add to Thoughts folder:
-```typescript
-// In folderContents['thoughts'].items:
-{
-  id: 'thought-new-icon',
-  label: 'My New Thought.txt',
-  iconType: 'file',
-  appType: 'simpletext',
-  contentId: 'thought-new',
-},
+### Example: Adding a New Project
+
+Create `apps/web/src/content/projects/my-project.txt`:
+
 ```
-
-### Adding a New Project
-
-1. Add the project text content:
-```typescript
-// In textContents:
-'project-myproject': {
-  id: 'project-myproject',
-  title: 'My Project.txt',
-  content: `My Project Name
+---
+title: My Project.txt
+---
+My Project Name
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Status: Active | Completed | In Progress
+Status: Active
 Tech: List, Of, Technologies
 
 DESCRIPTION:
 What the project does and why it matters.
-
-Features:
-• Feature one
-• Feature two
 
 LINKS:
 • Live: https://example.com
 • Source: github.com/user/repo
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Tagline or closing thought.
-`,
-},
+Tagline.
 ```
 
-2. Add to Projects folder:
-```typescript
-// In folderContents['projects'].items:
-{
-  id: 'project-myproject-icon',
-  label: 'My Project.txt',
-  iconType: 'file',
-  appType: 'simpletext',
-  contentId: 'project-myproject',
-},
-```
+### Example: Adding a New Folder
 
-### Adding a New Desktop Folder
+Create a new directory: `apps/web/src/content/my-folder/`
 
-1. Create the folder content:
-```typescript
-// In folderContents:
-'my-folder': {
-  id: 'my-folder',
-  title: 'My Folder',
-  items: [
-    // Add items here
-  ],
-},
-```
+Then add `.txt` files inside it. The folder will automatically appear on the desktop.
 
-2. Add desktop icon:
-```typescript
-// In desktopIcons:
-{
-  id: 'my-folder-icon',
-  label: 'My Folder',
-  iconType: 'folder',
-  appType: 'folder',
-  contentId: 'my-folder',
-},
-```
+## How It Works
+
+1. Content files live in `apps/web/src/content/`
+2. `npm run generate-content` reads all files and creates `generated-content.json`
+3. The app imports this JSON at build time
+4. Directory structure → Desktop folders
+5. `.txt` files → Files inside folders (or on desktop if at root)
+
+## Quick Reference
+
+| Task | Action |
+|------|--------|
+| Add a thought | Create `src/content/thoughts/filename.txt` |
+| Add a project | Create `src/content/projects/filename.txt` |
+| Add desktop file | Create `src/content/filename.txt` |
+| Add new folder | Create `src/content/foldername/` directory |
+| Edit About Me | Edit `src/content/about-me.txt` |
 
 ## Content Style Guide
 
@@ -187,14 +117,16 @@ Tagline or closing thought.
 - End files with `- End of file -` or a signature
 
 ### Naming Conventions
-- Content IDs: `type-slug` (e.g., `thought-on-simplicity`, `project-evanm-xyz`)
-- Icon IDs: `content-id-icon` (e.g., `thought-1-icon`)
-- Use lowercase with hyphens
+- Filenames: lowercase with hyphens (e.g., `my-project.txt`)
+- The `title` in frontmatter is what displays in the UI
 
 ### Content Templates
 
 **Thought Template:**
 ```
+---
+title: Thought Title.txt
+---
 Title
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -207,6 +139,9 @@ Content paragraphs here...
 
 **Project Template:**
 ```
+---
+title: Project Name.txt
+---
 Project Name
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -228,50 +163,51 @@ Tagline.
 
 ```
 apps/web/
+├── scripts/
+│   └── generate-content.js    # Builds content JSON from files
 ├── src/
-│   ├── app/
-│   │   ├── page.tsx          # Homepage (renders Desktop)
-│   │   ├── chat/page.tsx     # Agent chat UI
-│   │   └── login/page.tsx    # Auth page
-│   ├── components/
-│   │   ├── Desktop.tsx       # Main desktop container
-│   │   ├── MenuBar.tsx       # Top menu bar
-│   │   ├── DesktopIcon.tsx   # Clickable icons
-│   │   ├── WindowFrame.tsx   # Draggable windows
-│   │   └── apps/
-│   │       ├── SimpleText.tsx  # Text file viewer
-│   │       ├── Folder.tsx      # Folder viewer
-│   │       └── Stickies.tsx    # Guestbook
-│   ├── context/
-│   │   └── WindowContext.tsx # Window state management
+│   ├── content/               # ⭐ CONTENT LIVES HERE
+│   │   ├── about-me.txt
+│   │   ├── projects/
+│   │   │   └── *.txt
+│   │   └── thoughts/
+│   │       └── *.txt
 │   ├── data/
-│   │   └── content.ts        # ⭐ ALL CONTENT LIVES HERE
-│   └── types/
-│       └── window.ts         # TypeScript types
+│   │   ├── content.ts         # Exports content (imports JSON)
+│   │   └── generated-content.json  # Auto-generated, don't edit
+│   ├── app/
+│   │   ├── page.tsx           # Homepage (renders Desktop)
+│   │   ├── chat/page.tsx      # Agent chat UI
+│   │   └── login/page.tsx     # Auth page
+│   └── components/
+│       ├── Desktop.tsx        # Main desktop container
+│       └── apps/
+│           ├── SimpleText.tsx # Text file viewer
+│           ├── Folder.tsx     # Folder viewer
+│           └── Stickies.tsx   # Guestbook
 ```
 
-## Quick Reference
+## Build Process
 
-| Task | Location | What to Edit |
-|------|----------|--------------|
-| Add thought | `content.ts` | `textContents` + `folderContents['thoughts'].items` |
-| Add project | `content.ts` | `textContents` + `folderContents['projects'].items` |
-| Add desktop icon | `content.ts` | `desktopIcons` array |
-| Add new folder | `content.ts` | `folderContents` + `desktopIcons` |
-| Edit About Me | `content.ts` | `textContents['about-me']` |
+1. `npm run generate-content` - Reads content files, creates JSON
+2. `npm run build` - Runs generate-content, then builds Next.js
+
+The `generate-content` script runs automatically before `dev` and `build`.
 
 ## Deployment
 
 The site auto-deploys from the `desktop-app` branch via Railway.
 
 After making changes:
-1. Commit to `desktop-app` branch
-2. Push to origin
-3. Railway auto-deploys
+1. Add/edit content files in `src/content/`
+2. Commit changes
+3. Push to `desktop-app` branch
+4. Railway auto-deploys
 
 ## Notes
 
-- The guestbook (`stickies`) currently uses mock data
-- Windows open centered by default, with cascading for multiple windows
+- The generated JSON (`generated-content.json`) is committed to git for simplicity
+- The guestbook (`stickies`) uses mock data (not file-based)
+- Windows open centered by default
 - Desktop icons appear in the top-right corner
-- The site uses brand colors defined in `globals.css`
+- Brand colors are defined in `globals.css`

@@ -1,0 +1,23 @@
+---
+title: evanm.xyz.txt
+---
+evanm.xyz - Personal Website
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Status: Active
+Tech: Next.js, Tailwind CSS, TypeScript
+
+DESCRIPTION:
+A retro Mac OS inspired personal website.
+This very site you're looking at right now.
+
+Features a pixel art aesthetic with draggable
+windows, a guestbook, and content organized
+like a classic desktop environment.
+
+LINKS:
+• Live: https://evanm.xyz
+• Source: github.com/ecmulli/evanm
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Built with nostalgia and modern tech.

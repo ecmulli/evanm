@@ -1,0 +1,112 @@
+{
+  "textContents": {
+    "about-me": {
+      "id": "about-me",
+      "title": "About Me.txt",
+      "content": "Welcome to my corner of the internet!\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nHello, I'm [Your Name].\n\nI'm a developer, creator, and digital explorer \nwho appreciates the charm of vintage computing.\n\nThis website is a love letter to the golden age\nof personal computing - when interfaces had\ncharacter and every pixel was intentional.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nINTERESTS:\n• Building things on the web\n• Retro computing & pixel art\n• Coffee and good conversations\n\nCONTACT:\n• Email: hello@example.com\n• GitHub: @username\n• Twitter: @username\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nThanks for visiting! Feel free to leave\na note in the Guestbook.\n\n- Created with <3 in 2026"
+    },
+    "projects-evanm-xyz": {
+      "id": "projects-evanm-xyz",
+      "title": "evanm.xyz.txt",
+      "content": "evanm.xyz - Personal Website\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nStatus: Active\nTech: Next.js, Tailwind CSS, TypeScript\n\nDESCRIPTION:\nA retro Mac OS inspired personal website.\nThis very site you're looking at right now.\n\nFeatures a pixel art aesthetic with draggable\nwindows, a guestbook, and content organized\nlike a classic desktop environment.\n\nLINKS:\n• Live: https://evanm.xyz\n• Source: github.com/ecmulli/evanm\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nBuilt with nostalgia and modern tech."
+    },
+    "projects-task-agent": {
+      "id": "projects-task-agent",
+      "title": "Task Agent.txt",
+      "content": "Task Agent - AI Task Creator\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nStatus: Active\nTech: Python, FastAPI, OpenAI, Notion API\n\nDESCRIPTION:\nAn AI-powered task creation assistant.\nDescribe what you need to do in natural\nlanguage, and it creates structured tasks\nin Notion with all the details.\n\nFeatures:\n• Natural language task parsing\n• Screenshot OCR for context\n• Dry-run preview before creating\n• Multi-workspace support\n\nLINKS:\n• Live: https://evanm.xyz/chat\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nMaking task management conversational."
+    },
+    "thoughts-digital-gardens": {
+      "id": "thoughts-digital-gardens",
+      "title": "Digital Gardens.txt",
+      "content": "Digital Gardens\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDate: January 10, 2026\n\nI've been thinking about websites as gardens.\n\nNot the manicured, corporate kind - but the\nwild, personal kind. The kind that grows\norganically over time.\n\nA digital garden is:\n• Always a work in progress\n• Personal and imperfect\n• A place for ideas to grow\n• Connected through winding paths\n\nThis desktop is my garden. Each file is a\nseed. Some might grow into something bigger.\nOthers might just stay as little notes.\n\nAnd that's okay.\n\n- End of file -"
+    },
+    "thoughts-hello-world": {
+      "id": "thoughts-hello-world",
+      "title": "Hello World.txt",
+      "content": "Hello, World!\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDate: January 1, 2026\n\nThe classic first program. The tradition that\nspans decades and countless programming languages.\n\n    10 PRINT \"HELLO, WORLD!\"\n    20 END\n\nWhy do we start here?\n\nMaybe because it's a greeting. A first word.\nA declaration that we exist in this digital\nspace and we have something to say.\n\nHello, World. Nice to meet you.\n\n- End of file -"
+    },
+    "thoughts-on-simplicity": {
+      "id": "thoughts-on-simplicity",
+      "title": "On Simplicity.txt",
+      "content": "On Simplicity\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDate: January 15, 2026\n\nThere's something beautiful about constraints.\n\nWhen you have limited resources, limited pixels,\nlimited colors - you're forced to be intentional\nabout every decision you make.\n\nModern software often suffers from feature bloat.\nWe add more because we can, not because we should.\n\nThe old Mac interfaces understood this. Every\nelement had a purpose. Every interaction was\nconsidered.\n\nMaybe that's why they still feel so satisfying\nto use, even decades later.\n\nSometimes less really is more.\n\n- End of file -"
+    }
+  },
+  "folderContents": {
+    "projects": {
+      "id": "projects",
+      "title": "Projects",
+      "items": [
+        {
+          "id": "projects-evanm-xyz-icon",
+          "label": "evanm.xyz.txt",
+          "iconType": "file",
+          "appType": "simpletext",
+          "contentId": "projects-evanm-xyz"
+        },
+        {
+          "id": "projects-task-agent-icon",
+          "label": "Task Agent.txt",
+          "iconType": "file",
+          "appType": "simpletext",
+          "contentId": "projects-task-agent"
+        }
+      ]
+    },
+    "thoughts": {
+      "id": "thoughts",
+      "title": "Thoughts",
+      "items": [
+        {
+          "id": "thoughts-digital-gardens-icon",
+          "label": "Digital Gardens.txt",
+          "iconType": "file",
+          "appType": "simpletext",
+          "contentId": "thoughts-digital-gardens"
+        },
+        {
+          "id": "thoughts-hello-world-icon",
+          "label": "Hello World.txt",
+          "iconType": "file",
+          "appType": "simpletext",
+          "contentId": "thoughts-hello-world"
+        },
+        {
+          "id": "thoughts-on-simplicity-icon",
+          "label": "On Simplicity.txt",
+          "iconType": "file",
+          "appType": "simpletext",
+          "contentId": "thoughts-on-simplicity"
+        }
+      ]
+    }
+  },
+  "desktopIcons": [
+    {
+      "id": "about-me-icon",
+      "label": "About Me.txt",
+      "iconType": "file",
+      "appType": "simpletext",
+      "contentId": "about-me"
+    },
+    {
+      "id": "projects-icon",
+      "label": "Projects",
+      "iconType": "folder",
+      "appType": "folder",
+      "contentId": "projects"
+    },
+    {
+      "id": "thoughts-icon",
+      "label": "Thoughts",
+      "iconType": "folder",
+      "appType": "folder",
+      "contentId": "thoughts"
+    },
+    {
+      "id": "guestbook-icon",
+      "label": "Guestbook",
+      "iconType": "app",
+      "appType": "stickies"
+    }
+  ]
+}
