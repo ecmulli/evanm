@@ -52,7 +52,7 @@ export default function WindowFrame({
     focusWindow(id);
   };
 
-  // Mobile: full-width, fixed position, no dragging, ~55% height to show dock
+  // Mobile: full-width, fixed position, no dragging, ~70% height to show dock
   if (isMobile) {
     return (
       <div
@@ -60,7 +60,7 @@ export default function WindowFrame({
         className="retro-window absolute left-0 right-0 mx-2"
         style={{
           top: '8px',
-          height: '55%',
+          height: '70%',
           zIndex,
         }}
         onTouchStart={handleMouseDown}
