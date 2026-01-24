@@ -4,6 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import { getTextContent } from '@/data/content';
+import { useOpenApp } from '@/hooks/useWindow';
 
 interface SimpleTextProps {
   contentId: string;
@@ -11,6 +12,7 @@ interface SimpleTextProps {
 
 export default function SimpleText({ contentId }: SimpleTextProps) {
   const content = getTextContent(contentId);
+  const { openFolder, openSimpleText } = useOpenApp();
 
   if (!content) {
     return (
@@ -21,6 +23,22 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
   }
 
   const isAboutMe = contentId === 'about-me';
+
+  // Handle internal links like #folder/projects or #file/about-me
+  const handleInternalLink = (href: string) => {
+    if (href.startsWith('#folder/')) {
+      const folderId = href.replace('#folder/', '');
+      const folderName = folderId.charAt(0).toUpperCase() + folderId.slice(1);
+      openFolder(folderName, folderId);
+      return true;
+    }
+    if (href.startsWith('#file/')) {
+      const fileId = href.replace('#file/', '');
+      openSimpleText(fileId, fileId);
+      return true;
+    }
+    return false;
+  };
 
   return (
     <div className="p-4 h-full overflow-auto">
@@ -36,7 +54,7 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
           />
         </div>
       )}
-      <div className="markdown-content text-xs leading-relaxed">
+      <div className="markdown-content text-xs leading-relaxed text-[#2a2520]">
         <ReactMarkdown
           components={{
             // Custom image rendering with Next.js Image
@@ -50,17 +68,32 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
                 />
               </span>
             ),
-            // Style links
-            a: ({ href, children }) => (
-              <a 
-                href={href} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-[#A0584A] underline hover:text-[#152A54]"
-              >
-                {children}
-              </a>
-            ),
+            // Style links - handle internal links specially
+            a: ({ href, children }) => {
+              const isInternal = href?.startsWith('#folder/') || href?.startsWith('#file/');
+              
+              if (isInternal) {
+                return (
+                  <button
+                    onClick={() => handleInternalLink(href || '')}
+                    className="text-[#A0584A] underline hover:text-[#152A54] cursor-pointer"
+                  >
+                    {children}
+                  </button>
+                );
+              }
+              
+              return (
+                <a 
+                  href={href} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[#A0584A] underline hover:text-[#152A54]"
+                >
+                  {children}
+                </a>
+              );
+            },
             // Style headers
             h1: ({ children }) => (
               <h1 className="text-base font-bold mt-3 mb-2">{children}</h1>

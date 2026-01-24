@@ -2,8 +2,8 @@
   "textContents": {
     "about-me": {
       "id": "about-me",
-      "title": "About Me.md",
-      "content": "# Hey, I'm Evan.\n\nProfessionally, I'm a **Data Scientist** and **Analytics Engineer**. Personally, I have a habit of collecting way too many hobbies.\n\nRight now I'm heavy on tennis and 3D printing, though lately I've been trying to make more space for art and mindfulness—hoping to share more of that soon.\n\nThis site is a glimpse into that mess. Check out my **Projects** or read through some **Thoughts**. Just know that everything here is in varying degrees of \"finished,\" so be gracious as you explore and don't hesitate to reach out!\n\n---\n\n## Contact\n\n- **Email:** [hello@evanm.xyz](mailto:hello@evanm.xyz)\n- **GitHub:** [@ecmulli](https://github.com/ecmulli)"
+      "title": "About Me.txt",
+      "content": "# Hey, I'm Evan.\n\nWelcome to my little space of the internet.\n\nProfessionally, I'm a **Data Scientist** and **Analytics Engineer**. Personally, I am a relentless tinkerer, serial hobbyist and obsessive optimizer.\n\nRight now I'm heavy on tennis and 3D printing, though lately I've been trying to make more space for art and mindfulness—hoping to share more of that soon.\n\nThis site is a glimpse into that mess. Check out my [Projects](#folder/projects) or read through some [Thoughts](#folder/thoughts). Just know that everything here is in varying degrees of \"finished,\" so be gracious as you explore and don't hesitate to reach out!\n\n---\n\n## Contact\n\n- **Email:** [evancmullins@gmail.com](mailto:evancmullins@gmail.com)\n- **GitHub:** [@ecmulli](https://github.com/ecmulli)"
     },
     "site-inspiration": {
       "id": "site-inspiration",
@@ -88,7 +88,7 @@
   "desktopIcons": [
     {
       "id": "about-me-icon",
-      "label": "About Me.md",
+      "label": "About Me.txt",
       "iconType": "file",
       "appType": "simpletext",
       "contentId": "about-me"
