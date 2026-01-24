@@ -2,13 +2,13 @@
   "textContents": {
     "about-me": {
       "id": "about-me",
-      "title": "About Me.txt",
-      "content": "Welcome to my corner of the internet!\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nHello, I'm [Your Name].\n\nI'm a developer, creator, and digital explorer \nwho appreciates the charm of vintage computing.\n\nThis website is a love letter to the golden age\nof personal computing - when interfaces had\ncharacter and every pixel was intentional.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nINTERESTS:\n• Building things on the web\n• Retro computing & pixel art\n• Coffee and good conversations\n\nCONTACT:\n• Email: hello@example.com\n• GitHub: @username\n• Twitter: @username\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nThanks for visiting! Feel free to leave\na note in the Guestbook.\n\n- Created with <3 in 2026"
+      "title": "About Me.md",
+      "content": "# Welcome to my corner of the internet!\n\nHello, I'm **Evan**.\n\nI'm a developer, creator, and digital explorer who appreciates the charm of vintage computing.\n\nThis website is a love letter to the golden age of personal computing - when interfaces had character and every pixel was intentional.\n\n---\n\n## Interests\n\n- Building things on the web\n- Retro computing & pixel art\n- Coffee and good conversations\n\n## Contact\n\n- **Email:** [hello@evanm.xyz](mailto:hello@evanm.xyz)\n- **GitHub:** [@ecmulli](https://github.com/ecmulli)\n\n---\n\nThanks for visiting! Feel free to leave a note in the **Guestbook**.\n\n> *Created with love in 2026*"
     },
     "projects-evanm-xyz": {
       "id": "projects-evanm-xyz",
-      "title": "evanm.xyz.txt",
-      "content": "evanm.xyz - Personal Website\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nStatus: Active\nTech: Next.js, Tailwind CSS, TypeScript\n\nDESCRIPTION:\nA retro Mac OS inspired personal website.\nThis very site you're looking at right now.\n\nFeatures a pixel art aesthetic with draggable\nwindows, a guestbook, and content organized\nlike a classic desktop environment.\n\nLINKS:\n• Live: https://evanm.xyz\n• Source: github.com/ecmulli/evanm\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nBuilt with nostalgia and modern tech."
+      "title": "evanm.xyz.md",
+      "content": "# evanm.xyz\n\n**Status:** Active  \n**Tech:** Next.js, Tailwind CSS, React\n\n## Description\n\nA retro Mac OS-inspired personal website that showcases projects and thoughts in a nostalgic desktop environment.\n\nFeatures draggable windows, pixel art icons, and that classic System 7 aesthetic.\n\n## Links\n\n- [Live Site](https://evanm.xyz)\n- [Source Code](https://github.com/ecmulli/evanm)\n\n---\n\n*Where vintage meets modern.*"
     },
     "projects-task-agent": {
       "id": "projects-task-agent",
@@ -38,7 +38,7 @@
       "items": [
         {
           "id": "projects-evanm-xyz-icon",
-          "label": "evanm.xyz.txt",
+          "label": "evanm.xyz.md",
           "iconType": "file",
           "appType": "simpletext",
           "contentId": "projects-evanm-xyz"
@@ -83,7 +83,7 @@
   "desktopIcons": [
     {
       "id": "about-me-icon",
-      "label": "About Me.txt",
+      "label": "About Me.md",
       "iconType": "file",
       "appType": "simpletext",
       "contentId": "about-me"

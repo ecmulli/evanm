@@ -12,7 +12,7 @@ interface DesktopIconProps {
 export default function DesktopIcon({ config }: DesktopIconProps) {
   const { openSimpleText, openStickies, openFolder } = useOpenApp();
 
-  const handleDoubleClick = () => {
+  const handleClick = () => {
     switch (config.appType) {
       case 'simpletext':
         openSimpleText(config.label, config.contentId || config.id);
@@ -29,12 +29,12 @@ export default function DesktopIcon({ config }: DesktopIconProps) {
   return (
     <div
       className="desktop-icon"
-      onDoubleClick={handleDoubleClick}
+      onClick={handleClick}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
-          handleDoubleClick();
+          handleClick();
         }
       }}
     >

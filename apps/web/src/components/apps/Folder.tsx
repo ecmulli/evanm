@@ -21,7 +21,7 @@ export default function Folder({ contentId }: FolderProps) {
     );
   }
 
-  const handleDoubleClick = (item: { id: string; label: string; contentId?: string }) => {
+  const handleClick = (item: { id: string; label: string; contentId?: string }) => {
     openSimpleText(item.label, item.contentId || item.id);
   };
 
@@ -32,12 +32,12 @@ export default function Folder({ contentId }: FolderProps) {
           <div
             key={item.id}
             className="flex flex-col items-center p-2 cursor-pointer hover:bg-[#A0584A]/10"
-            onDoubleClick={() => handleDoubleClick(item)}
+            onClick={() => handleClick(item)}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                handleDoubleClick(item);
+                handleClick(item);
               }
             }}
           >

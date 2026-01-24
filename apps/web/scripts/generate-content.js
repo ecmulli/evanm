@@ -38,7 +38,14 @@ function parseFrontmatter(fileContent) {
  * Convert filename to content ID
  */
 function filenameToId(filename) {
-  return filename.replace(/\.txt$/, '');
+  return filename.replace(/\.(txt|md)$/, '');
+}
+
+/**
+ * Check if file is a content file (.txt or .md)
+ */
+function isContentFile(filename) {
+  return filename.endsWith('.txt') || filename.endsWith('.md');
 }
 
 /**
@@ -55,8 +62,8 @@ function generateContent() {
     process.exit(1);
   }
   
-  // Load root-level files (like about-me.txt)
-  const rootFiles = fs.readdirSync(CONTENT_DIR).filter(f => f.endsWith('.txt'));
+  // Load root-level files (like about-me.txt or about-me.md)
+  const rootFiles = fs.readdirSync(CONTENT_DIR).filter(f => isContentFile(f));
   for (const filename of rootFiles) {
     const filePath = path.join(CONTENT_DIR, filename);
     const fileContent = fs.readFileSync(filePath, 'utf-8');
@@ -83,7 +90,7 @@ function generateContent() {
   
   for (const subdir of subdirs) {
     const subdirPath = path.join(CONTENT_DIR, subdir);
-    const files = fs.readdirSync(subdirPath).filter(f => f.endsWith('.txt'));
+    const files = fs.readdirSync(subdirPath).filter(f => isContentFile(f));
     
     const folderTitle = subdir.charAt(0).toUpperCase() + subdir.slice(1);
     const items = [];

@@ -14,81 +14,114 @@ The site is a Next.js app with a retro Mac OS desktop interface. Content appears
 
 ## Content System
 
-Content is **file-based**. The directory structure mirrors the website:
+Content is **file-based with full Markdown support**. The directory structure mirrors the website:
 
 ```
 apps/web/src/content/
-├── about-me.txt              → Desktop file "About Me.txt"
+├── about-me.md               → Desktop file "About Me.md"
 ├── projects/                 → Desktop folder "Projects"
-│   ├── evanm-xyz.txt         → File inside Projects folder
-│   └── task-agent.txt        → File inside Projects folder
+│   ├── evanm-xyz.md          → File inside Projects folder
+│   └── task-agent.md         → File inside Projects folder
 └── thoughts/                 → Desktop folder "Thoughts"
-    ├── on-simplicity.txt     → File inside Thoughts folder
-    ├── digital-gardens.txt   → File inside Thoughts folder
-    └── hello-world.txt       → File inside Thoughts folder
+    ├── on-simplicity.md      → File inside Thoughts folder
+    ├── digital-gardens.md    → File inside Thoughts folder
+    └── hello-world.md        → File inside Thoughts folder
 ```
 
 **Adding content is as simple as adding a file to the appropriate directory.**
 
 ## File Format
 
-Each `.txt` file uses a simple frontmatter format:
+Each `.md` file uses frontmatter + markdown content:
 
+```markdown
+---
+title: Display Title.md
+---
+# Your Title
+
+Your **markdown** content here with *formatting*!
+
+- Bullet points
+- [Links](https://example.com)
+- Images, code blocks, etc.
 ```
----
-title: Display Title.txt
----
-Your content here...
+
+## Markdown Features
+
+Full markdown support including:
+
+- **Bold** and *italic* text
+- [Links](https://example.com) (open in new tab)
+- Headers (`#`, `##`, `###`)
+- Bullet and numbered lists
+- `inline code` and code blocks
+- > Blockquotes
+- Horizontal rules (`---`)
+- Images: `![alt text](/images/photo.png)`
+
+### Images
+
+Place images in `apps/web/public/images/` and reference them:
+
+```markdown
+![Screenshot](/images/my-screenshot.png)
 ```
 
 ### Example: Adding a New Thought
 
-Create `apps/web/src/content/thoughts/my-new-thought.txt`:
+Create `apps/web/src/content/thoughts/my-new-thought.md`:
 
-```
+```markdown
 ---
-title: My New Thought.txt
+title: My New Thought.md
 ---
-Title Here
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# My New Thought
 
-Date: January 24, 2026
+*January 24, 2026*
 
-Your thought content here...
+Your thought content here with **bold** and *italic* text.
 
-- End of file -
+> A blockquote for emphasis
+
+- Point one
+- Point two
 ```
 
 ### Example: Adding a New Project
 
-Create `apps/web/src/content/projects/my-project.txt`:
+Create `apps/web/src/content/projects/my-project.md`:
 
-```
+```markdown
 ---
-title: My Project.txt
+title: My Project.md
 ---
-My Project Name
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# My Project Name
 
-Status: Active
-Tech: List, Of, Technologies
+**Status:** Active  
+**Tech:** React, Node.js, PostgreSQL
 
-DESCRIPTION:
+## Description
+
 What the project does and why it matters.
 
-LINKS:
-• Live: https://example.com
-• Source: github.com/user/repo
+![Screenshot](/images/my-project.png)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Tagline.
+## Links
+
+- [Live Site](https://example.com)
+- [Source Code](https://github.com/user/repo)
+
+---
+
+*Tagline here.*
 ```
 
 ### Example: Adding a New Folder
 
 Create a new directory: `apps/web/src/content/my-folder/`
 
-Then add `.txt` files inside it. The folder will automatically appear on the desktop.
+Then add `.md` files inside it. The folder will automatically appear on the desktop.
 
 ## How It Works
 
@@ -96,67 +129,63 @@ Then add `.txt` files inside it. The folder will automatically appear on the des
 2. `npm run generate-content` reads all files and creates `generated-content.json`
 3. The app imports this JSON at build time
 4. Directory structure → Desktop folders
-5. `.txt` files → Files inside folders (or on desktop if at root)
+5. `.md` files → Files inside folders (or on desktop if at root)
 
 ## Quick Reference
 
 | Task | Action |
 |------|--------|
-| Add a thought | Create `src/content/thoughts/filename.txt` |
-| Add a project | Create `src/content/projects/filename.txt` |
-| Add desktop file | Create `src/content/filename.txt` |
+| Add a thought | Create `src/content/thoughts/filename.md` |
+| Add a project | Create `src/content/projects/filename.md` |
+| Add desktop file | Create `src/content/filename.md` |
 | Add new folder | Create `src/content/foldername/` directory |
-| Edit About Me | Edit `src/content/about-me.txt` |
+| Add an image | Place in `public/images/`, reference as `/images/name.png` |
+| Edit About Me | Edit `src/content/about-me.md` |
 
-## Content Style Guide
+## Naming Conventions
 
-### Text Formatting
-- Use `━` (box drawing character) for decorative lines
-- Start files with a title and separator line
-- Use `• ` for bullet points
-- End files with `- End of file -` or a signature
-
-### Naming Conventions
-- Filenames: lowercase with hyphens (e.g., `my-project.txt`)
+- Filenames: lowercase with hyphens (e.g., `my-project.md`)
 - The `title` in frontmatter is what displays in the UI
+- Use `.md` extension (`.txt` also works for plain text)
 
-### Content Templates
+## Content Templates
 
 **Thought Template:**
-```
+```markdown
 ---
-title: Thought Title.txt
+title: Thought Title.md
 ---
-Title
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Thought Title
 
-Date: Month Day, Year
+*Month Day, Year*
 
 Content paragraphs here...
 
-- End of file -
+> Key insight or quote
 ```
 
 **Project Template:**
-```
+```markdown
 ---
-title: Project Name.txt
+title: Project Name.md
 ---
-Project Name
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Project Name
 
-Status: Active
-Tech: Tech, Stack, Here
+**Status:** Active/Complete/WIP  
+**Tech:** Tech, Stack, Here
 
-DESCRIPTION:
+## Description
+
 What it does.
 
-LINKS:
-• Live: url
-• Source: repo
+## Links
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Tagline.
+- [Live](https://url)
+- [Source](https://repo)
+
+---
+
+*Tagline.*
 ```
 
 ## File Structure
