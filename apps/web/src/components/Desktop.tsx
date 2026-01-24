@@ -9,6 +9,7 @@ import Stickies from './apps/Stickies';
 import Folder from './apps/Folder';
 import { useWindow } from '@/hooks/useWindow';
 import { useView } from '@/context/ViewContext';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { desktopIcons } from '@/data/content';
 import { WindowState } from '@/types/window';
 
@@ -41,6 +42,7 @@ function getWindowDimensions(appType: string): { width: number; height: number }
 export default function Desktop() {
   const { visibleWindows, closeWindow, openWindow, updateWindowPosition } = useWindow();
   const { settings } = useView();
+  const isMobile = useIsMobile();
 
   // Open "About Me.txt" window centered on page load
   useEffect(() => {
@@ -76,8 +78,8 @@ export default function Desktop() {
       <div 
         className="pixel-desktop relative w-full overflow-hidden"
         style={{ 
-          height: 'calc(100vh - 32px)',
-          marginTop: '32px',
+          height: isMobile ? 'calc(100vh - 44px)' : 'calc(100vh - 32px)',
+          marginTop: isMobile ? '44px' : '32px',
         }}
       >
         {/* Stars layer */}
@@ -99,8 +101,12 @@ export default function Desktop() {
         {/* Grid overlay */}
         {settings.showGrid && <div className="pixel-grid" />}
 
-        {/* Desktop Icons */}
-        <div className="absolute top-4 right-4 flex flex-col gap-1 z-10">
+        {/* Desktop Icons - bottom dock on mobile, top-right on desktop */}
+        <div className={
+          isMobile 
+            ? "absolute bottom-2 left-0 right-0 flex justify-center gap-2 z-10"
+            : "absolute top-4 right-4 flex flex-col gap-1 z-10"
+        }>
           {desktopIcons.map((icon) => (
             <DesktopIcon key={icon.id} config={icon} />
           ))}
