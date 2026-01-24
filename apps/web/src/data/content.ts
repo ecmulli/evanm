@@ -120,6 +120,60 @@ Hello, World. Nice to meet you.
 - End of file -
 `,
   },
+  // ===== PROJECTS =====
+  'project-evanm-xyz': {
+    id: 'project-evanm-xyz',
+    title: 'evanm.xyz.txt',
+    content: `evanm.xyz - Personal Website
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Status: Active
+Tech: Next.js, Tailwind CSS, TypeScript
+
+DESCRIPTION:
+A retro Mac OS inspired personal website.
+This very site you're looking at right now.
+
+Features a pixel art aesthetic with draggable
+windows, a guestbook, and content organized
+like a classic desktop environment.
+
+LINKS:
+• Live: https://evanm.xyz
+• Source: github.com/ecmulli/evanm
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Built with nostalgia and modern tech.
+`,
+  },
+  'project-agent': {
+    id: 'project-agent',
+    title: 'Task Agent.txt',
+    content: `Task Agent - AI Task Creator
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Status: Active
+Tech: Python, FastAPI, OpenAI, Notion API
+
+DESCRIPTION:
+An AI-powered task creation assistant.
+Describe what you need to do in natural
+language, and it creates structured tasks
+in Notion with all the details.
+
+Features:
+• Natural language task parsing
+• Screenshot OCR for context
+• Dry-run preview before creating
+• Multi-workspace support
+
+LINKS:
+• Live: https://evanm.xyz/chat
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Making task management conversational.
+`,
+  },
 };
 
 // Folder contents
@@ -148,6 +202,26 @@ export const folderContents: Record<string, FolderContent> = {
         iconType: 'file',
         appType: 'simpletext',
         contentId: 'thought-3',
+      },
+    ],
+  },
+  'projects': {
+    id: 'projects',
+    title: 'Projects',
+    items: [
+      {
+        id: 'project-evanm-xyz-icon',
+        label: 'evanm.xyz.txt',
+        iconType: 'file',
+        appType: 'simpletext',
+        contentId: 'project-evanm-xyz',
+      },
+      {
+        id: 'project-agent-icon',
+        label: 'Task Agent.txt',
+        iconType: 'file',
+        appType: 'simpletext',
+        contentId: 'project-agent',
       },
     ],
   },
@@ -183,6 +257,13 @@ export const desktopIcons: DesktopIconConfig[] = [
     iconType: 'file',
     appType: 'simpletext',
     contentId: 'about-me',
+  },
+  {
+    id: 'projects-icon',
+    label: 'Projects',
+    iconType: 'folder',
+    appType: 'folder',
+    contentId: 'projects',
   },
   {
     id: 'thoughts-icon',
