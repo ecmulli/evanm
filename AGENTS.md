@@ -236,7 +236,68 @@ After making changes:
 ## Notes
 
 - The generated JSON (`generated-content.json`) is committed to git for simplicity
-- The guestbook (`stickies`) uses mock data (not file-based)
 - Windows open centered by default
 - Desktop icons appear in the top-right corner
 - Brand colors are defined in `globals.css`
+
+---
+
+## TODO: Guestbook Feature (Paused)
+
+**Status:** Hidden from desktop, awaiting persistence implementation
+
+### What Exists
+
+The Guestbook/Stickies feature is fully built in `src/components/apps/Stickies.tsx`:
+- Form to submit name + message
+- Display list of notes with timestamps
+- Retro sticky note styling
+- Works perfectly in-memory
+
+### The Problem
+
+Notes don't persist - they're stored in React state and lost on page refresh.
+
+### Recommended Solutions (Simplest First)
+
+1. **Upstash Redis** (Recommended)
+   - Free tier: 10k commands/day
+   - Simple REST API, no SDK needed
+   - Store notes as JSON string with key `guestbook`
+   - Setup: https://upstash.com
+
+2. **Cloudflare R2**
+   - S3-compatible blob storage
+   - Free tier: 10GB storage, 10M reads/mo
+   - Store a `guestbook.json` file
+   - Read on load, write on new entry
+
+3. **JSONBin.io**
+   - Free tier: 10k requests/mo
+   - Simple REST API for JSON storage
+   - No setup needed, just API key
+
+### To Re-enable
+
+1. Choose a persistence solution
+2. Add the service credentials to `.env`
+3. Update `Stickies.tsx` to:
+   - Fetch notes on component mount
+   - POST new notes to the service
+4. Uncomment the guestbook icon in `scripts/generate-content.js`:
+   ```javascript
+   desktopIcons.push({
+     id: 'guestbook-icon',
+     label: 'Guestbook',
+     iconType: 'app',
+     appType: 'stickies',
+   });
+   ```
+5. Run `npm run generate-content` and rebuild
+
+### Files Involved
+
+- `src/components/apps/Stickies.tsx` - The guestbook UI
+- `src/data/content.ts` - Has `initialNotes` mock data
+- `scripts/generate-content.js` - Icon is commented out here
+- `src/types/window.ts` - `StickyNote` type definition

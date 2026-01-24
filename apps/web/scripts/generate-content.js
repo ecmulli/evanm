@@ -128,13 +128,14 @@ function generateContent() {
     });
   }
   
-  // Add Guestbook (not file-based)
-  desktopIcons.push({
-    id: 'guestbook-icon',
-    label: 'Guestbook',
-    iconType: 'app',
-    appType: 'stickies',
-  });
+  // Guestbook is hidden until persistence is implemented
+  // See AGENTS.md for details on resuming this feature
+  // desktopIcons.push({
+  //   id: 'guestbook-icon',
+  //   label: 'Guestbook',
+  //   iconType: 'app',
+  //   appType: 'stickies',
+  // });
   
   return { textContents, folderContents, desktopIcons };
 }

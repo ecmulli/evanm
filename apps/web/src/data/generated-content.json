@@ -101,12 +101,6 @@
       "iconType": "folder",
       "appType": "folder",
       "contentId": "thoughts"
-    },
-    {
-      "id": "guestbook-icon",
-      "label": "Guestbook",
-      "iconType": "app",
-      "appType": "stickies"
     }
   ]
 }
