@@ -99,8 +99,8 @@ export default function Desktop() {
         {/* Grid overlay */}
         {settings.showGrid && <div className="pixel-grid" />}
 
-        {/* Desktop Icons - 2 column grid */}
-        <div className="absolute top-4 right-4 grid grid-cols-2 gap-1 z-10">
+        {/* Desktop Icons */}
+        <div className="absolute top-4 right-4 flex flex-col gap-1 z-10">
           {desktopIcons.map((icon) => (
             <DesktopIcon key={icon.id} config={icon} />
           ))}
