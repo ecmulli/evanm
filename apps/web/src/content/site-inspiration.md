@@ -1,7 +1,10 @@
 ---
 title: Site Inspiration.txt
 ---
-# Why this site looks like this
+
+# Site Inspiration
+
+## Why this site looks like this
 
 It took me way too long to put together a personal site.
 
@@ -9,7 +12,7 @@ The main blocker? I couldn't figure out how to express myself in a standard form
 
 ## The Authenticity Problem
 
-I have a problem with inauthenticity: I can't *not* be myself. I couldn't bring myself to build a "standard" site that only showcased a polished professional portfolio. I needed a container that could hold all of me.
+I have a problem with inauthenticity: I can't _not_ be myself. I couldn't bring myself to build a "standard" site that only showcased a polished professional portfolio. I needed a container that could hold all of me.
 
 ## The Solution: evanmOS
 

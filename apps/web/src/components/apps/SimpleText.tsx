@@ -49,7 +49,6 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
             alt="Profile Picture" 
             width={78} 
             height={78}
-            className="border-2 border-[#3A3530]"
             style={{ imageRendering: 'auto' }}
           />
         </div>
