@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import MenuBar from './MenuBar';
 import DesktopIcon from './DesktopIcon';
 import WindowFrame from './WindowFrame';
@@ -38,7 +38,32 @@ function getWindowDimensions(appType: string): { width: number; height: number }
 }
 
 export default function Desktop() {
-  const { visibleWindows, closeWindow } = useWindow();
+  const { visibleWindows, closeWindow, openWindow } = useWindow();
+
+  // Open "About Me.txt" window centered on page load
+  useEffect(() => {
+    // Only open if no windows are currently open (first load)
+    if (visibleWindows.length === 0) {
+      const windowWidth = 450;
+      const windowHeight = 350;
+      const menuBarHeight = 32;
+      
+      // Calculate center position relative to the desktop container
+      // Desktop container height is calc(100vh - 32px), width is 100vw
+      const desktopWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
+      const desktopHeight = typeof window !== 'undefined' ? window.innerHeight - menuBarHeight : 800 - menuBarHeight;
+      
+      const centerX = (desktopWidth - windowWidth) / 2;
+      const centerY = (desktopHeight - windowHeight) / 2;
+      
+      openWindow({
+        appType: 'simpletext',
+        title: 'About Me.txt',
+        contentId: 'about-me',
+        position: { x: centerX, y: centerY },
+      });
+    }
+  }, []); // Empty dependency array - only run on mount
 
   return (
     <div className="h-screen w-screen overflow-hidden">
@@ -49,8 +74,8 @@ export default function Desktop() {
       <div 
         className="pixel-desktop relative w-full overflow-hidden"
         style={{ 
-          height: 'calc(100vh - 24px)',
-          marginTop: '24px',
+          height: 'calc(100vh - 32px)',
+          marginTop: '32px',
         }}
       >
         {/* Stars layer */}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BrandLogoIcon } from './PixelIcons';
+import Image from 'next/image';
 
 export default function MenuBar() {
   const [time, setTime] = useState<string>('');
@@ -32,7 +32,14 @@ export default function MenuBar() {
       <div className="flex items-center">
         {/* Brand Logo */}
         <div className="retro-menu-item flex items-center">
-          <BrandLogoIcon />
+          <Image 
+            src="/full_logo.svg" 
+            alt="Brand Logo" 
+            width={60} 
+            height={16}
+            className="h-4 w-auto"
+            style={{ imageRendering: 'auto' }}
+          />
         </div>
 
         {/* File Menu */}

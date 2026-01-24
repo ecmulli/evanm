@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { getTextContent } from '@/data/content';
 
 interface SimpleTextProps {
@@ -18,8 +19,22 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
     );
   }
 
+  const isAboutMe = contentId === 'about-me';
+
   return (
     <div className="p-4 h-full overflow-auto">
+      {isAboutMe && (
+        <div className="mb-4 flex justify-center">
+          <Image 
+            src="/pfp.svg" 
+            alt="Profile Picture" 
+            width={78} 
+            height={78}
+            className="border-2 border-[#3A3530]"
+            style={{ imageRendering: 'auto' }}
+          />
+        </div>
+      )}
       <div className="whitespace-pre-wrap text-xs leading-relaxed">
         {content.content}
       </div>
