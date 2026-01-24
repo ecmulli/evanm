@@ -1,29 +1,17 @@
 ---
 title: About Me.md
 ---
-# Welcome to my corner of the internet!
+# Hey, I'm Evan.
 
-Hello, I'm **Evan**.
+Professionally, I'm a **Data Scientist** and **Analytics Engineer**. Personally, I have a habit of collecting way too many hobbies.
 
-I'm a developer, creator, and digital explorer who appreciates the charm of vintage computing.
+Right now I'm heavy on tennis and 3D printing, though lately I've been trying to make more space for art and mindfulness—hoping to share more of that soon.
 
-This website is a love letter to the golden age of personal computing - when interfaces had character and every pixel was intentional.
+This site is a glimpse into that mess. Check out my **Projects** or read through some **Thoughts**. Just know that everything here is in varying degrees of "finished," so be gracious as you explore and don't hesitate to reach out!
 
 ---
-
-## Interests
-
-- Building things on the web
-- Retro computing & pixel art
-- Coffee and good conversations
 
 ## Contact
 
 - **Email:** [hello@evanm.xyz](mailto:hello@evanm.xyz)
 - **GitHub:** [@ecmulli](https://github.com/ecmulli)
-
----
-
-Thanks for visiting! Feel free to leave a note in the **Guestbook**.
-
-> *Created with love in 2026*
