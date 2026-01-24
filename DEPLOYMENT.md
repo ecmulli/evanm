@@ -1,20 +1,78 @@
 # Deployment Guide
 
-## Railway Deployment Setup
+## Architecture Overview
 
-This monorepo contains two services that need to be deployed to Railway:
-1. **Backend**: FastAPI Python server (`apps/agent/`)
-2. **Frontend**: Next.js React app (`apps/web/`)
+This monorepo contains three services deployed to Railway:
+
+| Service | Domain | Description |
+|---------|--------|-------------|
+| **Desktop** | `evanm.xyz` | Retro Mac OS desktop personal website |
+| **Web** | `agent.evanm.xyz` | Agent chat UI |
+| **Agent** | (internal) | FastAPI backend for agent |
+
+## Railway Deployment Setup
 
 ### Prerequisites
 - Railway account
-- Domain configured for `agent.evanm.xyz`
+- Domains configured:
+  - `evanm.xyz` → Desktop service
+  - `agent.evanm.xyz` → Web service
 
-### Backend Deployment
+---
 
-The backend is already configured with `apps/agent/railway.toml`. 
+## Desktop App (`apps/desktop/`)
 
-**Environment Variables Needed:**
+The main personal website with retro Mac OS aesthetics.
+
+**Files:**
+- `apps/desktop/Dockerfile`
+- `apps/desktop/railway.toml`
+
+**Environment Variables:** None required
+
+**Local Development:**
+```bash
+cd apps/desktop
+npm install
+npm run dev
+# Opens at http://localhost:3002
+```
+
+---
+
+## Web App (`apps/web/`)
+
+The agent chat frontend.
+
+**Files:**
+- `apps/web/Dockerfile`
+- `apps/web/railway.toml`
+
+**Environment Variables:**
+```
+BEARER_TOKEN=your_secure_token_here
+NODE_ENV=production
+```
+
+**Local Development:**
+```bash
+cd apps/web
+npm install
+npm run dev
+# Opens at http://localhost:3001
+```
+
+---
+
+## Agent Backend (`apps/agent/`)
+
+FastAPI Python server for task creation.
+
+**Files:**
+- `apps/agent/Dockerfile`
+- `apps/agent/railway.toml`
+
+**Environment Variables:**
 ```
 BEARER_TOKEN=your_secure_token_here
 OPENAI_API_KEY=your_openai_key
@@ -26,75 +84,76 @@ VANQUISH_NOTION_API_KEY=optional
 VANQUISH_NOTION_DB_ID=optional
 ```
 
-### Frontend Deployment
-
-The frontend is configured with `apps/web/railway.toml`.
-
-**Environment Variables Needed:**
-```
-BEARER_TOKEN=same_as_backend_token
-NODE_ENV=production
+**Local Development:**
+```bash
+cd apps/agent
+pip install -r requirements.txt
+python app.py
+# Runs at http://localhost:8000
 ```
 
-### Domain Configuration
+---
 
-1. **Backend**: Deploy to Railway and get the URL (e.g., `https://agent-backend-production.railway.app`)
-2. **Frontend**: Deploy to Railway and configure custom domain `agent.evanm.xyz`
-3. **Update next.config.ts**: Replace the production destination URL with your actual backend Railway URL
+## Deploying to Railway
 
-### Local Development
+### Option 1: Railway Dashboard
+1. Connect your GitHub repo to Railway
+2. Create a new service for each app
+3. Set the root directory or use the railway.toml config
+4. Configure environment variables
+5. Assign custom domains
 
-1. **Start both services**:
-   ```bash
-   npm run dev
-   ```
-   This runs both the Python backend (localhost:8000) and Next.js frontend (localhost:3001)
+### Option 2: Railway CLI
+```bash
+# Install Railway CLI
+npm install -g @railway/cli
 
-2. **Or start individually**:
-   ```bash
-   # Backend only
-   npm run agent
-   
-   # Frontend only
-   npm run web:dev
-   ```
+# Login
+railway login
 
-### API Routes
+# Deploy
+railway up
+```
 
-- **Frontend**: `agent.evanm.xyz/chat`
-- **Backend API**: `agent.evanm.xyz/api/v1/*` (proxied through frontend)
+---
 
-### Authentication
+## Domain Configuration
 
-- Users authenticate with a bearer token on `/login`
-- Token is stored in localStorage
-- Middleware protects `/chat` routes
-- Same token used for backend API calls
+1. **Desktop** (`evanm.xyz`):
+   - Deploy desktop service
+   - Add custom domain `evanm.xyz` in Railway
+   - Configure DNS: CNAME to Railway's provided domain
 
-### Features Implemented
+2. **Web** (`agent.evanm.xyz`):
+   - Deploy web service
+   - Add custom domain `agent.evanm.xyz` in Railway
+   - Configure DNS: CNAME to Railway's provided domain
 
-✅ **All Acceptance Criteria Met**:
-- [x] User can type text and hit enter to create a task
-- [x] Interface hosted at agent.evanm.xyz/chat
-- [x] Confirmation prompt with dry_run=true implemented
-- [x] UI includes sidebar and message history
-- [x] System is flexible for adding new routes
-- [x] Basic authentication implemented
-- [x] Screenshots can be uploaded for OCR to enrich tasks
+3. **Agent Backend**:
+   - Internal service, accessed via Railway's private networking
+   - Or expose via Railway URL for web app to proxy to
 
-### Chat Features
+---
 
-- **Text Input**: Natural language task creation
-- **File Upload**: Screenshots/images for OCR processing
-- **Confirmation Dialog**: Shows task preview before creation
-- **Message History**: Persistent chat interface
-- **Task Details**: Shows created task information
-- **Logout**: Secure session management
+## Local Development (All Services)
 
-### Future Enhancements (Optional)
+From the root directory:
+```bash
+# Install all dependencies
+npm install
 
-For chat history persistence, you could add:
-- Railway PostgreSQL database
-- Chat session storage
-- User management system
-- Task history tracking
+# Run all services (if configured in root package.json)
+npm run dev
+```
+
+Or run individually:
+```bash
+# Desktop
+npm run desktop:dev
+
+# Web
+npm run web:dev
+
+# Agent
+npm run agent
+```
