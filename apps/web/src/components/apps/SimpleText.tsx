@@ -93,15 +93,15 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
                 </a>
               );
             },
-            // Style headers
+            // Style headers - make them visually distinct
             h1: ({ children }) => (
-              <h1 className="text-base font-bold mt-3 mb-2">{children}</h1>
+              <h1 className="text-xl font-bold mt-4 mb-3 text-[#152A54] border-b border-[#A0584A] pb-1">{children}</h1>
             ),
             h2: ({ children }) => (
-              <h2 className="text-sm font-bold mt-3 mb-1">{children}</h2>
+              <h2 className="text-lg font-bold mt-4 mb-2 text-[#152A54]">{children}</h2>
             ),
             h3: ({ children }) => (
-              <h3 className="text-xs font-bold mt-2 mb-1">{children}</h3>
+              <h3 className="text-base font-bold mt-3 mb-1 text-[#3A3530]">{children}</h3>
             ),
             // Style paragraphs
             p: ({ children }) => (
