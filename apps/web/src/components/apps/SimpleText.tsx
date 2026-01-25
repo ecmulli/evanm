@@ -53,7 +53,7 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
           />
         </div>
       )}
-      <div className="markdown-content text-xs leading-relaxed text-[#2a2520]">
+      <div className="markdown-content text-sm sm:text-xs leading-relaxed text-[#2a2520] font-medium">
         <ReactMarkdown
           components={{
             // Custom image rendering with Next.js Image
