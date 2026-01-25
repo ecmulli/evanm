@@ -4,7 +4,8 @@
 	"description": "Personal monorepo for multiple applications",
 	"private": true,
 	"workspaces": [
-		"apps/web"
+		"apps/web",
+		"apps/desktop"
 	],
 	"scripts": {
 		"install:all": "npm install",
@@ -18,6 +19,10 @@
 		"web:dev": "cd apps/web && npm run dev",
 		"web:build": "cd apps/web && npm run build",
 		"web:start": "cd apps/web && npm run start",
+		"desktop:install": "cd apps/desktop && npm install",
+		"desktop:dev": "cd apps/desktop && npm run dev",
+		"desktop:build": "cd apps/desktop && npm run build",
+		"desktop:start": "cd apps/desktop && npm run start",
 		"dev": "concurrently \"npm run agent\" \"npm run web:dev\""
 	},
 	"devDependencies": {

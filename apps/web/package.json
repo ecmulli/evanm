@@ -3,16 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3001",
-    "build": "next build",
+    "dev": "npm run generate-content && next dev -p 3001",
+    "build": "npm run generate-content && next build",
     "start": "next start -p 3001",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate-content": "node scripts/generate-content.js"
   },
   "dependencies": {
     "lucide-react": "^0.542.0",
-    "next": "15.5.2",
+    "next": "^15.5.9",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "react-draggable": "^4.5.0",
+    "react-markdown": "^10.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

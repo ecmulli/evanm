@@ -1,0 +1,118 @@
+{
+  "textContents": {
+    "about-me": {
+      "id": "about-me",
+      "title": "About Me.txt",
+      "content": "# Hey, I'm Evan.\n\nWelcome to my little space of the internet.\n\nProfessionally, I'm a **Data Scientist** and **Analytics Engineer**. Personally, I am a relentless **tinkerer**, serial **hobbyist** and obsessive **optimizer**.\n\nRight now I'm heavy on tennis and 3D printing, though lately I've been trying to make more space for art and mindfulness—hoping to share more of that soon.\n\nThis site is a glimpse into that mess. Check out my **[Projects](#folder/projects)** or read through some **[Thoughts](#folder/thoughts)**. Just know that everything here is in varying degrees of \"finished,\" so be gracious as you explore and don't hesitate to reach out!\n\n---\n\n## Contact\n\n- **Email:** [evancmullins@gmail.com](mailto:evancmullins@gmail.com)\n- **GitHub:** [@ecmulli](https://github.com/ecmulli)"
+    },
+    "site-inspiration": {
+      "id": "site-inspiration",
+      "title": "Site Inspiration.txt",
+      "content": "# Site Inspiration\n\n## Why this site looks like this\n\nIt took me way too long to put together a personal site.\n\nThe main blocker? I couldn't figure out how to express myself in a standard format. Most websites and social profiles feel too narrow—they only capture a thin slice of who we are as complex people.\n\n## The Authenticity Problem\n\nI have a problem with inauthenticity: I can't _not_ be myself. I couldn't bring myself to build a \"standard\" site that only showcased a polished professional portfolio. I needed a container that could hold all of me.\n\n## The Solution: evanmOS\n\nI needed something multidimensional. Something that could hold finished, polished projects right alongside half-baked thoughts and messy experiments.\n\nWhat handles that better than an Operating System? We use them every day. We organize our lives in them. If you're like me, you might even \"think\" in file structures.\n\n---\n\nSo, welcome to **evanmOS**. Look around, open some folders, and see what you find."
+    },
+    "projects-evanm-xyz": {
+      "id": "projects-evanm-xyz",
+      "title": "evanm.xyz.md",
+      "content": "# evanm.xyz\n\n**Status:** Active  \n**Tech:** Next.js, Tailwind CSS, React\n\n## Description\n\nA retro Mac OS-inspired personal website that showcases projects and thoughts in a nostalgic desktop environment.\n\nFeatures draggable windows, pixel art icons, and that classic System 7 aesthetic.\n\n## Links\n\n- [Live Site](https://evanm.xyz)\n- [Source Code](https://github.com/ecmulli/evanm)\n\n---\n\n*Where vintage meets modern.*"
+    },
+    "projects-task-agent": {
+      "id": "projects-task-agent",
+      "title": "Task Agent.txt",
+      "content": "Task Agent - AI Task Creator\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nStatus: Active\nTech: Python, FastAPI, OpenAI, Notion API\n\nDESCRIPTION:\nAn AI-powered task creation assistant.\nDescribe what you need to do in natural\nlanguage, and it creates structured tasks\nin Notion with all the details.\n\nFeatures:\n• Natural language task parsing\n• Screenshot OCR for context\n• Dry-run preview before creating\n• Multi-workspace support\n\nLINKS:\n• Live: https://evanm.xyz/chat\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nMaking task management conversational."
+    },
+    "thoughts-digital-gardens": {
+      "id": "thoughts-digital-gardens",
+      "title": "Digital Gardens.txt",
+      "content": "Digital Gardens\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDate: January 10, 2026\n\nI've been thinking about websites as gardens.\n\nNot the manicured, corporate kind - but the\nwild, personal kind. The kind that grows\norganically over time.\n\nA digital garden is:\n• Always a work in progress\n• Personal and imperfect\n• A place for ideas to grow\n• Connected through winding paths\n\nThis desktop is my garden. Each file is a\nseed. Some might grow into something bigger.\nOthers might just stay as little notes.\n\nAnd that's okay.\n\n- End of file -"
+    },
+    "thoughts-hello-world": {
+      "id": "thoughts-hello-world",
+      "title": "Hello World.txt",
+      "content": "Hello, World!\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDate: January 1, 2026\n\nThe classic first program. The tradition that\nspans decades and countless programming languages.\n\n    10 PRINT \"HELLO, WORLD!\"\n    20 END\n\nWhy do we start here?\n\nMaybe because it's a greeting. A first word.\nA declaration that we exist in this digital\nspace and we have something to say.\n\nHello, World. Nice to meet you.\n\n- End of file -"
+    },
+    "thoughts-on-simplicity": {
+      "id": "thoughts-on-simplicity",
+      "title": "On Simplicity.txt",
+      "content": "On Simplicity\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDate: January 15, 2026\n\nThere's something beautiful about constraints.\n\nWhen you have limited resources, limited pixels,\nlimited colors - you're forced to be intentional\nabout every decision you make.\n\nModern software often suffers from feature bloat.\nWe add more because we can, not because we should.\n\nThe old Mac interfaces understood this. Every\nelement had a purpose. Every interaction was\nconsidered.\n\nMaybe that's why they still feel so satisfying\nto use, even decades later.\n\nSometimes less really is more.\n\n- End of file -"
+    }
+  },
+  "folderContents": {
+    "projects": {
+      "id": "projects",
+      "title": "Projects",
+      "items": [
+        {
+          "id": "projects-evanm-xyz-icon",
+          "label": "evanm.xyz.md",
+          "iconType": "file",
+          "appType": "simpletext",
+          "contentId": "projects-evanm-xyz"
+        },
+        {
+          "id": "projects-task-agent-icon",
+          "label": "Task Agent.txt",
+          "iconType": "file",
+          "appType": "simpletext",
+          "contentId": "projects-task-agent"
+        }
+      ]
+    },
+    "thoughts": {
+      "id": "thoughts",
+      "title": "Thoughts",
+      "items": [
+        {
+          "id": "thoughts-digital-gardens-icon",
+          "label": "Digital Gardens.txt",
+          "iconType": "file",
+          "appType": "simpletext",
+          "contentId": "thoughts-digital-gardens"
+        },
+        {
+          "id": "thoughts-hello-world-icon",
+          "label": "Hello World.txt",
+          "iconType": "file",
+          "appType": "simpletext",
+          "contentId": "thoughts-hello-world"
+        },
+        {
+          "id": "thoughts-on-simplicity-icon",
+          "label": "On Simplicity.txt",
+          "iconType": "file",
+          "appType": "simpletext",
+          "contentId": "thoughts-on-simplicity"
+        }
+      ]
+    }
+  },
+  "desktopIcons": [
+    {
+      "id": "about-me-icon",
+      "label": "About Me.txt",
+      "iconType": "file",
+      "appType": "simpletext",
+      "contentId": "about-me"
+    },
+    {
+      "id": "site-inspiration-icon",
+      "label": "Site Inspiration.txt",
+      "iconType": "file",
+      "appType": "simpletext",
+      "contentId": "site-inspiration"
+    },
+    {
+      "id": "projects-icon",
+      "label": "Projects",
+      "iconType": "folder",
+      "appType": "folder",
+      "contentId": "projects"
+    },
+    {
+      "id": "thoughts-icon",
+      "label": "Thoughts",
+      "iconType": "folder",
+      "appType": "folder",
+      "contentId": "thoughts"
+    }
+  ]
+}
