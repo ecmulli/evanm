@@ -4,11 +4,9 @@ title: Site Inspiration.txt
 
 # Site Inspiration
 
-## Why this site looks like this
+To start, its taken me a looong time to put a personal site together.
 
-It took me way too long to put together a personal site.
-
-The main blocker? I couldn't figure out how to express myself in a standard format. Most websites and social profiles feel too narrow—they only capture a thin slice of who we are as complex people.
+The main blocker? I couldn't figure out how to express myself in a standard format. Most websites and social profiles feel too narrow— they only capture a thin slice of who we are as complex people.
 
 ## The Authenticity Problem
 
