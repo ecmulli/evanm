@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Upload, AlertCircle, Clock, User, Bot, LogOut, Menu, X, Sun, Zap, TrendingUp } from 'lucide-react';
+import { Send, Upload, AlertCircle, Clock, User, Bot, LogOut, Menu, X, Sun, Zap, TrendingUp, Settings } from 'lucide-react';
+import Link from 'next/link';
 import { getEnvironmentInfo } from '@/utils/environment';
 
 interface SolarData {
@@ -455,7 +456,14 @@ export default function ChatPage() {
           </div>
         </div>
         
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 space-y-2">
+          <Link
+            href="/settings"
+            className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <Settings size={16} />
+            <span>Settings</span>
+          </Link>
           <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"

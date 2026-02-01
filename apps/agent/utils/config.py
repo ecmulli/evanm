@@ -49,8 +49,10 @@ class Config:
     ENPHASE_SYSTEM_ID: str = os.getenv("ENPHASE_SYSTEM_ID", "")
     ENPHASE_ACCESS_TOKEN: str = os.getenv("ENPHASE_ACCESS_TOKEN", "")
     ENPHASE_REFRESH_TOKEN: str = os.getenv("ENPHASE_REFRESH_TOKEN", "")
+    # Default redirect URI - should be set to your site's callback URL
+    # e.g., https://evanm.xyz/settings/enphase/callback
     ENPHASE_REDIRECT_URI: str = os.getenv(
-        "ENPHASE_REDIRECT_URI", "https://api.enphaseenergy.com/oauth/redirect_uri"
+        "ENPHASE_REDIRECT_URI", "https://evanm.xyz/settings/enphase/callback"
     )
     ENPHASE_TOKEN_FILE: str = os.getenv("ENPHASE_TOKEN_FILE", "")
     ENPHASE_TIMEZONE: str = os.getenv("ENPHASE_TIMEZONE", "America/Chicago")
