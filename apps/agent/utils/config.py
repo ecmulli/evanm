@@ -42,6 +42,19 @@ class Config:
     VANQUISH_NOTION_API_KEY: str = os.getenv("VANQUISH_NOTION_API_KEY", "")
     VANQUISH_NOTION_DB_ID: str = os.getenv("VANQUISH_NOTION_DB_ID", "")
 
+    # Enphase Solar API config
+    ENPHASE_CLIENT_ID: str = os.getenv("ENPHASE_CLIENT_ID", "")
+    ENPHASE_CLIENT_SECRET: str = os.getenv("ENPHASE_CLIENT_SECRET", "")
+    ENPHASE_API_KEY: str = os.getenv("ENPHASE_API_KEY", "")
+    ENPHASE_SYSTEM_ID: str = os.getenv("ENPHASE_SYSTEM_ID", "")
+    ENPHASE_ACCESS_TOKEN: str = os.getenv("ENPHASE_ACCESS_TOKEN", "")
+    ENPHASE_REFRESH_TOKEN: str = os.getenv("ENPHASE_REFRESH_TOKEN", "")
+    ENPHASE_REDIRECT_URI: str = os.getenv(
+        "ENPHASE_REDIRECT_URI", "https://api.enphaseenergy.com/oauth/redirect_uri"
+    )
+    ENPHASE_TOKEN_FILE: str = os.getenv("ENPHASE_TOKEN_FILE", "")
+    ENPHASE_TIMEZONE: str = os.getenv("ENPHASE_TIMEZONE", "America/Chicago")
+
     @classmethod
     def validate_required_env_vars(cls) -> None:
         """Validate that all required environment variables are set."""
@@ -72,6 +85,32 @@ class Config:
             logger.info("ℹ️  Livepeer workspace not configured (optional)")
 
         # Vanquish configuration ignored for now
+
+        # Log Enphase configuration status
+        if cls.ENPHASE_CLIENT_ID and cls.ENPHASE_CLIENT_SECRET and cls.ENPHASE_API_KEY:
+            logger.info("✅ Enphase Solar API configuration found")
+            if cls.ENPHASE_SYSTEM_ID:
+                logger.info(f"   System ID: {cls.ENPHASE_SYSTEM_ID}")
+            if cls.ENPHASE_ACCESS_TOKEN:
+                logger.info("   Access token: configured")
+            else:
+                logger.info("   Access token: not set (OAuth required)")
+        else:
+            logger.info("ℹ️  Enphase Solar API not configured (optional)")
+
+    @classmethod
+    def is_enphase_configured(cls) -> bool:
+        """Check if Enphase API is configured."""
+        return bool(
+            cls.ENPHASE_CLIENT_ID
+            and cls.ENPHASE_CLIENT_SECRET
+            and cls.ENPHASE_API_KEY
+        )
+
+    @classmethod
+    def has_enphase_tokens(cls) -> bool:
+        """Check if Enphase OAuth tokens are available."""
+        return bool(cls.ENPHASE_ACCESS_TOKEN and cls.ENPHASE_REFRESH_TOKEN)
 
 
 config = Config()
