@@ -449,7 +449,7 @@ export default function ChatPage() {
                 onClick={() => setInput(question)}
                 className="w-full text-left p-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                "{question}"
+                &ldquo;{question}&rdquo;
               </button>
             ))}
           </div>
