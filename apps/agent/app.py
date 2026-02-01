@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from hypercorn.asyncio import serve
 from hypercorn.config import Config as HypercornConfig
+from routes.agent import router as agent_router
 from routes.scheduler import router as scheduler_router
 from routes.scheduler import set_scheduler_service
 from routes.task_creator import router as task_creator_router
@@ -162,6 +163,7 @@ app.add_middleware(
 # Include routers
 app.include_router(task_creator_router)
 app.include_router(scheduler_router)
+app.include_router(agent_router)
 
 
 @app.exception_handler(Exception)
@@ -200,6 +202,14 @@ async def api_info():
             "scheduler": "/api/v1/scheduler",
             "scheduler_status": "/api/v1/scheduler/status",
             "scheduler_run": "/api/v1/scheduler/run",
+            "agent": "/api/v1/agent",
+            "enphase_status": "/api/v1/enphase/status",
+            "enphase_production": "/api/v1/enphase/production",
+            "enphase_consumption": "/api/v1/enphase/consumption",
+            "enphase_net": "/api/v1/enphase/net",
+            "enphase_system": "/api/v1/enphase/system",
+            "enphase_oauth_init": "/api/v1/enphase/oauth/init",
+            "enphase_oauth_callback": "/api/v1/enphase/oauth/callback",
             "health": "/api/v1/health",
         },
         "future_endpoints": [
