@@ -29,4 +29,5 @@ EXPOSE 3000
 
 USER 65534:65534
 
-ENTRYPOINT ["zeroclaw", "gateway"]
+ENTRYPOINT ["zeroclaw"]
+CMD ["gateway"]

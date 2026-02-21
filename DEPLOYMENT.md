@@ -105,9 +105,8 @@ ZeroClaw AI agent gateway, proxied through the web app at `/claw` behind bearer-
 
 **Environment Variables (set on the ZeroClaw service):**
 ```
-ZEROCLAW_API_KEY=sk-or-...           # OpenRouter API key from openrouter.ai
-ZEROCLAW_PROVIDER=openrouter         # or: anthropic, openai, ollama, etc.
-ZEROCLAW_MODEL=anthropic/claude-sonnet-4-20250514
+API_KEY=sk-or-...                    # OpenRouter API key from openrouter.ai
+PROVIDER=openrouter                  # or: anthropic, openai, ollama, etc. (default: openrouter)
 ```
 
 **Environment Variable (set on the Web service):**

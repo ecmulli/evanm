@@ -16,9 +16,9 @@ Set these in the Railway dashboard for the **ZeroClaw service**:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ZEROCLAW_API_KEY` | Yes | OpenRouter API key (`sk-or-...`) from openrouter.ai |
-| `ZEROCLAW_PROVIDER` | No | Provider name (default: `openrouter`) |
-| `ZEROCLAW_MODEL` | No | Model to use (default: `anthropic/claude-sonnet-4-20250514`) |
+| `API_KEY` | Yes | OpenRouter API key (`sk-or-...`) from openrouter.ai |
+| `PROVIDER` | No | Provider name (default: `openrouter`) |
+| `ZEROCLAW_ALLOW_PUBLIC_BIND` | No | Already set to `true` in Dockerfile |
 
 Set this on the **Web service**:
 
@@ -43,7 +43,7 @@ zeroclaw gateway --port 3000
 # Option 2: Docker
 cd apps/zeroclaw
 docker build -t zeroclaw -f Dockerfile ../..
-docker run -p 3000:3000 -e ZEROCLAW_API_KEY=sk-or-YOUR_KEY zeroclaw
+docker run -p 3000:3000 -e API_KEY=sk-or-YOUR_KEY zeroclaw
 ```
 
 Then set `ZEROCLAW_URL=http://localhost:3000` in the web app's `.env.local` and visit `http://localhost:3001/claw`.
