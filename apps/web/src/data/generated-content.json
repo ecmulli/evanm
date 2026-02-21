@@ -8,7 +8,7 @@
     "site-inspiration": {
       "id": "site-inspiration",
       "title": "Site Inspiration.txt",
-      "content": "# Site Inspiration\n\n## Why this site looks like this\n\nIt took me way too long to put together a personal site.\n\nThe main blocker? I couldn't figure out how to express myself in a standard format. Most websites and social profiles feel too narrow—they only capture a thin slice of who we are as complex people.\n\n## The Authenticity Problem\n\nI have a problem with inauthenticity: I can't _not_ be myself. I couldn't bring myself to build a \"standard\" site that only showcased a polished professional portfolio. I needed a container that could hold all of me.\n\n## The Solution: evanmOS\n\nI needed something multidimensional. Something that could hold finished, polished projects right alongside half-baked thoughts and messy experiments.\n\nWhat handles that better than an Operating System? We use them every day. We organize our lives in them. If you're like me, you might even \"think\" in file structures.\n\n---\n\nSo, welcome to **evanmOS**. Look around, open some folders, and see what you find."
+      "content": "# Site Inspiration\n\nTo start, its taken me a looong time to put a personal site together.\n\nThe main blocker? I couldn't figure out how to express myself in a standard format. Most websites and social profiles feel too narrow— they only capture a thin slice of who we are as complex people.\n\n## The Authenticity Problem\n\nI have a problem with inauthenticity: I can't _not_ be myself. I couldn't bring myself to build a \"standard\" site that only showcased a polished professional portfolio. I needed a container that could hold all of me.\n\n## The Solution: evanmOS\n\nI needed something multidimensional. Something that could hold finished, polished projects right alongside half-baked thoughts and messy experiments.\n\nWhat handles that better than an Operating System? We use them every day. We organize our lives in them. If you're like me, you might even \"think\" in file structures.\n\n---\n\nSo, welcome to **evanmOS**. Look around, open some folders, and see what you find."
     },
     "projects-evanm-xyz": {
       "id": "projects-evanm-xyz",
@@ -34,6 +34,11 @@
       "id": "thoughts-on-simplicity",
       "title": "On Simplicity.txt",
       "content": "On Simplicity\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDate: January 15, 2026\n\nThere's something beautiful about constraints.\n\nWhen you have limited resources, limited pixels,\nlimited colors - you're forced to be intentional\nabout every decision you make.\n\nModern software often suffers from feature bloat.\nWe add more because we can, not because we should.\n\nThe old Mac interfaces understood this. Every\nelement had a purpose. Every interaction was\nconsidered.\n\nMaybe that's why they still feel so satisfying\nto use, even decades later.\n\nSometimes less really is more.\n\n- End of file -"
+    },
+    "thoughts-zeroclaw-linux-setup": {
+      "id": "thoughts-zeroclaw-linux-setup",
+      "title": "ZeroClaw Linux Setup.md",
+      "content": "# Setting Up ZeroClaw on Linux\n\n*February 21, 2026*\n\nZeroClaw is an ultra-lightweight, Rust-based AI agent runtime. It compiles to a single ~3.4MB binary, uses less than 5MB of RAM, and boots in under 10ms. Here's how to get it running on a home Linux machine.\n\n---\n\n## 1. Install Rust\n\nZeroClaw is built from source with Cargo. If you don't already have Rust installed:\n\n```\ncurl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh\nsource $HOME/.cargo/env\n```\n\nVerify with `rustc --version`.\n\n## 2. Clone and Build ZeroClaw\n\n```\ngit clone https://github.com/zeroclaw-labs/zeroclaw.git\ncd zeroclaw\ncargo build --release --locked\ncargo install --path . --force --locked\n```\n\n> **Low-memory systems** (e.g. Raspberry Pi 3 with 1GB RAM): use `CARGO_BUILD_JOBS=1 cargo build --release` to avoid OOM.\n\nAfter this, the `zeroclaw` binary is in your PATH.\n\n## 3. Onboard / Configure\n\nRun the interactive setup wizard:\n\n```\nzeroclaw onboard --interactive\n```\n\nOr do it non-interactively:\n\n```\nzeroclaw onboard --api-key YOUR_KEY --provider openrouter\n```\n\n### Using Ollama (fully local)\n\nIf you want to run everything locally with [Ollama](https://ollama.com):\n\n1. Install Ollama and pull a model: `ollama pull llama3`\n2. Make sure Ollama is serving: `ollama serve`\n3. Onboard with: `zeroclaw onboard --api-key dummy --provider ollama`\n\nZeroClaw connects to Ollama at `localhost:11434` and ignores the API key.\n\n## 4. Verify the Setup\n\n```\nzeroclaw status\nzeroclaw doctor\n```\n\n`doctor` runs diagnostics and tells you if anything is misconfigured.\n\n## 5. Start Using It\n\n- **Single message:** `zeroclaw agent -m \"Hello, ZeroClaw!\"`\n- **Interactive chat:** `zeroclaw agent`\n- **Start the gateway** (HTTP API on port 3000): `zeroclaw gateway`\n- **Full daemon mode:** `zeroclaw daemon`\n\n## 6. Run as a systemd Service (Optional)\n\nTo keep ZeroClaw running in the background:\n\n```\nmkdir -p ~/.config/systemd/user\n\ncat > ~/.config/systemd/user/zeroclaw.service << 'EOF'\n[Unit]\nDescription=ZeroClaw AI Agent Runtime\n\n[Service]\nExecStart=%h/.cargo/bin/zeroclaw daemon\nRestart=on-failure\nEnvironment=ZEROCLAW_WORKSPACE=%h/zeroclaw-workspace\n\n[Install]\nWantedBy=default.target\nEOF\n\nsystemctl --user daemon-reload\nsystemctl --user enable --now zeroclaw\n```\n\nCheck logs with `journalctl --user -u zeroclaw -f`.\n\n---\n\nThat's it. A single binary, minimal resources, and you're up and running.\n\n- End of file -"
     }
   },
   "folderContents": {
@@ -81,6 +86,13 @@
           "iconType": "file",
           "appType": "simpletext",
           "contentId": "thoughts-on-simplicity"
+        },
+        {
+          "id": "thoughts-zeroclaw-linux-setup-icon",
+          "label": "ZeroClaw Linux Setup.md",
+          "iconType": "file",
+          "appType": "simpletext",
+          "contentId": "thoughts-zeroclaw-linux-setup"
         }
       ]
     }
