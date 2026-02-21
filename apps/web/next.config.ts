@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
         
     return [
       {
-        source: '/zeroclaw/api/:path*',
+        source: '/claw/api/:path*',
         destination: `${zeroclawUrl}/v1/:path*`,
       },
       {

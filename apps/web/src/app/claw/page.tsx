@@ -10,7 +10,7 @@ interface Message {
   timestamp: Date;
 }
 
-export default function ZeroClawPage() {
+export default function ClawPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +43,7 @@ export default function ZeroClawPage() {
     try {
       const token = localStorage.getItem('bearerToken') || '';
 
-      const response = await fetch('/zeroclaw/api/chat/completions', {
+      const response = await fetch('/claw/api/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
