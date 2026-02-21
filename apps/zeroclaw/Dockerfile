@@ -20,9 +20,10 @@ RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib
 COPY --from=builder /build/target/release/zeroclaw /usr/local/bin/zeroclaw
 COPY --from=builder --chown=65534:65534 /data /data
 
-ENV ZEROCLAW_WORKSPACE=/data/workspace
-ENV ZEROCLAW_CONFIG=/data/config.toml
+ENV ZEROCLAW_CONFIG_DIR=/data
 ENV ZEROCLAW_GATEWAY_PORT=3000
+ENV ZEROCLAW_GATEWAY_HOST=0.0.0.0
+ENV ZEROCLAW_ALLOW_PUBLIC_BIND=true
 
 EXPOSE 3000
 

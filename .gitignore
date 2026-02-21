@@ -107,4 +107,4 @@ next-env.d.ts
 .mcp.json
 
 # Cloned upstream repos
-zeroclaw/
+/zeroclaw/
