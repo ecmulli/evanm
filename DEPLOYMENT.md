@@ -138,23 +138,33 @@ ZEROCLAW_URL=http://localhost:3000 npm run web:dev
 
 ## Deploying to Railway
 
-### Option 1: Railway Dashboard
-1. Connect your GitHub repo to Railway
-2. Create a new service for each app
-3. Set the root directory or use the railway.toml config
-4. Configure environment variables
-5. Assign custom domains
+### Initial Setup (one-time)
 
-### Option 2: Railway CLI
+Railway doesn't auto-discover `railway.toml` files -- each service must be created once. Use the setup script to do it from the CLI instead of clicking through the dashboard:
+
 ```bash
-# Install Railway CLI
+# Install Railway CLI and log in
 npm install -g @railway/cli
-
-# Login
 railway login
 
-# Deploy
-railway up
+# Link to your project (or create one)
+railway link
+
+# Create all services
+./scripts/railway-setup.sh
+```
+
+The script creates the `web`, `agent`, and `zeroclaw` services, then prints the env vars and config paths you need to set in the dashboard.
+
+### Subsequent Deploys
+
+After initial setup, deploys happen automatically on push. To deploy manually:
+
+```bash
+# Deploy a specific service
+railway up --service web
+railway up --service agent
+railway up --service zeroclaw
 ```
 
 ---
