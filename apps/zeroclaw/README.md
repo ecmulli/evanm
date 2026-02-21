@@ -16,9 +16,9 @@ Set these in the Railway dashboard for the **ZeroClaw service**:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ZEROCLAW_API_KEY` | Yes | Anthropic API key (`sk-ant-...`) from console.anthropic.com |
-| `ZEROCLAW_PROVIDER` | No | Provider name (default: `anthropic`) |
-| `ZEROCLAW_MODEL` | No | Model to use (default: `claude-sonnet-4-20250514`) |
+| `ZEROCLAW_API_KEY` | Yes | OpenRouter API key (`sk-or-...`) from openrouter.ai |
+| `ZEROCLAW_PROVIDER` | No | Provider name (default: `openrouter`) |
+| `ZEROCLAW_MODEL` | No | Model to use (default: `anthropic/claude-sonnet-4-20250514`) |
 
 Set this on the **Web service**:
 
@@ -28,9 +28,7 @@ Set this on the **Web service**:
 
 ### API Key
 
-You need an **Anthropic API key** from [console.anthropic.com](https://console.anthropic.com). A Claude Max subscription (claude.ai) does not include API access -- those are separate products. The API has its own pay-as-you-go billing.
-
-Alternatively you can use **OpenRouter** (openrouter.ai) which gives you access to Claude and many other models under a single API key. Set `ZEROCLAW_PROVIDER=openrouter` and `ZEROCLAW_MODEL=anthropic/claude-sonnet-4-20250514` in that case.
+Get an API key from [openrouter.ai](https://openrouter.ai). OpenRouter gives you access to Claude, GPT, Gemini, Llama, and dozens of other models under a single key with pay-as-you-go billing.
 
 ## Local Development
 
@@ -39,13 +37,13 @@ Alternatively you can use **OpenRouter** (openrouter.ai) which gives you access 
 git clone https://github.com/zeroclaw-labs/zeroclaw.git /tmp/zeroclaw
 cd /tmp/zeroclaw && cargo build --release --locked
 cargo install --path . --force --locked
-zeroclaw onboard --api-key sk-ant-YOUR_KEY --provider anthropic
+zeroclaw onboard --api-key sk-or-YOUR_KEY --provider openrouter
 zeroclaw gateway --port 3000
 
 # Option 2: Docker
 cd apps/zeroclaw
 docker build -t zeroclaw -f Dockerfile ../..
-docker run -p 3000:3000 -e ZEROCLAW_API_KEY=sk-ant-YOUR_KEY zeroclaw
+docker run -p 3000:3000 -e ZEROCLAW_API_KEY=sk-or-YOUR_KEY zeroclaw
 ```
 
 Then set `ZEROCLAW_URL=http://localhost:3000` in the web app's `.env.local` and visit `http://localhost:3001/claw`.

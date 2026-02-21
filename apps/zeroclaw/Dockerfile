@@ -9,7 +9,7 @@ RUN git clone --depth 1 https://github.com/zeroclaw-labs/zeroclaw.git . \
     && strip target/release/zeroclaw
 
 RUN mkdir -p /data/workspace && \
-    printf '[workspace]\npath = "/data/workspace"\n\n[provider]\nname = "anthropic"\ndefault_model = "claude-sonnet-4-20250514"\n\n[gateway]\nhost = "0.0.0.0"\nport = 3000\n' > /data/config.toml
+    printf '[workspace]\npath = "/data/workspace"\n\n[provider]\nname = "openrouter"\ndefault_model = "anthropic/claude-sonnet-4-20250514"\n\n[gateway]\nhost = "0.0.0.0"\nport = 3000\n' > /data/config.toml
 
 # --- Production runtime ---
 FROM debian:bookworm-slim AS runtime

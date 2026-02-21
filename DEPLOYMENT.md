@@ -105,9 +105,9 @@ ZeroClaw AI agent gateway, proxied through the web app at `/claw` behind bearer-
 
 **Environment Variables (set on the ZeroClaw service):**
 ```
-ZEROCLAW_API_KEY=sk-ant-...          # Anthropic API key from console.anthropic.com
-ZEROCLAW_PROVIDER=anthropic          # or: openrouter, openai, ollama, etc.
-ZEROCLAW_MODEL=claude-sonnet-4-20250514  # model name for your provider
+ZEROCLAW_API_KEY=sk-or-...           # OpenRouter API key from openrouter.ai
+ZEROCLAW_PROVIDER=openrouter         # or: anthropic, openai, ollama, etc.
+ZEROCLAW_MODEL=anthropic/claude-sonnet-4-20250514
 ```
 
 **Environment Variable (set on the Web service):**
@@ -126,7 +126,7 @@ ZEROCLAW_URL=http://zeroclaw.railway.internal:3000
 # Install and run ZeroClaw locally
 git clone https://github.com/zeroclaw-labs/zeroclaw.git /tmp/zeroclaw
 cd /tmp/zeroclaw && cargo build --release --locked && cargo install --path . --force --locked
-zeroclaw onboard --api-key sk-ant-YOUR_KEY --provider anthropic
+zeroclaw onboard --api-key sk-or-YOUR_KEY --provider openrouter
 zeroclaw gateway --port 3000
 
 # Then in another terminal, set env and start the web app
