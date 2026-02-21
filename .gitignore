@@ -102,3 +102,9 @@ next-env.d.ts
 
 # Cursor IDE
 .cursor/
+
+# MCP config (contains API tokens)
+.mcp.json
+
+# Cloned upstream repos
+zeroclaw/
