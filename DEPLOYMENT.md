@@ -9,6 +9,7 @@ This monorepo contains three services deployed to Railway:
 | **Desktop** | `evanm.xyz` | Retro Mac OS desktop personal website |
 | **Web** | `agent.evanm.xyz` | Agent chat UI |
 | **Agent** | (internal) | FastAPI backend for agent |
+| **ZeroClaw** | (internal) | ZeroClaw AI agent gateway, proxied via Web |
 
 ## Railway Deployment Setup
 
@@ -90,6 +91,47 @@ cd apps/agent
 pip install -r requirements.txt
 python app.py
 # Runs at http://localhost:8000
+```
+
+---
+
+## ZeroClaw Agent (`apps/zeroclaw/`)
+
+ZeroClaw AI agent gateway, proxied through the web app behind bearer-token auth.
+
+**Files:**
+- `apps/zeroclaw/Dockerfile`
+- `apps/zeroclaw/railway.toml`
+
+**Environment Variables (set on the ZeroClaw service):**
+```
+ZEROCLAW_API_KEY=your_openrouter_or_provider_key
+ZEROCLAW_PROVIDER=openrouter        # or: openai, ollama, etc.
+ZEROCLAW_MODEL=anthropic/claude-sonnet-4-20250514
+```
+
+**Environment Variable (set on the Web service):**
+```
+ZEROCLAW_URL=http://zeroclaw.railway.internal:3000
+```
+
+**How it works:**
+1. User visits `evanm.xyz/zeroclaw` (or `agent.evanm.xyz/zeroclaw`)
+2. Next.js middleware checks for bearer token — redirects to `/login` if missing
+3. Authenticated requests to `/zeroclaw/api/*` are proxied to ZeroClaw's gateway at `/v1/*`
+4. ZeroClaw exposes an OpenAI-compatible `/v1/chat/completions` endpoint
+
+**Local Development:**
+```bash
+# Install and run ZeroClaw locally
+git clone https://github.com/zeroclaw-labs/zeroclaw.git /tmp/zeroclaw
+cd /tmp/zeroclaw && cargo build --release --locked && cargo install --path . --force --locked
+zeroclaw onboard --interactive
+zeroclaw gateway --port 3000
+
+# Then in another terminal, set env and start the web app
+ZEROCLAW_URL=http://localhost:3000 npm run web:dev
+# Visit http://localhost:3001/zeroclaw
 ```
 
 ---
