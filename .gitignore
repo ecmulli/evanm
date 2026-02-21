@@ -105,3 +105,6 @@ next-env.d.ts
 
 # MCP config (contains API tokens)
 .mcp.json
+
+# Cloned upstream repos
+zeroclaw/
