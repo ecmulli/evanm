@@ -13,7 +13,7 @@ RUN mkdir -p /data/workspace && \
     chown -R 65534:65534 /data
 
 # --- Production runtime ---
-FROM debian:bookworm-slim AS runtime
+FROM debian:trixie-slim AS runtime
 
 RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
 
