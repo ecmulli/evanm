@@ -22,10 +22,12 @@ COPY --from=builder --chown=65534:65534 /data /data
 
 ENV ZEROCLAW_WORKSPACE=/data/workspace
 ENV ZEROCLAW_CONFIG=/data/config.toml
-ENV ZEROCLAW_GATEWAY_PORT=3000
+ENV ZEROCLAW_ALLOW_PUBLIC_BIND=true
+ENV PROVIDER=openrouter
 
 EXPOSE 3000
 
 USER 65534:65534
 
-ENTRYPOINT ["zeroclaw", "gateway"]
+ENTRYPOINT ["zeroclaw"]
+CMD ["gateway"]

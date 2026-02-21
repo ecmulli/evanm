@@ -24,7 +24,8 @@ railway add --service web \
 
 railway add --service agent
 
-railway add --service zeroclaw
+railway add --service zeroclaw \
+  --variables "ZEROCLAW_ALLOW_PUBLIC_BIND=true" --variables "PROVIDER=openrouter"
 
 echo ""
 echo "==> Services created. Next steps:"
@@ -50,7 +51,7 @@ echo "       HUB_NOTION_API_KEY  = <your notion key>"
 echo "       HUB_NOTION_DB_ID    = <your notion db id>"
 echo ""
 echo "     zeroclaw:"
-echo "       ZEROCLAW_API_KEY    = <your openrouter key>"
+echo "       API_KEY             = <your openrouter key>"
 echo ""
 echo "  4. Assign custom domains:"
 echo "     - web   → agent.evanm.xyz"
