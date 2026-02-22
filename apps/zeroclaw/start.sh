@@ -16,8 +16,8 @@ if [ -n "$API_KEY" ]; then
         --force 2>&1 || true
 fi
 
-# Start zeroclaw gateway on port 3001 (Caddy proxies from 3000)
-zeroclaw gateway --port 3001 &
+# Start zeroclaw gateway on port 3002 (Caddy proxies from $PORT and 3001)
+zeroclaw gateway --port 3002 &
 ZEROCLAW_PID=$!
 
 # Start Caddy auth proxy in foreground-ish
