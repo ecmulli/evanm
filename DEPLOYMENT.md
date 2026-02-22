@@ -9,7 +9,7 @@ This monorepo contains three services deployed to Railway:
 | **Desktop** | `evanm.xyz` | Retro Mac OS desktop personal website |
 | **Web** | `agent.evanm.xyz` | Agent chat UI |
 | **Agent** | (internal) | FastAPI backend for agent |
-| **ZeroClaw** | `gateway.evanm.xyz` | ZeroClaw AI agent gateway (also proxied via Web at `/claw`) |
+| **ZeroClaw** | `clawbot.evanm.xyz` | ZeroClaw AI agent gateway (also proxied via Web at `/claw`) |
 
 ## Railway Deployment Setup
 
@@ -97,7 +97,7 @@ python app.py
 
 ## ZeroClaw Agent (`apps/zeroclaw/`)
 
-ZeroClaw AI agent gateway. Publicly accessible at `gateway.evanm.xyz` behind bearer-token auth, and also proxied through the web app at `/claw`.
+ZeroClaw AI agent gateway. Publicly accessible at `clawbot.evanm.xyz` behind bearer-token auth, and also proxied through the web app at `/claw`.
 
 A Caddy reverse proxy runs in the same container and enforces bearer-token auth on all requests (except `/health`). Zeroclaw listens on port 3001 internally; Caddy listens on port 3000 (the port Railway exposes).
 
@@ -128,7 +128,7 @@ ZEROCLAW_URL=http://zeroclaw.railway.internal:3000
 4. Caddy validates the bearer token, then forwards to zeroclaw
 
 *Direct API access:*
-1. Hit `gateway.evanm.xyz/v1/chat/completions` (or any `/v1/*` endpoint) directly
+1. Hit `clawbot.evanm.xyz/v1/chat/completions` (or any `/v1/*` endpoint) directly
 2. Include `Authorization: Bearer <token>` header
 3. Caddy validates the token and proxies to zeroclaw
 
@@ -192,9 +192,9 @@ railway up --service zeroclaw
    - Add custom domain `agent.evanm.xyz` in Railway
    - Configure DNS: CNAME to Railway's provided domain
 
-3. **ZeroClaw** (`gateway.evanm.xyz`):
+3. **ZeroClaw** (`clawbot.evanm.xyz`):
    - Deploy zeroclaw service
-   - Add custom domain `gateway.evanm.xyz` in Railway
+   - Add custom domain `clawbot.evanm.xyz` in Railway
    - Configure DNS: CNAME to Railway's provided domain
 
 4. **Agent Backend**:
