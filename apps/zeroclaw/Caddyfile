@@ -2,7 +2,7 @@
 	admin off
 }
 
-:3000
+:{$PORT:3000}
 
 # Health check — no auth (Railway probes this)
 handle /health {
