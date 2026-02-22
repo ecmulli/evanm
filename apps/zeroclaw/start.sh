@@ -6,8 +6,8 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# Start zeroclaw gateway in background
-zeroclaw gateway &
+# Start zeroclaw gateway on port 3001 (Caddy proxies from 3000)
+zeroclaw gateway --port 3001 &
 ZEROCLAW_PID=$!
 
 # Start Caddy auth proxy in foreground-ish
