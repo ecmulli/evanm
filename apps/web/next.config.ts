@@ -21,6 +21,14 @@ const nextConfig: NextConfig = {
         destination: `${zeroclawUrl}/v1/:path*`,
       },
       {
+        source: '/gateway/:path*',
+        destination: `${zeroclawUrl}/:path*`,
+      },
+      {
+        source: '/gateway',
+        destination: `${zeroclawUrl}/`,
+      },
+      {
         source: '/api/:path*',
         destination: `${backendUrl}/api/:path*`,
       },

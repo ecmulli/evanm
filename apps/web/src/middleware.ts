@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith('/chat') || pathname.startsWith('/claw')) {
+  if (pathname.startsWith('/chat') || pathname.startsWith('/claw') || pathname.startsWith('/gateway')) {
     const token = request.cookies.get('bearerToken')?.value;
     
     if (!token) {
@@ -16,5 +16,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/chat/:path*', '/claw/:path*']
+  matcher: ['/chat/:path*', '/claw/:path*', '/gateway', '/gateway/:path*']
 };
