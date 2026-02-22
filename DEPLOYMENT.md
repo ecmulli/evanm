@@ -9,6 +9,7 @@ This monorepo contains three services deployed to Railway:
 | **Desktop** | `evanm.xyz` | Retro Mac OS desktop personal website |
 | **Web** | `agent.evanm.xyz` | Agent chat UI |
 | **Agent** | (internal) | FastAPI backend for agent |
+| **ZeroClaw** | (internal) | ZeroClaw AI agent gateway, proxied via Web |
 
 ## Railway Deployment Setup
 
@@ -94,25 +95,75 @@ python app.py
 
 ---
 
+## ZeroClaw Agent (`apps/zeroclaw/`)
+
+ZeroClaw AI agent gateway, proxied through the web app at `/claw` behind bearer-token auth.
+
+**Files:**
+- `apps/zeroclaw/Dockerfile`
+- `apps/zeroclaw/railway.toml`
+
+**Environment Variables (set on the ZeroClaw service):**
+```
+API_KEY=sk-or-...                    # OpenRouter API key from openrouter.ai
+PROVIDER=openrouter                  # or: anthropic, openai, ollama, etc. (default: openrouter)
+```
+
+**Environment Variable (set on the Web service):**
+```
+ZEROCLAW_URL=http://zeroclaw.railway.internal:3000
+```
+
+**How it works:**
+1. User visits `evanm.xyz/claw` (or `agent.evanm.xyz/claw`)
+2. Next.js middleware checks for bearer token -- redirects to `/login` if missing
+3. Authenticated requests to `/claw/api/*` are proxied to ZeroClaw's gateway at `/v1/*`
+4. ZeroClaw exposes an OpenAI-compatible `/v1/chat/completions` endpoint
+
+**Local Development:**
+```bash
+# Install and run ZeroClaw locally
+git clone https://github.com/zeroclaw-labs/zeroclaw.git /tmp/zeroclaw
+cd /tmp/zeroclaw && cargo build --release --locked && cargo install --path . --force --locked
+zeroclaw onboard --api-key sk-or-YOUR_KEY --provider openrouter
+zeroclaw gateway --port 3000
+
+# Then in another terminal, set env and start the web app
+ZEROCLAW_URL=http://localhost:3000 npm run web:dev
+# Visit http://localhost:3001/claw
+```
+
+---
+
 ## Deploying to Railway
 
-### Option 1: Railway Dashboard
-1. Connect your GitHub repo to Railway
-2. Create a new service for each app
-3. Set the root directory or use the railway.toml config
-4. Configure environment variables
-5. Assign custom domains
+### Initial Setup (one-time)
 
-### Option 2: Railway CLI
+Railway doesn't auto-discover `railway.toml` files -- each service must be created once. Use the setup script to do it from the CLI instead of clicking through the dashboard:
+
 ```bash
-# Install Railway CLI
+# Install Railway CLI and log in
 npm install -g @railway/cli
-
-# Login
 railway login
 
-# Deploy
-railway up
+# Link to your project (or create one)
+railway link
+
+# Create all services
+./scripts/railway-setup.sh
+```
+
+The script creates the `web`, `agent`, and `zeroclaw` services, then prints the env vars and config paths you need to set in the dashboard.
+
+### Subsequent Deploys
+
+After initial setup, deploys happen automatically on push. To deploy manually:
+
+```bash
+# Deploy a specific service
+railway up --service web
+railway up --service agent
+railway up --service zeroclaw
 ```
 
 ---

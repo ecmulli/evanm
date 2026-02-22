@@ -5,25 +5,27 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   
   async rewrites() {
-    // Simple backend URL determination
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+    const zeroclawUrl = process.env.ZEROCLAW_URL || 'http://localhost:3000';
     
     console.log('🔧 Backend URL:', {
       BACKEND_URL: process.env.BACKEND_URL,
       resolvedUrl: backendUrl,
       NODE_ENV: process.env.NODE_ENV
     });
+    console.log('🦀 ZeroClaw URL:', zeroclawUrl);
         
     return [
+      {
+        source: '/claw/api/:path*',
+        destination: `${zeroclawUrl}/v1/:path*`,
+      },
       {
         source: '/api/:path*',
         destination: `${backendUrl}/api/:path*`,
       },
     ];
   },
-  // Enable if you want to serve this on a subpath like /chat
-  // basePath: process.env.NODE_ENV === 'production' ? '/chat' : '',
-  // assetPrefix: process.env.NODE_ENV === 'production' ? '/chat' : '',
 };
 
 export default nextConfig;
