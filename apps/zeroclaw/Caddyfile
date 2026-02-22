@@ -1,0 +1,26 @@
+{
+	admin off
+}
+
+# Public port — auth required
+:{$PORT:3000} {
+	# Health check — no auth (Railway probes this)
+	handle /health {
+		reverse_proxy localhost:3002
+	}
+
+	# Require bearer token for everything else
+	@unauthorized not header Authorization "Bearer {env.BEARER_TOKEN}"
+	handle @unauthorized {
+		respond "Unauthorized" 401
+	}
+
+	handle {
+		reverse_proxy localhost:3002
+	}
+}
+
+# Internal port — no auth (Railway private networking, IPv6-capable)
+:3001 {
+	reverse_proxy localhost:3002
+}

@@ -20,6 +20,39 @@ const nextConfig: NextConfig = {
         source: '/claw/api/:path*',
         destination: `${zeroclawUrl}/v1/:path*`,
       },
+      // ZeroClaw dashboard assets and API (proxied from /gateway)
+      {
+        source: '/_app/:path*',
+        destination: `${zeroclawUrl}/_app/:path*`,
+      },
+      {
+        source: '/pair',
+        destination: `${zeroclawUrl}/pair`,
+      },
+      {
+        source: '/ws/:path*',
+        destination: `${zeroclawUrl}/ws/:path*`,
+      },
+      {
+        source: '/health',
+        destination: `${zeroclawUrl}/health`,
+      },
+      {
+        source: '/webhook',
+        destination: `${zeroclawUrl}/webhook`,
+      },
+      {
+        source: '/metrics',
+        destination: `${zeroclawUrl}/metrics`,
+      },
+      {
+        source: '/gateway/:path*',
+        destination: `${zeroclawUrl}/:path*`,
+      },
+      {
+        source: '/gateway',
+        destination: `${zeroclawUrl}/`,
+      },
       {
         source: '/api/:path*',
         destination: `${backendUrl}/api/:path*`,
