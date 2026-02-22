@@ -9,7 +9,7 @@ RUN git clone --depth 1 https://github.com/zeroclaw-labs/zeroclaw.git . \
     && strip target/release/zeroclaw
 
 RUN mkdir -p /data/workspace && \
-    printf 'default_provider = "openrouter"\ndefault_model = "anthropic/claude-sonnet-4-20250514"\ndefault_temperature = 0.7\n\n[gateway]\nhost = "0.0.0.0"\nallow_public_bind = true\n' > /data/config.toml && \
+    printf 'default_provider = "openrouter"\ndefault_model = "anthropic/claude-sonnet-4-20250514"\ndefault_temperature = 0.7\n\n[gateway]\nhost = "0.0.0.0"\nallow_public_bind = true\nrequire_pairing = false\n\n[memory]\nbackend = "sqlite"\nauto_save = true\n' > /data/config.toml && \
     chmod 600 /data/config.toml && \
     chown -R 65534:65534 /data
 

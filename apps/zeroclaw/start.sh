@@ -6,10 +6,14 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# Initialize zeroclaw with API key + provider (skips pairing requirement)
+# Initialize zeroclaw config (non-interactive, idempotent)
 ONBOARD_PROVIDER="${PROVIDER:-openrouter}"
 if [ -n "$API_KEY" ]; then
-    zeroclaw onboard --api-key "$API_KEY" --provider "$ONBOARD_PROVIDER" 2>&1 || true
+    zeroclaw onboard \
+        --api-key "$API_KEY" \
+        --provider "$ONBOARD_PROVIDER" \
+        --memory sqlite \
+        --force 2>&1 || true
 fi
 
 # Start zeroclaw gateway on port 3001 (Caddy proxies from 3000)
