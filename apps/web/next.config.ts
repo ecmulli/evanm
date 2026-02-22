@@ -20,6 +20,11 @@ const nextConfig: NextConfig = {
         source: '/claw/api/:path*',
         destination: `${zeroclawUrl}/v1/:path*`,
       },
+      // ZeroClaw dashboard assets (served at /_app/*)
+      {
+        source: '/_app/:path*',
+        destination: `${zeroclawUrl}/_app/:path*`,
+      },
       {
         source: '/gateway/:path*',
         destination: `${zeroclawUrl}/:path*`,
