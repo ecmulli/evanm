@@ -54,7 +54,6 @@ export const STATUS_MAP: Record<TaskDomain, Record<string, TaskStatus>> = {
 // Reverse mapping: for each domain + normalized status, what raw status to write back
 // Uses the first matching raw status for the normalized value
 export function denormalizeStatus(domain: TaskDomain, normalized: TaskStatus): string | null {
-  const domainMap = STATUS_MAP[domain];
   // For write-back, prefer specific raw values
   const preferredMap: Record<TaskDomain, Partial<Record<TaskStatus, string>>> = {
     work: {

@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { parseISO } from 'date-fns';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import type { UnifiedTask, TaskDomain } from '@/server/dashboard/types';
-import { DOMAIN_CONFIG, STATUS_CONFIG, PRIORITY_CONFIG } from '@/server/dashboard/types';
+import { PRIORITY_CONFIG } from '@/server/dashboard/types';
 import { TaskCard } from './TaskCard';
 import { StatusDropdown } from './StatusDropdown';
 import { DomainBadge } from './DomainBadge';

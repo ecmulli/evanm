@@ -10,7 +10,6 @@ import {
   format,
   isSameMonth,
   isSameDay,
-  isAfter,
   isBefore,
   addMonths,
   subMonths,
@@ -47,7 +46,6 @@ export function CalendarView({ tasks, onStatusChange }: CalendarViewProps) {
   return (
     <MonthlyGrid
       tasks={tasks}
-      onStatusChange={onStatusChange}
       currentMonth={currentMonth}
       onMonthChange={setCurrentMonth}
     />
@@ -84,10 +82,9 @@ function MonthNav({
 
 function MonthlyGrid({
   tasks,
-  onStatusChange,
   currentMonth,
   onMonthChange,
-}: CalendarViewProps & { currentMonth: Date; onMonthChange: (d: Date) => void }) {
+}: Omit<CalendarViewProps, 'onStatusChange'> & { currentMonth: Date; onMonthChange: (d: Date) => void }) {
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth));
     const end = endOfWeek(endOfMonth(currentMonth));
@@ -105,7 +102,7 @@ function MonthlyGrid({
     return map;
   }, [tasks]);
 
-  const today = new Date();
+  const today = useMemo(() => new Date(), []);
 
   return (
     <div>
