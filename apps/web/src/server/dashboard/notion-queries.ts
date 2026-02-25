@@ -74,7 +74,12 @@ export async function queryDomain(domain: TaskDomain, options: QueryOptions = {}
   return tasks;
 }
 
-export async function fetchAllTasks(options: QueryOptions = {}): Promise<UnifiedTask[]> {
+export interface FetchResult {
+  tasks: UnifiedTask[];
+  errors: Record<string, string>;
+}
+
+export async function fetchAllTasks(options: QueryOptions = {}): Promise<FetchResult> {
   // Fetch all three domains in parallel
   const [workTasks, careerTasks, personalTasks] = await Promise.allSettled([
     queryDomain('work', options),
@@ -83,17 +88,18 @@ export async function fetchAllTasks(options: QueryOptions = {}): Promise<Unified
   ]);
 
   const tasks: UnifiedTask[] = [];
+  const errors: Record<string, string> = {};
 
   if (workTasks.status === 'fulfilled') tasks.push(...workTasks.value);
-  else console.error('Failed to fetch work tasks:', workTasks.reason);
+  else { console.error('Failed to fetch work tasks:', workTasks.reason); errors.work = String(workTasks.reason); }
 
   if (careerTasks.status === 'fulfilled') tasks.push(...careerTasks.value);
-  else console.error('Failed to fetch career tasks:', careerTasks.reason);
+  else { console.error('Failed to fetch career tasks:', careerTasks.reason); errors.career = String(careerTasks.reason); }
 
   if (personalTasks.status === 'fulfilled') tasks.push(...personalTasks.value);
-  else console.error('Failed to fetch personal tasks:', personalTasks.reason);
+  else { console.error('Failed to fetch personal tasks:', personalTasks.reason); errors.personal = String(personalTasks.reason); }
 
-  return tasks;
+  return { tasks, errors };
 }
 
 export async function updateTaskInNotion(

@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiAuth } from '@/server/dashboard/auth';
 import { taskCache } from '@/server/dashboard/cache';
-import { fetchAllTasks } from '@/server/dashboard/notion-queries';
-import type { TaskDomain, TaskStatus, UnifiedTask } from '@/server/dashboard/types';
+import { fetchAllTasks, type FetchResult } from '@/server/dashboard/notion-queries';
+import type { TaskDomain, TaskStatus } from '@/server/dashboard/types';
 
 const CACHE_KEY = 'tasks:all';
 const CACHE_KEY_COMPLETED = 'tasks:all:completed';
 
-async function getTasks(includeCompleted: boolean): Promise<UnifiedTask[]> {
+async function getTasks(includeCompleted: boolean): Promise<FetchResult> {
   const cacheKey = includeCompleted ? CACHE_KEY_COMPLETED : CACHE_KEY;
-  const cached = taskCache.get<UnifiedTask[]>(cacheKey);
+  const cached = taskCache.get<FetchResult>(cacheKey);
   if (cached) return cached;
 
-  const tasks = await fetchAllTasks({ includeCompleted });
-  taskCache.set(cacheKey, tasks);
-  return tasks;
+  const result = await fetchAllTasks({ includeCompleted });
+  taskCache.set(cacheKey, result);
+  return result;
 }
 
 // GET /api/tasks — returns normalized tasks with optional filters
@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
     const statusFilter = searchParams.get('status') as TaskStatus | null;
     const includeCompleted = searchParams.get('includeCompleted') === 'true';
 
-    let tasks = await getTasks(includeCompleted);
+    const result = await getTasks(includeCompleted);
+    let { tasks } = result;
 
     if (domainFilter) {
       tasks = tasks.filter(t => t.domain === domainFilter);
@@ -38,7 +39,11 @@ export async function GET(request: NextRequest) {
       tasks = tasks.filter(t => t.status === statusFilter);
     }
 
-    return NextResponse.json({ tasks, count: tasks.length });
+    const response: Record<string, unknown> = { tasks, count: tasks.length };
+    if (Object.keys(result.errors).length > 0) {
+      response.errors = result.errors;
+    }
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Error fetching tasks:', error);
     return NextResponse.json(
@@ -56,9 +61,13 @@ export async function POST(request: NextRequest) {
 
   try {
     taskCache.invalidateAll();
-    const tasks = await fetchAllTasks({ includeCompleted: false });
-    taskCache.set(CACHE_KEY, tasks);
-    return NextResponse.json({ tasks, count: tasks.length, refreshed: true });
+    const result = await fetchAllTasks({ includeCompleted: false });
+    taskCache.set(CACHE_KEY, result);
+    const response: Record<string, unknown> = { tasks: result.tasks, count: result.tasks.length, refreshed: true };
+    if (Object.keys(result.errors).length > 0) {
+      response.errors = result.errors;
+    }
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Error refreshing tasks:', error);
     return NextResponse.json(
