@@ -2,14 +2,13 @@
 
 ## Architecture Overview
 
-This monorepo contains three services deployed to Railway:
+This monorepo contains the following services deployed to Railway:
 
 | Service | Domain | Description |
 |---------|--------|-------------|
 | **Desktop** | `evanm.xyz` | Retro Mac OS desktop personal website |
-| **Web** | `agent.evanm.xyz` | Agent chat UI |
+| **Web** | `agent.evanm.xyz` | Agent chat UI + Task Dashboard |
 | **Agent** | (internal) | FastAPI backend for agent |
-| **ZeroClaw** | `clawbot.evanm.xyz` | ZeroClaw AI agent gateway (also proxied via Web at `/claw`) |
 
 ## Railway Deployment Setup
 
@@ -95,58 +94,6 @@ python app.py
 
 ---
 
-## ZeroClaw Agent (`apps/zeroclaw/`)
-
-ZeroClaw AI agent gateway. Publicly accessible at `clawbot.evanm.xyz` behind bearer-token auth, and also proxied through the web app at `/claw`.
-
-A Caddy reverse proxy runs in the same container and enforces bearer-token auth on all requests (except `/health`). Zeroclaw listens on port 3001 internally; Caddy listens on port 3000 (the port Railway exposes).
-
-**Files:**
-- `apps/zeroclaw/Dockerfile`
-- `apps/zeroclaw/railway.toml`
-- `apps/zeroclaw/Caddyfile` — auth proxy config
-- `apps/zeroclaw/start.sh` — entrypoint (runs Caddy + zeroclaw)
-
-**Environment Variables (set on the ZeroClaw service):**
-```
-API_KEY=sk-or-...                    # OpenRouter API key from openrouter.ai
-PROVIDER=openrouter                  # or: anthropic, openai, ollama, etc. (default: openrouter)
-BEARER_TOKEN=<same token as web>     # Required for public access auth
-```
-
-**Environment Variable (set on the Web service):**
-```
-ZEROCLAW_URL=http://zeroclaw.railway.internal:3000
-```
-
-**How it works:**
-
-*Via the chat UI:*
-1. User visits `agent.evanm.xyz/claw`
-2. Next.js middleware checks for bearer token — redirects to `/login` if missing
-3. Authenticated requests to `/claw/api/*` are proxied to ZeroClaw's gateway at `/v1/*`
-4. Caddy validates the bearer token, then forwards to zeroclaw
-
-*Direct API access:*
-1. Hit `clawbot.evanm.xyz/v1/chat/completions` (or any `/v1/*` endpoint) directly
-2. Include `Authorization: Bearer <token>` header
-3. Caddy validates the token and proxies to zeroclaw
-
-**Local Development:**
-```bash
-# Install and run ZeroClaw locally
-git clone https://github.com/zeroclaw-labs/zeroclaw.git /tmp/zeroclaw
-cd /tmp/zeroclaw && cargo build --release --locked && cargo install --path . --force --locked
-zeroclaw onboard --api-key sk-or-YOUR_KEY --provider openrouter
-zeroclaw gateway --port 3000
-
-# Then in another terminal, set env and start the web app
-ZEROCLAW_URL=http://localhost:3000 npm run web:dev
-# Visit http://localhost:3001/claw
-```
-
----
-
 ## Deploying to Railway
 
 ### Initial Setup (one-time)
@@ -165,7 +112,7 @@ railway link
 ./scripts/railway-setup.sh
 ```
 
-The script creates the `web`, `agent`, and `zeroclaw` services, then prints the env vars and config paths you need to set in the dashboard.
+The script creates the services and prints the env vars and config paths you need to set in the dashboard.
 
 ### Subsequent Deploys
 
@@ -175,7 +122,6 @@ After initial setup, deploys happen automatically on push. To deploy manually:
 # Deploy a specific service
 railway up --service web
 railway up --service agent
-railway up --service zeroclaw
 ```
 
 ---
@@ -192,12 +138,7 @@ railway up --service zeroclaw
    - Add custom domain `agent.evanm.xyz` in Railway
    - Configure DNS: CNAME to Railway's provided domain
 
-3. **ZeroClaw** (`clawbot.evanm.xyz`):
-   - Deploy zeroclaw service
-   - Add custom domain `clawbot.evanm.xyz` in Railway
-   - Configure DNS: CNAME to Railway's provided domain
-
-4. **Agent Backend**:
+3. **Agent Backend**:
    - Internal service, accessed via Railway's private networking
    - Or expose via Railway URL for web app to proxy to
 
