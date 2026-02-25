@@ -27,7 +27,7 @@ export interface DbConfig {
 
 export const DB_CONFIG: Record<TaskDomain, DbConfig> = {
   work: {
-    databaseId: process.env.NOTION_WORK_DB || '25b0a348-5687-80d8-a098-000b63c72922',
+    databaseId: process.env.NOTION_WORK_DB || '25b0a348-5687-8091-9ae6-e160343ec336',
     statusPropertyType: 'status',
     titleProperty: 'Task name',
     statusProperty: 'Status',
