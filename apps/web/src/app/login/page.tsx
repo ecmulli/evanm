@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Loader } from 'lucide-react';
 import { getEnvironmentInfo } from '@/utils/environment';
 
@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { agentDomain } = getEnvironmentInfo();
 
   const validateToken = async (tokenToValidate: string) => {
@@ -67,8 +68,9 @@ export default function LoginPage() {
       // Set cookie for middleware
       document.cookie = `bearerToken=${trimmedToken}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
       
-      // Redirect to chat
-      router.push('/chat');
+      // Redirect to the original page (or /dashboard as default)
+      const redirect = searchParams.get('redirect') || '/dashboard';
+      router.push(redirect);
     } catch (err) {
       setError('Failed to validate token. Please check your connection and try again.');
       console.error('Login error:', err);

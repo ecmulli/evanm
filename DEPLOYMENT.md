@@ -78,10 +78,6 @@ BEARER_TOKEN=your_secure_token_here
 OPENAI_API_KEY=your_openai_key
 HUB_NOTION_API_KEY=your_notion_key
 HUB_NOTION_DB_ID=your_notion_db_id
-LIVEPEER_NOTION_API_KEY=optional
-LIVEPEER_NOTION_DB_ID=optional
-VANQUISH_NOTION_API_KEY=optional
-VANQUISH_NOTION_DB_ID=optional
 ```
 
 **Local Development:**

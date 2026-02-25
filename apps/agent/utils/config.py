@@ -4,7 +4,6 @@ Configuration management for the Agent server.
 """
 
 import os
-from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -34,14 +33,6 @@ class Config:
         "PERSONAL_NOTION_DB_ID", ""
     )
 
-    # Optional external workspace configs
-    LIVEPEER_NOTION_API_KEY: str = os.getenv("LIVEPEER_NOTION_API_KEY", "")
-    LIVEPEER_NOTION_DB_ID: str = os.getenv("LIVEPEER_NOTION_DB_ID", "")
-    LIVEPEER_NOTION_USER_ID: str = os.getenv("LIVEPEER_NOTION_USER_ID", "")
-
-    VANQUISH_NOTION_API_KEY: str = os.getenv("VANQUISH_NOTION_API_KEY", "")
-    VANQUISH_NOTION_DB_ID: str = os.getenv("VANQUISH_NOTION_DB_ID", "")
-
     @classmethod
     def validate_required_env_vars(cls) -> None:
         """Validate that all required environment variables are set."""
@@ -60,18 +51,6 @@ class Config:
             raise ValueError(
                 f"Missing required environment variables: {', '.join(missing_vars)}"
             )
-
-        # Log optional workspace configurations
-        import logging
-
-        logger = logging.getLogger(__name__)
-
-        if cls.LIVEPEER_NOTION_API_KEY and cls.LIVEPEER_NOTION_DB_ID:
-            logger.info("✅ Livepeer workspace configuration found")
-        else:
-            logger.info("ℹ️  Livepeer workspace not configured (optional)")
-
-        # Vanquish configuration ignored for now
 
 
 config = Config()
