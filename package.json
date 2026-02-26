@@ -23,8 +23,6 @@
 		"desktop:dev": "cd apps/desktop && npm run dev",
 		"desktop:build": "cd apps/desktop && npm run build",
 		"desktop:start": "cd apps/desktop && npm run start",
-		"zeroclaw:build": "cd apps/zeroclaw && docker build -t zeroclaw -f Dockerfile ../..",
-		"zeroclaw:run": "docker run -p 3000:3000 zeroclaw",
 		"dev": "concurrently \"npm run agent\" \"npm run web:dev\""
 	},
 	"devDependencies": {

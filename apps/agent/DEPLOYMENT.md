@@ -24,56 +24,6 @@
    DEBUG=false
    ```
 
-4. **Optional Environment Variables**:
-   ```
-   # Additional Notion workspaces
-   LIVEPEER_NOTION_API_KEY=optional
-   LIVEPEER_NOTION_DB_ID=optional
-   VANQUISH_NOTION_API_KEY=optional
-   VANQUISH_NOTION_DB_ID=optional
-   
-   # Task Scheduler Configuration
-   SCHEDULER_INTERVAL_MINUTES=10
-   WORK_START_HOUR=9
-   WORK_END_HOUR=17
-   SLOT_DURATION_MINUTES=15
-   SCHEDULE_DAYS_AHEAD=7
-   ```
-
-## 📅 Task Scheduler
-
-The agent includes an automatic task scheduler that runs as a background service:
-
-### Features
-- Auto-schedules tasks into calendar time slots
-- Reschedules incomplete tasks every 10 minutes
-- Priority-based scheduling (lower rank = higher priority)
-- Work hours enforcement (9 AM - 5 PM, Mon-Fri by default)
-- Direct Notion Calendar integration
-
-### Setup
-1. Set required environment variables:
-   ```
-   LIVEPEER_NOTION_API_KEY=your_key
-   LIVEPEER_NOTION_DB_ID=your_db_id
-   ```
-
-2. (Optional) Configure scheduler settings:
-   ```
-   SCHEDULER_INTERVAL_MINUTES=10
-   WORK_START_HOUR=9
-   WORK_END_HOUR=17
-   ```
-
-3. The scheduler starts automatically when the agent deploys
-
-### API Endpoints
-- `GET /api/v1/scheduler/status` - Get scheduler status
-- `POST /api/v1/scheduler/run` - Manually trigger scheduling
-- `GET /api/v1/scheduler/health` - Scheduler health check
-
-See [scheduler/README.md](scheduler/README.md) for detailed documentation.
-
 ## 🔐 Authentication
 
 The API now requires a bearer token for all requests:

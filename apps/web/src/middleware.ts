@@ -4,11 +4,13 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith('/chat') || pathname.startsWith('/claw') || pathname.startsWith('/gateway')) {
+  if (pathname.startsWith('/chat') || pathname.startsWith('/dashboard')) {
     const token = request.cookies.get('bearerToken')?.value;
     
     if (!token) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
     }
   }
 
@@ -16,5 +18,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/chat/:path*', '/claw/:path*', '/gateway', '/gateway/:path*']
+  matcher: ['/chat/:path*', '/dashboard/:path*']
 };
