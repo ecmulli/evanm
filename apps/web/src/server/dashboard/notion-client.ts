@@ -15,6 +15,9 @@ export function getNotionClient(): Client {
   return _client;
 }
 
+// Notion user ID for "assigned to me" filtering (Evan Mullins)
+export const NOTION_USER_ID = process.env.NOTION_USER_ID || 'e0c53979-a938-45b7-9c34-3ed48fd52338';
+
 // Database configuration per domain
 export interface DbConfig {
   databaseId: string;
@@ -23,6 +26,7 @@ export interface DbConfig {
   statusProperty: string;
   priorityProperty: string | null;
   dueDateProperty: string;
+  assigneeProperty?: string; // People property for assignee filtering
 }
 
 export const DB_CONFIG: Record<TaskDomain, DbConfig> = {
@@ -33,6 +37,7 @@ export const DB_CONFIG: Record<TaskDomain, DbConfig> = {
     statusProperty: 'Status',
     priorityProperty: 'Priority',
     dueDateProperty: 'Due date',
+    assigneeProperty: 'Assignee',
   },
   career: {
     databaseId: process.env.NOTION_CAREER_DB || '064411ee-aa98-4432-9bc8-8a3d78ad73f4',

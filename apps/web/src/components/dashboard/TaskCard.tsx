@@ -28,11 +28,11 @@ function DueDateLabel({ dueDate }: { dueDate: string | null }) {
   return (
     <span
       className={`text-xs whitespace-nowrap ${
-        isOverdue ? 'text-red-600 font-medium' : isDueToday ? 'text-amber-600 font-medium' : 'text-gray-500'
+        isOverdue ? 'text-[#A0584A] font-medium' : isDueToday ? 'text-[#CA8A04] font-medium' : 'text-[#6B6560]'
       }`}
     >
       {formatted}
-      {isOverdue && <span className="ml-1 text-red-500">overdue</span>}
+      {isOverdue && <span className="ml-1 text-[#A0584A]">overdue</span>}
       {isDueToday && <span className="ml-1">today</span>}
     </span>
   );
@@ -43,8 +43,8 @@ export function TaskCard({ task, onStatusChange, compact, disabled }: TaskCardPr
 
   return (
     <div
-      className={`bg-white rounded-lg border border-gray-200 p-3 hover:shadow-sm transition-shadow ${
-        isCompleted ? 'opacity-60' : ''
+      className={`bg-[#FDFCFA] rounded-lg border border-[#E8E4E0] p-3 hover:shadow-md hover:border-[#BEA09A] transition-all ${
+        isCompleted ? 'opacity-50' : ''
       }`}
     >
       <div className="flex items-start gap-2">
@@ -63,7 +63,7 @@ export function TaskCard({ task, onStatusChange, compact, disabled }: TaskCardPr
             href={task.notionUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={`text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline block truncate ${
+            className={`text-sm font-medium text-[#2A2520] hover:text-[#A0584A] hover:underline block truncate ${
               isCompleted ? 'line-through' : ''
             }`}
             title={task.title}
@@ -71,15 +71,15 @@ export function TaskCard({ task, onStatusChange, compact, disabled }: TaskCardPr
             {task.title}
           </a>
           {!compact && (
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1.5">
               <DueDateLabel dueDate={task.dueDate} />
               {task.metadata.estimatedHours && (
-                <span className="text-xs text-gray-400">{task.metadata.estimatedHours}h</span>
+                <span className="text-xs text-[#BEA09A]">{task.metadata.estimatedHours}h</span>
               )}
               {task.metadata.labels && task.metadata.labels.length > 0 && (
                 <div className="flex gap-1">
                   {task.metadata.labels.map(label => (
-                    <span key={label} className="text-xs text-gray-400 bg-gray-100 px-1 rounded">
+                    <span key={label} className="text-xs text-[#6B6560] bg-[#F5F2EE] px-1.5 py-0.5 rounded">
                       {label}
                     </span>
                   ))}

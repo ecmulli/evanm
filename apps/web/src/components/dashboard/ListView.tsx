@@ -48,7 +48,7 @@ function compareTasks(a: UnifiedTask, b: UnifiedTask, key: SortKey, dir: SortDir
 }
 
 function DueDateCell({ dueDate }: { dueDate: string | null }) {
-  if (!dueDate) return <span className="text-gray-300">—</span>;
+  if (!dueDate) return <span className="text-[#BEA09A]">&mdash;</span>;
   const date = parseISO(dueDate);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -56,9 +56,9 @@ function DueDateCell({ dueDate }: { dueDate: string | null }) {
   const isDueToday = date.toDateString() === today.toDateString();
   const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   return (
-    <span className={isOverdue ? 'text-red-600 font-medium' : isDueToday ? 'text-amber-600 font-medium' : 'text-gray-500'}>
+    <span className={isOverdue ? 'text-[#A0584A] font-medium' : isDueToday ? 'text-[#CA8A04] font-medium' : 'text-[#6B6560]'}>
       {formatted}
-      {isOverdue && <span className="ml-1 text-xs text-red-500">overdue</span>}
+      {isOverdue && <span className="ml-1 text-xs text-[#A0584A]">overdue</span>}
       {isDueToday && <span className="ml-1 text-xs">today</span>}
     </span>
   );
@@ -88,7 +88,7 @@ export function ListView({ tasks, onStatusChange }: ListViewProps) {
       <button
         onClick={() => handleSort(sortKeyName)}
         className={`text-xs font-medium uppercase tracking-wider text-left flex items-center gap-1 ${
-          active ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
+          active ? 'text-[#152A54]' : 'text-[#6B6560] hover:text-[#2A2520]'
         }`}
       >
         {label}
@@ -114,7 +114,7 @@ export function ListView({ tasks, onStatusChange }: ListViewProps) {
           <TaskCard key={task.id} task={task} onStatusChange={onStatusChange} />
         ))}
         {sorted.length === 0 && (
-          <p className="text-center text-gray-400 py-8 text-sm">No tasks found</p>
+          <p className="text-center text-[#BEA09A] py-8 text-sm">No tasks found</p>
         )}
       </div>
     );
@@ -122,10 +122,10 @@ export function ListView({ tasks, onStatusChange }: ListViewProps) {
 
   // Desktop: table
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div className="bg-[#FDFCFA] rounded-lg border border-[#E8E4E0] overflow-hidden shadow-sm">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-gray-100">
+          <tr className="border-b border-[#E8E4E0] bg-[#F5F2EE]">
             <th className="px-4 py-2.5 w-20"><SortHeader label="Domain" sortKeyName="domain" /></th>
             <th className="px-4 py-2.5"><SortHeader label="Title" sortKeyName="title" /></th>
             <th className="px-4 py-2.5 w-32"><SortHeader label="Status" sortKeyName="status" /></th>
@@ -137,14 +137,14 @@ export function ListView({ tasks, onStatusChange }: ListViewProps) {
           {sorted.map(task => {
             const isCompleted = task.status === 'done' || task.status === 'cancelled' || task.status === 'skipped';
             return (
-              <tr key={task.id} className={`border-b border-gray-50 hover:bg-gray-50 ${isCompleted ? 'opacity-60' : ''}`}>
+              <tr key={task.id} className={`border-b border-[#F5F2EE] hover:bg-[#F5F2EE]/50 transition-colors ${isCompleted ? 'opacity-50' : ''}`}>
                 <td className="px-4 py-2.5"><DomainBadge domain={task.domain} /></td>
                 <td className="px-4 py-2.5">
                   <a
                     href={task.notionUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`text-sm text-gray-900 hover:text-blue-600 hover:underline ${isCompleted ? 'line-through' : ''}`}
+                    className={`text-sm text-[#2A2520] hover:text-[#A0584A] hover:underline ${isCompleted ? 'line-through' : ''}`}
                   >
                     {task.title}
                   </a>
@@ -160,7 +160,7 @@ export function ListView({ tasks, onStatusChange }: ListViewProps) {
                   {task.priority && (
                     <div className="flex items-center gap-1.5">
                       <PriorityIndicator priority={task.priority} />
-                      <span className="text-xs text-gray-500">{PRIORITY_CONFIG[task.priority].label}</span>
+                      <span className="text-xs text-[#6B6560]">{PRIORITY_CONFIG[task.priority].label}</span>
                     </div>
                   )}
                 </td>
@@ -170,7 +170,7 @@ export function ListView({ tasks, onStatusChange }: ListViewProps) {
           })}
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={5} className="text-center text-gray-400 py-8 text-sm">No tasks found</td>
+              <td colSpan={5} className="text-center text-[#BEA09A] py-8 text-sm">No tasks found</td>
             </tr>
           )}
         </tbody>

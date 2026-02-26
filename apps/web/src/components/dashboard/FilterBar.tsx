@@ -40,20 +40,19 @@ export function FilterBar({
   onShowCompletedChange,
   onRefresh,
   isRefreshing,
-  taskCount,
 }: FilterBarProps) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3 pb-4 border-b border-gray-200">
+    <div className="flex flex-col sm:flex-row sm:items-center gap-3 pb-4 border-b border-[#E8E4E0]">
       {/* View toggle */}
-      <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+      <div className="flex items-center bg-white rounded-lg p-0.5 border border-[#E8E4E0] shadow-sm">
         {VIEW_BUTTONS.map(({ mode, icon: Icon, label }) => (
           <button
             key={mode}
             onClick={() => onViewChange(mode)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
               viewMode === mode
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-[#152A54] text-white shadow-sm'
+                : 'text-[#6B6560] hover:text-[#2A2520] hover:bg-[#F5F2EE]'
             }`}
           >
             <Icon className="w-3.5 h-3.5" />
@@ -71,17 +70,17 @@ export function FilterBar({
             <button
               key={label}
               onClick={() => onDomainChange(value)}
-              className={`px-2.5 py-1 text-xs font-medium rounded-full transition-colors border ${
+              className={`px-3 py-1 text-xs font-medium rounded-full transition-all border ${
                 isActive
-                  ? 'border-current'
-                  : 'border-transparent hover:bg-gray-100'
+                  ? 'border-current shadow-sm'
+                  : 'border-transparent hover:bg-white hover:border-[#E8E4E0]'
               }`}
               style={
                 isActive && config
                   ? { backgroundColor: config.bgColor, color: config.color, borderColor: config.color }
                   : isActive
-                    ? { backgroundColor: '#F3F4F6', color: '#374151', borderColor: '#9CA3AF' }
-                    : undefined
+                    ? { backgroundColor: '#FDFCFA', color: '#2A2520', borderColor: '#6B6560' }
+                    : { color: '#6B6560' }
               }
             >
               {label}
@@ -90,14 +89,14 @@ export function FilterBar({
         })}
       </div>
 
-      {/* Right section: completed toggle + refresh + count */}
+      {/* Right section */}
       <div className="flex items-center gap-3 sm:ml-auto">
-        <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
+        <label className="flex items-center gap-1.5 text-xs text-[#6B6560] cursor-pointer select-none">
           <input
             type="checkbox"
             checked={showCompleted}
             onChange={e => onShowCompletedChange(e.target.checked)}
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+            className="rounded border-[#BEA09A] text-[#A0584A] focus:ring-[#A0584A] w-3.5 h-3.5"
           />
           Done
         </label>
@@ -105,15 +104,11 @@ export function FilterBar({
         <button
           onClick={onRefresh}
           disabled={isRefreshing}
-          className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+          className="p-1.5 text-[#6B6560] hover:text-[#A0584A] transition-colors disabled:opacity-50"
           title="Refresh"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
         </button>
-
-        <span className="text-xs text-gray-400">
-          {taskCount} task{taskCount !== 1 ? 's' : ''}
-        </span>
       </div>
     </div>
   );

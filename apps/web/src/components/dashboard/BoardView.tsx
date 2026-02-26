@@ -41,14 +41,14 @@ function DroppableColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col min-h-[200px] ${isOver ? 'bg-blue-50' : 'bg-gray-50'} rounded-lg p-3 transition-colors`}
+      className={`flex flex-col min-h-[200px] ${isOver ? 'bg-[#EFF2E8]' : 'bg-[#F5F2EE]'} rounded-lg p-3 transition-colors border border-[#E8E4E0]`}
     >
       <div className="flex items-center gap-2 mb-3">
         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: config.color }} />
-        <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+        <h3 className="text-xs font-semibold text-[#2A2520] uppercase tracking-wider">
           {config.label}
         </h3>
-        <span className="text-xs text-gray-400 ml-auto">{tasks.length}</span>
+        <span className="text-xs text-[#BEA09A] ml-auto">{tasks.length}</span>
       </div>
       <div className="space-y-2 flex-1">
         {tasks.map(task =>

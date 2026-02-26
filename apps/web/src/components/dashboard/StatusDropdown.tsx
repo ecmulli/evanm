@@ -46,7 +46,7 @@ export function StatusDropdown({ domain, currentRawStatus, onStatusChange, disab
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 py-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[140px] left-0">
+        <div className="absolute z-50 mt-1 py-1 bg-[#FDFCFA] rounded-lg shadow-lg border border-[#E8E4E0] min-w-[140px] left-0">
           {statuses.map(rawStatus => {
             const normalized = STATUS_MAP[domain]?.[rawStatus] || 'todo';
             const config = STATUS_CONFIG[normalized];
@@ -54,7 +54,7 @@ export function StatusDropdown({ domain, currentRawStatus, onStatusChange, disab
             return (
               <button
                 key={rawStatus}
-                className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2 ${
+                className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#F5F2EE] flex items-center gap-2 transition-colors ${
                   isActive ? 'font-semibold' : ''
                 }`}
                 onClick={() => {

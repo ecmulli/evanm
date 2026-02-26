@@ -1,5 +1,5 @@
 import type { TaskDomain } from './types';
-import { getNotionClient, DB_CONFIG } from './notion-client';
+import { getNotionClient, DB_CONFIG, NOTION_USER_ID } from './notion-client';
 import { normalizeTask } from './notion-normalizer';
 import type { UnifiedTask } from './types';
 
@@ -10,37 +10,38 @@ interface QueryOptions {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildFilter(domain: TaskDomain, options: QueryOptions): any {
   const config = DB_CONFIG[domain];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const conditions: any[] = [];
 
-  if (options.includeCompleted) {
-    return undefined; // No filter — return everything
+  // Filter to tasks assigned to the user (Work has Assignee property)
+  if (config.assigneeProperty && NOTION_USER_ID) {
+    conditions.push({
+      property: config.assigneeProperty,
+      people: { contains: NOTION_USER_ID },
+    });
   }
 
-  // Exclude completed/done tasks
-  if (domain === 'work') {
-    // Work uses "status" type (grouped statuses) — exclude Complete group
-    return {
-      and: [
+  if (!options.includeCompleted) {
+    if (domain === 'work') {
+      conditions.push(
         { property: config.statusProperty, status: { does_not_equal: 'Completed' } },
         { property: config.statusProperty, status: { does_not_equal: 'Cancelled' } },
-      ],
-    };
-  }
-
-  // Career and Personal use "select" type
-  if (domain === 'career') {
-    return {
-      and: [
+      );
+    } else if (domain === 'career') {
+      conditions.push(
         { property: config.statusProperty, select: { does_not_equal: 'Done' } },
         { property: config.statusProperty, select: { does_not_equal: 'Skipped' } },
-      ],
-    };
+      );
+    } else {
+      conditions.push(
+        { property: config.statusProperty, select: { does_not_equal: 'Done' } },
+      );
+    }
   }
 
-  // Personal
-  return {
-    property: config.statusProperty,
-    select: { does_not_equal: 'Done' },
-  };
+  if (conditions.length === 0) return undefined;
+  if (conditions.length === 1) return conditions[0];
+  return { and: conditions };
 }
 
 export async function queryDomain(domain: TaskDomain, options: QueryOptions = {}): Promise<UnifiedTask[]> {
