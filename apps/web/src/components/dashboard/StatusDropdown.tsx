@@ -54,7 +54,7 @@ export function StatusDropdown({ domain, currentRawStatus, onStatusChange, disab
             return (
               <button
                 key={rawStatus}
-                className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#F5F2EE] flex items-center gap-2 transition-colors ${
+                className={`w-full text-left px-3 py-1.5 text-xs text-[#2A2520] hover:bg-[#F5F2EE] flex items-center gap-2 transition-colors ${
                   isActive ? 'font-semibold' : ''
                 }`}
                 onClick={() => {
