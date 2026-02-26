@@ -3,8 +3,8 @@
 import { isAfter, isSameDay, parseISO } from 'date-fns';
 import type { UnifiedTask } from '@/server/dashboard/types';
 import { DomainBadge } from './DomainBadge';
-import { PriorityIndicator } from './PriorityIndicator';
 import { StatusDropdown } from './StatusDropdown';
+import { CompleteCheckbox } from './CompleteCheckbox';
 
 interface TaskCardProps {
   task: UnifiedTask;
@@ -48,7 +48,9 @@ export function TaskCard({ task, onStatusChange, compact, disabled }: TaskCardPr
       }`}
     >
       <div className="flex items-start gap-2">
-        <PriorityIndicator priority={task.priority} />
+        <div className="mt-0.5">
+          <CompleteCheckbox task={task} onStatusChange={onStatusChange} />
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-1 flex-wrap">
             <DomainBadge domain={task.domain} />

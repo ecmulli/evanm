@@ -20,6 +20,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import type { UnifiedTask, TaskDomain } from '@/server/dashboard/types';
 import { DOMAIN_CONFIG } from '@/server/dashboard/types';
 import { StatusDropdown } from './StatusDropdown';
+import { CompleteCheckbox } from './CompleteCheckbox';
 
 interface CalendarViewProps {
   tasks: UnifiedTask[];
@@ -286,6 +287,7 @@ function AgendaItem({
         isCompleted ? 'opacity-60' : ''
       }`}
     >
+      <CompleteCheckbox task={task} onStatusChange={onStatusChange} />
       <span
         className="w-1 self-stretch rounded-full flex-shrink-0"
         style={{ backgroundColor: config.color }}

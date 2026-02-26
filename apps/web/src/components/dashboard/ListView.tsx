@@ -9,6 +9,7 @@ import { TaskCard } from './TaskCard';
 import { StatusDropdown } from './StatusDropdown';
 import { DomainBadge } from './DomainBadge';
 import { PriorityIndicator } from './PriorityIndicator';
+import { CompleteCheckbox } from './CompleteCheckbox';
 
 type SortKey = 'domain' | 'title' | 'status' | 'priority' | 'dueDate';
 type SortDir = 'asc' | 'desc';
@@ -126,11 +127,12 @@ export function ListView({ tasks, onStatusChange }: ListViewProps) {
       <table className="w-full">
         <thead>
           <tr className="border-b border-[#E8E4E0] bg-[#F5F2EE]">
-            <th className="px-4 py-2.5 w-20"><SortHeader label="Domain" sortKeyName="domain" /></th>
-            <th className="px-4 py-2.5"><SortHeader label="Title" sortKeyName="title" /></th>
-            <th className="px-4 py-2.5 w-32"><SortHeader label="Status" sortKeyName="status" /></th>
-            <th className="px-4 py-2.5 w-24"><SortHeader label="Priority" sortKeyName="priority" /></th>
-            <th className="px-4 py-2.5 w-32"><SortHeader label="Due Date" sortKeyName="dueDate" /></th>
+            <th className="pl-4 pr-1 py-2.5 w-10"></th>
+            <th className="px-3 py-2.5 w-20"><SortHeader label="Domain" sortKeyName="domain" /></th>
+            <th className="px-3 py-2.5"><SortHeader label="Title" sortKeyName="title" /></th>
+            <th className="px-3 py-2.5 w-32"><SortHeader label="Status" sortKeyName="status" /></th>
+            <th className="px-3 py-2.5 w-24"><SortHeader label="Priority" sortKeyName="priority" /></th>
+            <th className="px-3 py-2.5 w-32"><SortHeader label="Due Date" sortKeyName="dueDate" /></th>
           </tr>
         </thead>
         <tbody>
@@ -138,8 +140,11 @@ export function ListView({ tasks, onStatusChange }: ListViewProps) {
             const isCompleted = task.status === 'done' || task.status === 'cancelled' || task.status === 'skipped';
             return (
               <tr key={task.id} className={`border-b border-[#F5F2EE] hover:bg-[#F5F2EE]/50 transition-colors ${isCompleted ? 'opacity-50' : ''}`}>
-                <td className="px-4 py-2.5"><DomainBadge domain={task.domain} /></td>
-                <td className="px-4 py-2.5">
+                <td className="pl-4 pr-1 py-2.5">
+                  <CompleteCheckbox task={task} onStatusChange={onStatusChange} />
+                </td>
+                <td className="px-3 py-2.5"><DomainBadge domain={task.domain} /></td>
+                <td className="px-3 py-2.5">
                   <a
                     href={task.notionUrl}
                     target="_blank"
@@ -149,14 +154,14 @@ export function ListView({ tasks, onStatusChange }: ListViewProps) {
                     {task.title}
                   </a>
                 </td>
-                <td className="px-4 py-2.5">
+                <td className="px-3 py-2.5">
                   <StatusDropdown
                     domain={task.domain}
                     currentRawStatus={task.rawStatus}
                     onStatusChange={rawStatus => onStatusChange(task.id, rawStatus, task.domain)}
                   />
                 </td>
-                <td className="px-4 py-2.5">
+                <td className="px-3 py-2.5">
                   {task.priority && (
                     <div className="flex items-center gap-1.5">
                       <PriorityIndicator priority={task.priority} />
@@ -164,13 +169,13 @@ export function ListView({ tasks, onStatusChange }: ListViewProps) {
                     </div>
                   )}
                 </td>
-                <td className="px-4 py-2.5 text-sm"><DueDateCell dueDate={task.dueDate} /></td>
+                <td className="px-3 py-2.5 text-sm"><DueDateCell dueDate={task.dueDate} /></td>
               </tr>
             );
           })}
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={5} className="text-center text-[#BEA09A] py-8 text-sm">No tasks found</td>
+              <td colSpan={6} className="text-center text-[#BEA09A] py-8 text-sm">No tasks found</td>
             </tr>
           )}
         </tbody>
