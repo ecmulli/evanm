@@ -24,12 +24,14 @@ function buildFilter(domain: TaskDomain, options: QueryOptions): any {
   if (!options.includeCompleted) {
     if (domain === 'work') {
       conditions.push(
+        { property: config.statusProperty, status: { does_not_equal: 'Backlog' } },
         { property: config.statusProperty, status: { does_not_equal: 'Completed' } },
         { property: config.statusProperty, status: { does_not_equal: 'Cancelled' } },
       );
     } else if (domain === 'career') {
       conditions.push(
         { property: config.statusProperty, select: { does_not_equal: 'Done' } },
+        { property: config.statusProperty, select: { does_not_equal: 'Completed' } },
         { property: config.statusProperty, select: { does_not_equal: 'Skipped' } },
       );
     } else {

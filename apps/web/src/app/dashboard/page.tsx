@@ -43,14 +43,14 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-[#F5F2EE]">
       {/* Header bar */}
       <header className="bg-[#152A54] border-b-2 border-[#0D1A2D]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-[#A0584A] flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-[#A0584A] flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
-            <h1 className="text-lg font-semibold text-white tracking-tight">Task Dashboard</h1>
+            <h1 className="text-base sm:text-lg font-semibold text-white tracking-tight">Task Dashboard</h1>
           </div>
           <span className="text-xs text-[#BEA09A] font-mono">
             {count} task{count !== 1 ? 's' : ''}
@@ -58,7 +58,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-5">
         {/* Filters */}
         <FilterBar
           viewMode={viewMode}

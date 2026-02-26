@@ -60,19 +60,19 @@ function MonthNav({
   onMonthChange: (d: Date) => void;
 }) {
   return (
-    <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center justify-between mb-3 sm:mb-4">
       <button
         onClick={() => onMonthChange(subMonths(currentMonth, 1))}
-        className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
+        className="p-1.5 text-[#BEA09A] hover:text-[#A0584A] transition-colors"
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
-      <h3 className="text-sm font-semibold text-gray-700">
+      <h3 className="text-sm font-semibold text-[#2A2520]">
         {format(currentMonth, 'MMMM yyyy')}
       </h3>
       <button
         onClick={() => onMonthChange(addMonths(currentMonth, 1))}
-        className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
+        className="p-1.5 text-[#BEA09A] hover:text-[#A0584A] transition-colors"
       >
         <ChevronRight className="w-4 h-4" />
       </button>
@@ -111,14 +111,14 @@ function MonthlyGrid({
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-px mb-1">
         {WEEKDAYS.map(day => (
-          <div key={day} className="text-center text-xs font-medium text-gray-500 py-1">
+          <div key={day} className="text-center text-xs font-medium text-[#6B6560] py-1">
             {day}
           </div>
         ))}
       </div>
 
       {/* Day cells */}
-      <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
+      <div className="grid grid-cols-7 gap-px bg-[#E8E4E0] rounded-lg overflow-hidden">
         {days.map(day => {
           const key = format(day, 'yyyy-MM-dd');
           const dayTasks = tasksByDate.get(key) || [];
@@ -129,16 +129,16 @@ function MonthlyGrid({
             <div
               key={key}
               className={`min-h-[80px] p-1 ${
-                isCurrentMonth ? 'bg-white' : 'bg-gray-50'
-              } ${isToday ? 'ring-2 ring-inset ring-blue-400' : ''}`}
+                isCurrentMonth ? 'bg-[#FDFCFA]' : 'bg-[#F5F2EE]'
+              } ${isToday ? 'ring-2 ring-inset ring-[#152A54]' : ''}`}
             >
               <div
                 className={`text-xs mb-1 ${
                   isToday
-                    ? 'font-bold text-blue-600'
+                    ? 'font-bold text-[#152A54]'
                     : isCurrentMonth
-                      ? 'text-gray-700'
-                      : 'text-gray-300'
+                      ? 'text-[#2A2520]'
+                      : 'text-[#D4CFC9]'
                 }`}
               >
                 {format(day, 'd')}
@@ -161,7 +161,7 @@ function MonthlyGrid({
                   </a>
                 ))}
                 {dayTasks.length > 3 && (
-                  <span className="text-[10px] text-gray-400 px-1">
+                  <span className="text-[10px] text-[#BEA09A] px-1">
                     +{dayTasks.length - 3} more
                   </span>
                 )}
@@ -215,8 +215,8 @@ function AgendaView({
 
       {/* Overdue */}
       {overdueTasks.length > 0 && (
-        <div className="mb-4">
-          <h4 className="text-xs font-semibold text-red-600 uppercase tracking-wider mb-2">
+        <div className="mb-3">
+          <h4 className="text-xs font-semibold text-[#A0584A] uppercase tracking-wider mb-1.5">
             Overdue ({overdueTasks.length})
           </h4>
           <div className="space-y-1.5">
@@ -232,10 +232,10 @@ function AgendaView({
         const date = parseISO(dateStr);
         const isDateToday = isSameDay(date, today);
         return (
-          <div key={dateStr} className="mb-4">
+          <div key={dateStr} className="mb-3">
             <h4
-              className={`text-xs font-semibold uppercase tracking-wider mb-2 ${
-                isDateToday ? 'text-blue-600' : 'text-gray-500'
+              className={`text-xs font-semibold uppercase tracking-wider mb-1.5 ${
+                isDateToday ? 'text-[#152A54]' : 'text-[#6B6560]'
               }`}
             >
               {isDateToday ? 'Today' : format(date, 'EEE, MMM d')}
@@ -251,8 +251,8 @@ function AgendaView({
 
       {/* No date */}
       {noDatedTasks.length > 0 && (
-        <div className="mb-4">
-          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+        <div className="mb-3">
+          <h4 className="text-xs font-semibold text-[#BEA09A] uppercase tracking-wider mb-1.5">
             No due date ({noDatedTasks.length})
           </h4>
           <div className="space-y-1.5">
@@ -264,7 +264,7 @@ function AgendaView({
       )}
 
       {tasks.length === 0 && (
-        <p className="text-center text-gray-400 py-8 text-sm">No tasks found</p>
+        <p className="text-center text-[#BEA09A] py-8 text-sm">No tasks found</p>
       )}
     </div>
   );
@@ -282,7 +282,7 @@ function AgendaItem({
 
   return (
     <div
-      className={`flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200 ${
+      className={`flex items-center gap-2 p-2 bg-[#FDFCFA] rounded-lg border border-[#E8E4E0] ${
         isCompleted ? 'opacity-60' : ''
       }`}
     >
@@ -295,7 +295,7 @@ function AgendaItem({
           href={task.notionUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={`text-sm text-gray-900 hover:text-blue-600 hover:underline truncate block ${
+          className={`text-sm text-[#2A2520] hover:text-[#A0584A] hover:underline line-clamp-2 block ${
             isCompleted ? 'line-through' : ''
           }`}
         >

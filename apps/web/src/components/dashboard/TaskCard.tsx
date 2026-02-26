@@ -43,7 +43,7 @@ export function TaskCard({ task, onStatusChange, compact, disabled }: TaskCardPr
 
   return (
     <div
-      className={`bg-[#FDFCFA] rounded-lg border border-[#E8E4E0] p-3 hover:shadow-md hover:border-[#BEA09A] transition-all ${
+      className={`bg-[#FDFCFA] rounded-lg border border-[#E8E4E0] p-2.5 sm:p-3 hover:shadow-md hover:border-[#BEA09A] transition-all ${
         isCompleted ? 'opacity-50' : ''
       }`}
     >
@@ -58,26 +58,27 @@ export function TaskCard({ task, onStatusChange, compact, disabled }: TaskCardPr
               onStatusChange={rawStatus => onStatusChange(task.id, rawStatus, task.domain)}
               disabled={disabled}
             />
+            {compact && <DueDateLabel dueDate={task.dueDate} />}
           </div>
           <a
             href={task.notionUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={`text-sm font-medium text-[#2A2520] hover:text-[#A0584A] hover:underline block truncate ${
-              isCompleted ? 'line-through' : ''
-            }`}
+            className={`text-sm font-medium text-[#2A2520] hover:text-[#A0584A] hover:underline block ${
+              compact ? 'line-clamp-2' : ''
+            } ${isCompleted ? 'line-through' : ''}`}
             title={task.title}
           >
             {task.title}
           </a>
           {!compact && (
-            <div className="flex items-center gap-2 mt-1.5">
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               <DueDateLabel dueDate={task.dueDate} />
               {task.metadata.estimatedHours && (
                 <span className="text-xs text-[#BEA09A]">{task.metadata.estimatedHours}h</span>
               )}
               {task.metadata.labels && task.metadata.labels.length > 0 && (
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-wrap">
                   {task.metadata.labels.map(label => (
                     <span key={label} className="text-xs text-[#6B6560] bg-[#F5F2EE] px-1.5 py-0.5 rounded">
                       {label}
