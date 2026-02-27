@@ -7,12 +7,16 @@ const nextConfig: NextConfig = {
   async rewrites() {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
 
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
-      },
-    ];
+    return {
+      // beforeFiles rewrites are checked before pages/public files and after
+      // route handlers, but fallthrough rewrites let route handlers take priority
+      fallback: [
+        {
+          source: '/api/:path*',
+          destination: `${backendUrl}/api/:path*`,
+        },
+      ],
+    };
   },
 };
 
