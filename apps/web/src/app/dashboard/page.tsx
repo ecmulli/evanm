@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTasks } from '@/hooks/useTasks';
 import { FilterBar, type ViewMode } from '@/components/dashboard/FilterBar';
 import { ListView } from '@/components/dashboard/ListView';
 import { BoardView } from '@/components/dashboard/BoardView';
 import { CalendarView } from '@/components/dashboard/CalendarView';
+import { TodoSection } from '@/components/dashboard/TodoSection';
 import type { TaskDomain } from '@/server/dashboard/types';
 
 export default function DashboardPage() {
@@ -39,6 +40,15 @@ export default function DashboardPage() {
     [updateTaskStatus],
   );
 
+  // Register service worker for PWA support
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch((err) => {
+        console.error('SW registration failed:', err);
+      });
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#F5F2EE]">
       {/* Header bar */}
@@ -59,6 +69,9 @@ export default function DashboardPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-5">
+        {/* Quick To-Dos */}
+        <TodoSection />
+
         {/* Filters */}
         <FilterBar
           viewMode={viewMode}
