@@ -3,7 +3,6 @@
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Loader } from 'lucide-react';
-import { getEnvironmentInfo } from '@/utils/environment';
 
 function LoginForm() {
   const [token, setToken] = useState('');
@@ -11,8 +10,6 @@ function LoginForm() {
   const [isValidating, setIsValidating] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { agentDomain } = getEnvironmentInfo();
-
   const validateToken = async (tokenToValidate: string) => {
     try {
       // Test token using the auth validation endpoint
@@ -90,7 +87,7 @@ function LoginForm() {
             Authentication Required
           </h1>
           <p className="text-gray-600">
-            Please enter your bearer token to access the chat interface
+            Please enter your bearer token to access the dashboard
           </p>
         </div>
 
@@ -137,7 +134,7 @@ function LoginForm() {
 
         <div className="mt-8 pt-8 border-t border-gray-200 text-center">
           <div className="text-xs text-gray-400">
-            {agentDomain}
+            evanm.xyz
           </div>
         </div>
       </div>
