@@ -20,9 +20,7 @@ COPY apps/web ./
 
 # Accept build arguments
 ARG ENVIRONMENT
-ARG BACKEND_URL
 ENV ENVIRONMENT=${ENVIRONMENT}
-ENV BACKEND_URL=${BACKEND_URL}
 
 RUN npm run build
 
