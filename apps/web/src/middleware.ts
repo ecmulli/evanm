@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith('/chat') || pathname.startsWith('/dashboard')) {
+  if (pathname.startsWith('/dashboard')) {
     const token = request.cookies.get('bearerToken')?.value;
     
     if (!token) {
@@ -18,5 +18,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/chat/:path*', '/dashboard/:path*']
+  matcher: ['/dashboard/:path*']
 };

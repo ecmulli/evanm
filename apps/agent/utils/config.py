@@ -25,7 +25,7 @@ class Config:
     # OpenAI config
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 
-    # Notion config
+    # Notion config (optional — only needed for task creation service)
     HUB_NOTION_API_KEY: str = os.getenv("HUB_NOTION_API_KEY") or os.getenv(
         "PERSONAL_NOTION_API_KEY", ""
     )
@@ -38,8 +38,6 @@ class Config:
         """Validate that all required environment variables are set."""
         required_vars = [
             ("OPENAI_API_KEY", cls.OPENAI_API_KEY),
-            ("HUB_NOTION_API_KEY", cls.HUB_NOTION_API_KEY),
-            ("HUB_NOTION_DB_ID", cls.HUB_NOTION_DB_ID),
         ]
 
         missing_vars = []
