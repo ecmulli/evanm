@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
 import type { TaskDomain } from '@/server/dashboard/types';
 import { DOMAIN_CONFIG } from '@/server/dashboard/types';
@@ -31,7 +31,29 @@ export function FloatingAddBar({ onAdd }: FloatingAddBarProps) {
   const [selectedDomain, setSelectedDomain] = useState<TaskDomain>('personal');
   const [isAdding, setIsAdding] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Track visualViewport so the bar floats above the iOS keyboard
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const update = () => {
+      // How many px the keyboard is pushing the viewport up from the bottom
+      const offset = window.innerHeight - vv.height - vv.offsetTop;
+      setKeyboardOffset(Math.max(0, offset));
+    };
+
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    update();
+
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
 
   const handleAdd = useCallback(async () => {
     const text = inputValue.trim();
@@ -56,7 +78,13 @@ export function FloatingAddBar({ onAdd }: FloatingAddBarProps) {
   }[selectedDomain];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pb-safe-bottom">
+    <div
+      className="fixed left-0 right-0 z-50 flex justify-center"
+      style={{
+        bottom: keyboardOffset,
+        transition: 'bottom 0.25s cubic-bezier(0.32, 0.72, 0, 1)',
+      }}
+    >
       {/* The bar itself */}
       <div
         className={`
