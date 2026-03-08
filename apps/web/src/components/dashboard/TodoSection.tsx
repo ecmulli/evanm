@@ -1,42 +1,28 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
-import {
-  ChevronDown,
-  ChevronRight,
-  Plus,
-  Trash2,
-  Loader2,
-} from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { ChevronDown, ChevronRight, Trash2, Loader2, Check } from 'lucide-react';
 import { useTodos, type Todo } from '@/hooks/useTodos';
 import type { TaskDomain } from '@/server/dashboard/types';
 import { DOMAIN_CONFIG } from '@/server/dashboard/types';
 
 const DOMAINS: TaskDomain[] = ['work', 'career', 'personal'];
 
-function DomainPill({
-  domain,
-  selected,
-  onClick,
-}: {
-  domain: TaskDomain;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  const config = DOMAIN_CONFIG[domain];
-  return (
-    <button
-      onClick={onClick}
-      className="px-2 py-0.5 rounded text-xs font-medium transition-all"
-      style={{
-        backgroundColor: selected ? config.color : config.bgColor,
-        color: selected ? '#fff' : config.color,
-      }}
-    >
-      {config.label}
-    </button>
-  );
-}
+const DOMAIN_CHECK_STYLES: Record<TaskDomain, { checked: string; unchecked: string }> = {
+  work: {
+    checked: 'bg-[#1C2B4A] border-[#1C2B4A]',
+    unchecked: 'border-[#C8C2BC] hover:border-[#1C2B4A]',
+  },
+  career: {
+    checked: 'bg-[#4A6B3A] border-[#4A6B3A]',
+    unchecked: 'border-[#C8C2BC] hover:border-[#4A6B3A]',
+  },
+  personal: {
+    checked: 'bg-[#A05040] border-[#A05040]',
+    unchecked: 'border-[#C8C2BC] hover:border-[#A05040]',
+  },
+};
+
 
 function TodoItem({
   todo,
@@ -48,41 +34,26 @@ function TodoItem({
   onDelete: (id: string) => void;
 }) {
   const [deleting, setDeleting] = useState(false);
+  const checkStyles = DOMAIN_CHECK_STYLES[todo.domain as TaskDomain] ?? DOMAIN_CHECK_STYLES.personal;
 
   return (
     <div
-      className={`group flex items-center gap-2 py-1.5 px-1 rounded transition-all duration-300 ${
-        todo.done ? 'opacity-40' : ''
+      className={`group flex items-center gap-3 py-2 px-1 rounded-lg transition-all duration-200 ${
+        todo.done ? 'opacity-40' : 'hover:bg-[#F0EEEB]'
       }`}
     >
       <button
         onClick={() => onToggle(todo.id, !todo.done)}
-        className={`flex-shrink-0 w-4.5 h-4.5 rounded border-2 flex items-center justify-center transition-all duration-200 ${
-          todo.done
-            ? 'bg-[#5B6B3B] border-[#5B6B3B]'
-            : 'border-[#D4CFC9] hover:border-[#5B6B3B]'
+        className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+          todo.done ? checkStyles.checked : checkStyles.unchecked
         }`}
       >
-        {todo.done && (
-          <svg
-            className="w-3 h-3 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            strokeWidth={3}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
-        )}
+        {todo.done && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
       </button>
 
       <span
-        className={`flex-1 text-sm text-[#2A2520] ${
-          todo.done ? 'line-through' : ''
+        className={`flex-1 text-[15px] leading-relaxed text-[#1A1714] ${
+          todo.done ? 'line-through text-[#B5AFA9]' : ''
         }`}
       >
         {todo.name}
@@ -97,8 +68,9 @@ function TodoItem({
             setDeleting(false);
           }
         }}
-        className="opacity-0 group-hover:opacity-100 text-[#BEA09A] hover:text-[#A0584A] transition-opacity p-0.5"
+        className="opacity-0 group-hover:opacity-100 text-[#B5AFA9] hover:text-[#B34438] transition-all p-1 rounded-md hover:bg-[#FDF2F1]"
         title="Delete"
+        aria-label="Delete to-do"
       >
         {deleting ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -110,32 +82,22 @@ function TodoItem({
   );
 }
 
-export function TodoSection() {
+export function TodoSection({ onAddRef }: { onAddRef?: (fn: (text: string, domain: TaskDomain) => Promise<void>) => void }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [inputValue, setInputValue] = useState('');
-  const [selectedDomain, setSelectedDomain] = useState<TaskDomain>('personal');
-  const [isAdding, setIsAdding] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const { todos, isLoading, addTodo, toggleTodo, deleteTodo } =
     useTodos(showCompleted);
 
-  const handleAdd = useCallback(async () => {
-    const text = inputValue.trim();
-    if (!text || isAdding) return;
+  // Expose addTodo upward so FloatingAddBar can call it
+  const handleAdd = useCallback(async (text: string, domain: TaskDomain) => {
+    await addTodo(text, domain);
+  }, [addTodo]);
 
-    setIsAdding(true);
-    try {
-      await addTodo(text, selectedDomain);
-      setInputValue('');
-      inputRef.current?.focus();
-    } catch (err) {
-      console.error('Failed to add todo:', err);
-    } finally {
-      setIsAdding(false);
-    }
-  }, [inputValue, selectedDomain, isAdding, addTodo]);
+  // Register the handler with parent on first render
+  if (onAddRef) {
+    onAddRef(handleAdd);
+  }
 
   const handleToggle = useCallback(
     async (id: string, done: boolean) => {
@@ -159,7 +121,6 @@ export function TodoSection() {
     [deleteTodo],
   );
 
-  // Group todos by domain, only show groups that have items
   const activeTodos = todos.filter((t) => !t.done);
   const doneTodos = todos.filter((t) => t.done);
 
@@ -175,94 +136,71 @@ export function TodoSection() {
   const activeCount = activeTodos.length;
 
   return (
-    <section className="mb-4 bg-[#FDFCFA] border border-[#E8E4E0] rounded-lg overflow-hidden">
+    <section className="bg-white border border-[#E5E0DB] rounded-2xl overflow-hidden shadow-sm">
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center gap-2 px-3 sm:px-4 py-2.5 hover:bg-[#F5F2EE] transition-colors"
+        className="w-full flex items-center gap-2 px-4 py-3.5 hover:bg-[#F7F6F4] transition-colors"
+        aria-expanded={isExpanded}
       >
         {isExpanded ? (
-          <ChevronDown className="w-4 h-4 text-[#6B6560]" />
+          <ChevronDown className="w-4 h-4 text-[#B5AFA9]" />
         ) : (
-          <ChevronRight className="w-4 h-4 text-[#6B6560]" />
+          <ChevronRight className="w-4 h-4 text-[#B5AFA9]" />
         )}
-        <span className="text-sm font-semibold text-[#2A2520]">
-          Quick To-Dos
-        </span>
+        <span className="text-sm font-semibold text-[#1A1714] tracking-tight">Quick To-Dos</span>
         {activeCount > 0 && (
-          <span className="text-xs bg-[#152A54] text-white px-1.5 py-0.5 rounded-full font-mono">
+          <span className="text-xs bg-[#1C2B4A] text-white px-1.5 py-0.5 rounded-full font-mono tabular-nums leading-none">
             {activeCount}
           </span>
         )}
       </button>
 
       {isExpanded && (
-        <div className="px-3 sm:px-4 pb-3">
-          {/* Add input row */}
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center gap-1">
-              {DOMAINS.map((d) => (
-                <DomainPill
-                  key={d}
-                  domain={d}
-                  selected={selectedDomain === d}
-                  onClick={() => setSelectedDomain(d)}
-                />
-              ))}
-            </div>
-            <div className="flex-1 relative">
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleAdd();
-                }}
-                placeholder="Add a to-do..."
-                className="w-full pl-3 pr-8 py-1.5 text-sm bg-white border border-[#E8E4E0] rounded-md text-[#2A2520] placeholder-[#BEA09A] focus:outline-none focus:ring-1 focus:ring-[#152A54] focus:border-[#152A54]"
-                disabled={isAdding}
-              />
-              <button
-                onClick={handleAdd}
-                disabled={!inputValue.trim() || isAdding}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[#BEA09A] hover:text-[#152A54] disabled:opacity-30 transition-colors"
-              >
-                {isAdding ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Plus className="w-4 h-4" />
-                )}
-              </button>
-            </div>
-          </div>
-
+        <div className="border-t border-[#E5E0DB]">
           {/* Todo list */}
-          {isLoading && todos.length === 0 ? (
-            <div className="flex items-center gap-2 py-3 text-[#BEA09A] text-xs">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Loading to-dos...
-            </div>
-          ) : activeTodos.length === 0 && doneTodos.length === 0 ? (
-            <p className="text-xs text-[#BEA09A] py-2">
-              No to-dos yet. Type above and press Enter.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {/* Active todos grouped by domain */}
-              {DOMAINS.map((domain) => {
-                const items = groupedActive[domain];
-                if (!items) return null;
-                const config = DOMAIN_CONFIG[domain];
-                return (
-                  <div key={domain}>
-                    <div
-                      className="text-[10px] font-semibold uppercase tracking-wider mb-0.5 px-1"
-                      style={{ color: config.color }}
-                    >
-                      {config.label}
+          <div className="px-4 pb-1">
+            {isLoading && todos.length === 0 ? (
+              <div className="flex items-center gap-2 py-4 text-[#B5AFA9] text-sm">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading...
+              </div>
+            ) : activeTodos.length === 0 && doneTodos.length === 0 ? (
+              <p className="text-sm text-[#B5AFA9] py-3">
+                Nothing here yet. Type above and press Enter.
+              </p>
+            ) : (
+              <div>
+                {DOMAINS.map((domain) => {
+                  const items = groupedActive[domain];
+                  if (!items) return null;
+                  const config = DOMAIN_CONFIG[domain];
+                  return (
+                    <div key={domain} className="mb-1">
+                      <div
+                        className="text-[10px] font-bold uppercase tracking-widest mb-0.5 px-1 pt-1"
+                        style={{ color: config.color }}
+                      >
+                        {config.label}
+                      </div>
+                      {items.map((todo) => (
+                        <TodoItem
+                          key={todo.id}
+                          todo={todo}
+                          onToggle={handleToggle}
+                          onDelete={handleDelete}
+                        />
+                      ))}
                     </div>
-                    {items.map((todo) => (
+                  );
+                })}
+
+                {showCompleted && doneTodos.length > 0 && (
+                  <div className="pt-2 border-t border-[#E5E0DB] mt-2">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-[#B5AFA9] mb-0.5 px-1 pt-1">
+                      Done
+                    </div>
+                    {doneTodos.map((todo) => (
                       <TodoItem
                         key={todo.id}
                         todo={todo}
@@ -271,39 +209,21 @@ export function TodoSection() {
                       />
                     ))}
                   </div>
-                );
-              })}
-
-              {/* Done todos */}
-              {showCompleted && doneTodos.length > 0 && (
-                <div className="pt-1 border-t border-[#E8E4E0]">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[#BEA09A] mb-0.5 px-1">
-                    Done
-                  </div>
-                  {doneTodos.map((todo) => (
-                    <TodoItem
-                      key={todo.id}
-                      todo={todo}
-                      onToggle={handleToggle}
-                      onDelete={handleDelete}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Show completed toggle */}
-          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[#E8E4E0]">
-            <label className="flex items-center gap-1.5 text-xs text-[#6B6560] cursor-pointer">
+          <div className="flex items-center px-4 py-3 border-t border-[#E5E0DB]">
+            <label className="flex items-center gap-2 text-xs text-[#6B6560] cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={showCompleted}
                 onChange={(e) => setShowCompleted(e.target.checked)}
-                className="rounded border-[#D4CFC9] text-[#5B6B3B] focus:ring-[#5B6B3B]"
+                className="rounded border-[#C8C2BC] text-[#4A6B3A] focus:ring-[#4A6B3A] w-3.5 h-3.5"
               />
-              <span className="hidden sm:inline">Show completed</span>
-              <span className="sm:hidden">Done</span>
+              Show completed
             </label>
           </div>
         </div>

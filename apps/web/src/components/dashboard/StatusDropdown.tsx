@@ -34,7 +34,7 @@ export function StatusDropdown({ domain, currentRawStatus, onStatusChange, disab
       <button
         onClick={() => !disabled && setOpen(!open)}
         disabled={disabled}
-        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed ${
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed ${
           normalizedCurrent === 'cancelled' ? 'line-through' : ''
         }`}
         style={{ backgroundColor: currentConfig.bgColor, color: currentConfig.color }}
@@ -46,7 +46,7 @@ export function StatusDropdown({ domain, currentRawStatus, onStatusChange, disab
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 py-1 bg-[#FDFCFA] rounded-lg shadow-lg border border-[#E8E4E0] min-w-[140px] left-0">
+        <div className="absolute z-50 mt-1 py-1 bg-white rounded-xl shadow-lg border border-[#E5E0DB] min-w-[140px] left-0">
           {statuses.map(rawStatus => {
             const normalized = STATUS_MAP[domain]?.[rawStatus] || 'todo';
             const config = STATUS_CONFIG[normalized];
@@ -54,7 +54,7 @@ export function StatusDropdown({ domain, currentRawStatus, onStatusChange, disab
             return (
               <button
                 key={rawStatus}
-                className={`w-full text-left px-3 py-1.5 text-xs text-[#2A2520] hover:bg-[#F5F2EE] flex items-center gap-2 transition-colors ${
+                className={`w-full text-left px-3 py-1.5 text-xs text-[#1A1714] hover:bg-[#F7F6F4] flex items-center gap-2 transition-colors ${
                   isActive ? 'font-semibold' : ''
                 }`}
                 onClick={() => {

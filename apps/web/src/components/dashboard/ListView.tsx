@@ -49,7 +49,7 @@ function compareTasks(a: UnifiedTask, b: UnifiedTask, key: SortKey, dir: SortDir
 }
 
 function DueDateCell({ dueDate }: { dueDate: string | null }) {
-  if (!dueDate) return <span className="text-[#BEA09A]">&mdash;</span>;
+  if (!dueDate) return <span className="text-[#B5AFA9]">&mdash;</span>;
   const date = parseISO(dueDate);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -57,10 +57,10 @@ function DueDateCell({ dueDate }: { dueDate: string | null }) {
   const isDueToday = date.toDateString() === today.toDateString();
   const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   return (
-    <span className={isOverdue ? 'text-[#A0584A] font-medium' : isDueToday ? 'text-[#CA8A04] font-medium' : 'text-[#6B6560]'}>
+    <span className={`text-xs font-medium ${isOverdue ? 'text-[#B34438]' : isDueToday ? 'text-[#B45309]' : 'text-[#6B6560]'}`}>
       {formatted}
-      {isOverdue && <span className="ml-1 text-xs text-[#A0584A]">overdue</span>}
-      {isDueToday && <span className="ml-1 text-xs">today</span>}
+      {isOverdue && <span className="ml-1">overdue</span>}
+      {isDueToday && <span className="ml-1">today</span>}
     </span>
   );
 }
@@ -89,7 +89,7 @@ export function ListView({ tasks, onStatusChange }: ListViewProps) {
       <button
         onClick={() => handleSort(sortKeyName)}
         className={`text-xs font-medium uppercase tracking-wider text-left flex items-center gap-1 ${
-          active ? 'text-[#152A54]' : 'text-[#6B6560] hover:text-[#2A2520]'
+          active ? 'text-[#1C2B4A]' : 'text-[#6B6560] hover:text-[#1A1714]'
         }`}
       >
         {label}
@@ -123,45 +123,45 @@ export function ListView({ tasks, onStatusChange }: ListViewProps) {
 
   // Desktop: table
   return (
-    <div className="bg-[#FDFCFA] rounded-lg border border-[#E8E4E0] overflow-hidden shadow-sm">
+    <div className="bg-white rounded-2xl border border-[#E5E0DB] overflow-hidden shadow-sm">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-[#E8E4E0] bg-[#F5F2EE]">
+          <tr className="border-b border-[#E5E0DB] bg-[#F7F6F4]">
             <th className="pl-4 pr-1 py-2.5 w-10"></th>
             <th className="px-3 py-2.5 w-20"><SortHeader label="Domain" sortKeyName="domain" /></th>
             <th className="px-3 py-2.5"><SortHeader label="Title" sortKeyName="title" /></th>
             <th className="px-3 py-2.5 w-32"><SortHeader label="Status" sortKeyName="status" /></th>
             <th className="px-3 py-2.5 w-24"><SortHeader label="Priority" sortKeyName="priority" /></th>
-            <th className="px-3 py-2.5 w-32"><SortHeader label="Due Date" sortKeyName="dueDate" /></th>
+            <th className="px-3 py-2.5 w-32"><SortHeader label="Due" sortKeyName="dueDate" /></th>
           </tr>
         </thead>
         <tbody>
           {sorted.map(task => {
             const isCompleted = task.status === 'done' || task.status === 'cancelled' || task.status === 'skipped';
             return (
-              <tr key={task.id} className={`border-b border-[#F5F2EE] hover:bg-[#F5F2EE]/50 transition-colors ${isCompleted ? 'opacity-50' : ''}`}>
-                <td className="pl-4 pr-1 py-2.5">
+              <tr key={task.id} className={`border-b border-[#F7F6F4] hover:bg-[#F7F6F4] transition-colors ${isCompleted ? 'opacity-50' : ''}`}>
+                <td className="pl-4 pr-1 py-3">
                   <CompleteCheckbox task={task} onStatusChange={onStatusChange} />
                 </td>
-                <td className="px-3 py-2.5"><DomainBadge domain={task.domain} /></td>
-                <td className="px-3 py-2.5">
+                <td className="px-3 py-3"><DomainBadge domain={task.domain} /></td>
+                <td className="px-3 py-3">
                   <a
                     href={task.notionUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`text-sm text-[#2A2520] hover:text-[#A0584A] hover:underline ${isCompleted ? 'line-through' : ''}`}
+                    className={`text-sm font-medium text-[#1A1714] hover:text-[#A05040] transition-colors ${isCompleted ? 'line-through text-[#B5AFA9]' : ''}`}
                   >
                     {task.title}
                   </a>
                 </td>
-                <td className="px-3 py-2.5">
+                <td className="px-3 py-3">
                   <StatusDropdown
                     domain={task.domain}
                     currentRawStatus={task.rawStatus}
                     onStatusChange={rawStatus => onStatusChange(task.id, rawStatus, task.domain)}
                   />
                 </td>
-                <td className="px-3 py-2.5">
+                <td className="px-3 py-3">
                   {task.priority && (
                     <div className="flex items-center gap-1.5">
                       <PriorityIndicator priority={task.priority} />
@@ -169,13 +169,13 @@ export function ListView({ tasks, onStatusChange }: ListViewProps) {
                     </div>
                   )}
                 </td>
-                <td className="px-3 py-2.5 text-sm"><DueDateCell dueDate={task.dueDate} /></td>
+                <td className="px-3 py-3 text-sm"><DueDateCell dueDate={task.dueDate} /></td>
               </tr>
             );
           })}
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={6} className="text-center text-[#BEA09A] py-8 text-sm">No tasks found</td>
+              <td colSpan={6} className="text-center text-[#B5AFA9] py-10 text-sm">No tasks found</td>
             </tr>
           )}
         </tbody>

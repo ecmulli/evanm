@@ -42,76 +42,79 @@ export function FilterBar({
   isRefreshing,
 }: FilterBarProps) {
   return (
-    <div className="space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-3 pb-3 sm:pb-4 border-b border-[#E8E4E0]">
-      {/* Top row on mobile: view toggle + actions */}
-      <div className="flex items-center gap-2">
-        {/* View toggle */}
-        <div className="flex items-center bg-white rounded-lg p-0.5 border border-[#E8E4E0] shadow-sm">
-          {VIEW_BUTTONS.map(({ mode, icon: Icon, label }) => (
-            <button
-              key={mode}
-              onClick={() => onViewChange(mode)}
-              className={`flex items-center gap-1 px-2 sm:px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                viewMode === mode
-                  ? 'bg-[#152A54] text-white shadow-sm'
-                  : 'text-[#6B6560] hover:text-[#2A2520] hover:bg-[#F5F2EE]'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Domain filter pills */}
-        <div className="flex items-center gap-1">
-          {DOMAIN_FILTERS.map(({ value, label }) => {
-            const isActive = domainFilter === value;
-            const config = value ? DOMAIN_CONFIG[value] : null;
-            return (
-              <button
-                key={label}
-                onClick={() => onDomainChange(value)}
-                className={`px-2 sm:px-3 py-1 text-xs font-medium rounded-full transition-all border ${
-                  isActive
-                    ? 'border-current shadow-sm'
-                    : 'border-transparent hover:bg-white hover:border-[#E8E4E0]'
-                }`}
-                style={
-                  isActive && config
-                    ? { backgroundColor: config.bgColor, color: config.color, borderColor: config.color }
-                    : isActive
-                      ? { backgroundColor: '#FDFCFA', color: '#2A2520', borderColor: '#6B6560' }
-                      : { color: '#6B6560' }
-                }
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Right section */}
-        <div className="flex items-center gap-2 ml-auto">
-          <label className="flex items-center gap-1.5 text-xs text-[#6B6560] cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={showCompleted}
-              onChange={e => onShowCompletedChange(e.target.checked)}
-              className="rounded border-[#BEA09A] text-[#A0584A] focus:ring-[#A0584A] w-3.5 h-3.5"
-            />
-            <span className="hidden sm:inline">Done</span>
-          </label>
-
+    <div className="flex items-center gap-2 flex-wrap">
+      {/* View toggle */}
+      <div className="flex items-center bg-white rounded-xl p-0.5 border border-[#E5E0DB] shadow-sm">
+        {VIEW_BUTTONS.map(({ mode, icon: Icon, label }) => (
           <button
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            className="p-1 sm:p-1.5 text-[#6B6560] hover:text-[#A0584A] transition-colors disabled:opacity-50"
-            title="Refresh"
+            key={mode}
+            onClick={() => onViewChange(mode)}
+            aria-label={label}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-all ${
+              viewMode === mode
+                ? 'bg-[#1C2B4A] text-white shadow-sm'
+                : 'text-[#6B6560] hover:text-[#1A1714] hover:bg-[#F7F6F4]'
+            }`}
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <Icon className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{label}</span>
           </button>
-        </div>
+        ))}
+      </div>
+
+      {/* Domain filter pills */}
+      <div className="flex items-center gap-1">
+        {DOMAIN_FILTERS.map(({ value, label }) => {
+          const isActive = domainFilter === value;
+          const config = value ? DOMAIN_CONFIG[value] : null;
+          return (
+            <button
+              key={label}
+              onClick={() => onDomainChange(value)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all border ${
+                isActive
+                  ? 'border-current shadow-sm'
+                  : 'border-transparent text-[#6B6560] hover:bg-white hover:border-[#E5E0DB] hover:text-[#1A1714]'
+              }`}
+              style={
+                isActive && config
+                  ? {
+                      backgroundColor: config.bgColor,
+                      color: config.color,
+                      borderColor: config.color + '40',
+                    }
+                  : isActive
+                    ? { backgroundColor: '#F7F6F4', color: '#1A1714', borderColor: '#C8C2BC' }
+                    : {}
+              }
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Right section */}
+      <div className="flex items-center gap-2 ml-auto">
+        <label className="flex items-center gap-1.5 text-xs text-[#6B6560] cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showCompleted}
+            onChange={(e) => onShowCompletedChange(e.target.checked)}
+            className="rounded border-[#C8C2BC] text-[#4A6B3A] focus:ring-[#4A6B3A] w-3.5 h-3.5"
+          />
+          <span className="hidden sm:inline">Done</span>
+        </label>
+
+        <button
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          className="p-1.5 text-[#B5AFA9] hover:text-[#1A1714] hover:bg-white rounded-lg border border-transparent hover:border-[#E5E0DB] transition-all disabled:opacity-40"
+          title="Refresh"
+          aria-label="Refresh tasks"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+        </button>
       </div>
     </div>
   );
