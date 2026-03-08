@@ -8,6 +8,6 @@ const run = (cmd) => {
 };
 
 run('git add -A');
-run('git commit -m "redesign: clean productivity UI with liquid glass floating add bar"');
+run('git commit -m "fix: float add bar above keyboard using visualViewport API"');
 run('git push origin redesign-productivity-interface');
 console.log('Done!');
