@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTasks } from '@/hooks/useTasks';
 import { FilterBar, type ViewMode } from '@/components/dashboard/FilterBar';
 import { ListView } from '@/components/dashboard/ListView';
 import { BoardView } from '@/components/dashboard/BoardView';
 import { CalendarView } from '@/components/dashboard/CalendarView';
 import { TodoSection } from '@/components/dashboard/TodoSection';
+import { FloatingAddBar } from '@/components/dashboard/FloatingAddBar';
 import type { TaskDomain } from '@/server/dashboard/types';
 
 export default function DashboardPage() {
@@ -14,6 +15,7 @@ export default function DashboardPage() {
   const [domainFilter, setDomainFilter] = useState<TaskDomain | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const addTodoRef = useRef<(text: string, domain: TaskDomain) => Promise<void>>(() => Promise.resolve());
 
   const { tasks, count, isLoading, error, updateTaskStatus, refreshTasks } = useTasks({
     domain: domainFilter ?? undefined,
@@ -50,7 +52,7 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F7F6F4] font-sans">
+    <div className="min-h-screen bg-[#F7F6F4] font-sans pb-32">
       {/* Header bar */}
       <header className="bg-[#1C2B4A] sticky top-0 z-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
@@ -70,7 +72,7 @@ export default function DashboardPage() {
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4">
         {/* Quick To-Dos */}
-        <TodoSection />
+        <TodoSection onAddRef={(fn) => { addTodoRef.current = fn; }} />
 
         {/* Filters */}
         <FilterBar
@@ -117,6 +119,9 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Floating liquid-glass add bar */}
+      <FloatingAddBar onAdd={(text, domain) => addTodoRef.current(text, domain)} />
     </div>
   );
 }

@@ -1,27 +1,12 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Plus, Trash2, Loader2, Check } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { ChevronDown, ChevronRight, Trash2, Loader2, Check } from 'lucide-react';
 import { useTodos, type Todo } from '@/hooks/useTodos';
 import type { TaskDomain } from '@/server/dashboard/types';
 import { DOMAIN_CONFIG } from '@/server/dashboard/types';
 
 const DOMAINS: TaskDomain[] = ['work', 'career', 'personal'];
-
-const DOMAIN_PILL_STYLES: Record<TaskDomain, { active: string; inactive: string }> = {
-  work: {
-    active: 'bg-[#1C2B4A] text-white',
-    inactive: 'bg-[#EEF1F7] text-[#1C2B4A] hover:bg-[#DDE3EF]',
-  },
-  career: {
-    active: 'bg-[#4A6B3A] text-white',
-    inactive: 'bg-[#EFF4EC] text-[#4A6B3A] hover:bg-[#E0ECD9]',
-  },
-  personal: {
-    active: 'bg-[#A05040] text-white',
-    inactive: 'bg-[#F5EDEB] text-[#A05040] hover:bg-[#EEDEDA]',
-  },
-};
 
 const DOMAIN_CHECK_STYLES: Record<TaskDomain, { checked: string; unchecked: string }> = {
   work: {
@@ -38,28 +23,6 @@ const DOMAIN_CHECK_STYLES: Record<TaskDomain, { checked: string; unchecked: stri
   },
 };
 
-function DomainPill({
-  domain,
-  selected,
-  onClick,
-}: {
-  domain: TaskDomain;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  const config = DOMAIN_CONFIG[domain];
-  const styles = DOMAIN_PILL_STYLES[domain];
-  return (
-    <button
-      onClick={onClick}
-      className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-        selected ? styles.active : styles.inactive
-      }`}
-    >
-      {config.label}
-    </button>
-  );
-}
 
 function TodoItem({
   todo,
@@ -119,32 +82,22 @@ function TodoItem({
   );
 }
 
-export function TodoSection() {
+export function TodoSection({ onAddRef }: { onAddRef?: (fn: (text: string, domain: TaskDomain) => Promise<void>) => void }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [inputValue, setInputValue] = useState('');
-  const [selectedDomain, setSelectedDomain] = useState<TaskDomain>('personal');
-  const [isAdding, setIsAdding] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const { todos, isLoading, addTodo, toggleTodo, deleteTodo } =
     useTodos(showCompleted);
 
-  const handleAdd = useCallback(async () => {
-    const text = inputValue.trim();
-    if (!text || isAdding) return;
+  // Expose addTodo upward so FloatingAddBar can call it
+  const handleAdd = useCallback(async (text: string, domain: TaskDomain) => {
+    await addTodo(text, domain);
+  }, [addTodo]);
 
-    setIsAdding(true);
-    try {
-      await addTodo(text, selectedDomain);
-      setInputValue('');
-      inputRef.current?.focus();
-    } catch (err) {
-      console.error('Failed to add todo:', err);
-    } finally {
-      setIsAdding(false);
-    }
-  }, [inputValue, selectedDomain, isAdding, addTodo]);
+  // Register the handler with parent on first render
+  if (onAddRef) {
+    onAddRef(handleAdd);
+  }
 
   const handleToggle = useCallback(
     async (id: string, done: boolean) => {
@@ -205,50 +158,6 @@ export function TodoSection() {
 
       {isExpanded && (
         <div className="border-t border-[#E5E0DB]">
-          {/* Domain selector + Add input — large, thumb-friendly on mobile */}
-          <div className="px-4 pt-3 pb-2">
-            {/* Domain pills */}
-            <div className="flex items-center gap-1.5 mb-3">
-              {DOMAINS.map((d) => (
-                <DomainPill
-                  key={d}
-                  domain={d}
-                  selected={selectedDomain === d}
-                  onClick={() => setSelectedDomain(d)}
-                />
-              ))}
-            </div>
-
-            {/* Large capture input */}
-            <div className="flex items-center gap-2">
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleAdd();
-                }}
-                placeholder="Add a to-do..."
-                className="flex-1 px-4 py-3 text-base bg-[#F7F6F4] border border-[#E5E0DB] rounded-xl text-[#1A1714] placeholder-[#B5AFA9] focus:outline-none focus:ring-2 focus:ring-[#1C2B4A]/20 focus:border-[#1C2B4A] transition-all"
-                disabled={isAdding}
-                aria-label="New to-do text"
-              />
-              <button
-                onClick={handleAdd}
-                disabled={!inputValue.trim() || isAdding}
-                className="w-11 h-11 flex-shrink-0 flex items-center justify-center bg-[#1C2B4A] text-white rounded-xl disabled:opacity-30 transition-all active:scale-95"
-                aria-label="Add to-do"
-              >
-                {isAdding ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Plus className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-          </div>
-
           {/* Todo list */}
           <div className="px-4 pb-1">
             {isLoading && todos.length === 0 ? (
