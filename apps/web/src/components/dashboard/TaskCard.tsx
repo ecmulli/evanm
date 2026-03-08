@@ -27,62 +27,82 @@ function DueDateLabel({ dueDate }: { dueDate: string | null }) {
 
   return (
     <span
-      className={`text-xs whitespace-nowrap ${
-        isOverdue ? 'text-[#A0584A] font-medium' : isDueToday ? 'text-[#CA8A04] font-medium' : 'text-[#6B6560]'
+      className={`text-xs whitespace-nowrap font-medium ${
+        isOverdue
+          ? 'text-[#B34438]'
+          : isDueToday
+            ? 'text-[#B45309]'
+            : 'text-[#6B6560]'
       }`}
     >
       {formatted}
-      {isOverdue && <span className="ml-1 text-[#A0584A]">overdue</span>}
+      {isOverdue && <span className="ml-1">overdue</span>}
       {isDueToday && <span className="ml-1">today</span>}
     </span>
   );
 }
 
 export function TaskCard({ task, onStatusChange, compact, disabled }: TaskCardProps) {
-  const isCompleted = task.status === 'done' || task.status === 'cancelled' || task.status === 'skipped';
+  const isCompleted =
+    task.status === 'done' || task.status === 'cancelled' || task.status === 'skipped';
 
   return (
     <div
-      className={`bg-[#FDFCFA] rounded-lg border border-[#E8E4E0] p-2.5 sm:p-3 hover:shadow-md hover:border-[#BEA09A] transition-all ${
+      className={`bg-white rounded-2xl border border-[#E5E0DB] px-4 py-3.5 hover:border-[#C8C2BC] hover:shadow-sm transition-all ${
         isCompleted ? 'opacity-50' : ''
       }`}
     >
-      <div className="flex items-start gap-2">
-        <div className="mt-0.5">
+      <div className="flex items-start gap-3">
+        {/* Checkbox */}
+        <div className="mt-0.5 flex-shrink-0">
           <CompleteCheckbox task={task} onStatusChange={onStatusChange} />
         </div>
+
+        {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+          {/* Tags row */}
+          <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
             <DomainBadge domain={task.domain} />
             <StatusDropdown
               domain={task.domain}
               currentRawStatus={task.rawStatus}
-              onStatusChange={rawStatus => onStatusChange(task.id, rawStatus, task.domain)}
+              onStatusChange={(rawStatus) =>
+                onStatusChange(task.id, rawStatus, task.domain)
+              }
               disabled={disabled}
             />
             {compact && <DueDateLabel dueDate={task.dueDate} />}
           </div>
+
+          {/* Title */}
           <a
             href={task.notionUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={`text-sm font-medium text-[#2A2520] hover:text-[#A0584A] hover:underline block ${
+            className={`text-[15px] font-medium leading-snug text-[#1A1714] hover:text-[#A05040] transition-colors block ${
               compact ? 'line-clamp-2' : ''
-            } ${isCompleted ? 'line-through' : ''}`}
+            } ${isCompleted ? 'line-through text-[#B5AFA9]' : ''}`}
             title={task.title}
           >
             {task.title}
           </a>
+
+          {/* Metadata */}
           {!compact && (
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            <div className="flex items-center gap-2.5 mt-1.5 flex-wrap">
               <DueDateLabel dueDate={task.dueDate} />
               {task.metadata.estimatedHours && (
-                <span className="text-xs text-[#BEA09A]">{task.metadata.estimatedHours}h</span>
+                <span className="text-xs text-[#B5AFA9]">
+                  {task.metadata.estimatedHours}h
+                </span>
               )}
               {task.metadata.labels && task.metadata.labels.length > 0 && (
                 <div className="flex gap-1 flex-wrap">
-                  {task.metadata.labels.map(label => (
-                    <span key={label} className="text-xs text-[#6B6560] bg-[#F5F2EE] px-1.5 py-0.5 rounded">
+                  {task.metadata.labels.map((label) => (
+                    <span
+                      key={label}
+                      className="text-xs text-[#6B6560] bg-[#F7F6F4] border border-[#E5E0DB] px-2 py-0.5 rounded-full"
+                    >
                       {label}
                     </span>
                   ))}
