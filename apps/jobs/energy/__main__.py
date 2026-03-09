@@ -57,13 +57,13 @@ def run_collection(config: Config, db: Database):
 
 def run_backfill(config: Config, db: Database, days: int):
     """
-    Backfill historical data in 7-day chunks.
+    Backfill historical data in 7-day chunks via rgm_stats.
 
-    Phase 1: Fetch production telemetry + consumption (rgm_stats) in 7-day chunks.
-             Both go into energy_readings as 15-min intervals.
+    Phase 1: Fetch production (ch1) + consumption (ch2) from rgm_stats in 7-day chunks.
+             Single API call per chunk returns both channels.
     Phase 2: Aggregate daily summaries and run anomaly detection.
 
-    Total API calls: 2 * ceil(N/7). 30 days = ~10 calls.
+    Total API calls: ceil(N/7). 30 days = ~5 calls.
     Rate limiter in EnphaseClient handles the 10 req/min limit automatically.
     """
     client = EnphaseClient(config, db)
@@ -94,40 +94,30 @@ def run_backfill(config: Config, db: Database, days: int):
 
         logger.info(f"  Chunk {chunk_num}/{num_chunks}: {chunk_start} to {chunk_end - timedelta(days=1)}")
 
-        # Fetch production telemetry (15-min intervals)
-        try:
-            prod_data = client.get_production_intervals(start_at, end_at)
-            prod_readings = [
-                {
-                    "timestamp": datetime.fromtimestamp(iv.end_at, tz).isoformat(),
-                    "metric_type": "production",
-                    "watt_hours": iv.wh_del or 0,
-                    "watts": iv.powr,
-                }
-                for iv in prod_data.intervals
-            ]
-            db.upsert_readings(prod_readings)
-            logger.info(f"    Production: {len(prod_readings)} intervals")
-        except Exception as e:
-            logger.error(f"    Production failed for chunk {chunk_start}-{chunk_end}: {e}")
-
-        # Fetch consumption via rgm_stats (channel 2 = consumption)
+        # Single rgm_stats call returns both production (ch1) and consumption (ch2)
         try:
             rgm = client.get_consumption_intervals(start_at, end_at)
+            prod_readings = []
             cons_readings = []
             for group in rgm.meter_intervals:
                 for iv in group.intervals:
-                    if iv.channel == 2:  # Consumption channel
-                        cons_readings.append({
-                            "timestamp": datetime.fromtimestamp(iv.end_at, tz).isoformat(),
-                            "metric_type": "consumption",
-                            "watt_hours": int(iv.wh_del or 0),
-                            "watts": iv.curr_w,
-                        })
+                    reading = {
+                        "timestamp": datetime.fromtimestamp(iv.end_at, tz).isoformat(),
+                        "watt_hours": int(iv.wh_del or 0),
+                        "watts": iv.curr_w,
+                    }
+                    if iv.channel == 1:  # Production
+                        reading["metric_type"] = "production"
+                        prod_readings.append(reading)
+                    elif iv.channel == 2:  # Consumption
+                        reading["metric_type"] = "consumption"
+                        cons_readings.append(reading)
+
+            db.upsert_readings(prod_readings)
             db.upsert_readings(cons_readings)
-            logger.info(f"    Consumption: {len(cons_readings)} intervals")
+            logger.info(f"    Production: {len(prod_readings)} | Consumption: {len(cons_readings)}")
         except Exception as e:
-            logger.error(f"    Consumption failed for chunk {chunk_start}-{chunk_end}: {e}")
+            logger.error(f"    Failed chunk {chunk_start}-{chunk_end}: {e}")
 
         chunk_start = chunk_end
 
