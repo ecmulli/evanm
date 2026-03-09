@@ -28,13 +28,13 @@ async def get_daily_summary(
     hourly = await pool.fetch(
         """
         SELECT
-            EXTRACT(HOUR FROM timestamp AT TIME ZONE $2)::int AS hour,
+            EXTRACT(HOUR FROM "timestamp" AT TIME ZONE $2)::int AS hour,
             metric_type,
             SUM(watt_hours) AS wh,
             MAX(watts) AS peak_w,
             MIN(watts) AS min_w
         FROM energy_readings
-        WHERE (timestamp AT TIME ZONE $2)::date = $1
+        WHERE ("timestamp" AT TIME ZONE $2)::date = $1
         GROUP BY 1, 2
         ORDER BY 1
         """,
@@ -171,10 +171,10 @@ async def get_system_overview(pool: asyncpg.Pool) -> dict:
     data_range = await pool.fetchrow(
         """
         SELECT
-            MIN(timestamp)::date AS first_date,
-            MAX(timestamp)::date AS last_date,
+            MIN("timestamp")::date AS first_date,
+            MAX("timestamp")::date AS last_date,
             COUNT(*) AS total_readings,
-            COUNT(DISTINCT (timestamp::date)) AS days_with_data
+            COUNT(DISTINCT ("timestamp"::date)) AS days_with_data
         FROM energy_readings
         """
     )

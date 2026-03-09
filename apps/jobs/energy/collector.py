@@ -64,20 +64,21 @@ class Collector:
             logger.error(f"Failed to collect production data: {e}")
             results["errors"].append(f"production: {e}")
 
-        # Fetch consumption
+        # Fetch consumption via rgm_stats (channel 2 = consumption)
         try:
-            cons = self.client.get_consumption_intervals(start_at, now)
-            readings = [
-                {
-                    "timestamp": datetime.fromtimestamp(i.end_at, self.timezone).isoformat(),
-                    "metric_type": "consumption",
-                    "watt_hours": i.enwh or 0,
-                    "watts": i.powr,
-                }
-                for i in cons.intervals
-            ]
+            rgm = self.client.get_consumption_intervals(start_at, now)
+            readings = []
+            for group in rgm.meter_intervals:
+                for iv in group.intervals:
+                    if iv.channel == 2:  # Consumption channel
+                        readings.append({
+                            "timestamp": datetime.fromtimestamp(iv.end_at, self.timezone).isoformat(),
+                            "metric_type": "consumption",
+                            "watt_hours": int(iv.wh_del or 0),
+                            "watts": iv.curr_w,
+                        })
             results["consumption"] = self.db.upsert_readings(readings)
-            logger.info(f"Consumption: {len(cons.intervals)} intervals fetched, {results['consumption']} new")
+            logger.info(f"Consumption: {len(readings)} intervals fetched, {results['consumption']} new")
         except Exception as e:
             logger.error(f"Failed to collect consumption data: {e}")
             results["errors"].append(f"consumption: {e}")

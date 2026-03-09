@@ -111,26 +111,26 @@ class AnomalyDetector:
                 """
                 WITH today_hourly AS (
                     SELECT
-                        EXTRACT(HOUR FROM timestamp AT TIME ZONE %s)::int AS hour,
+                        EXTRACT(HOUR FROM "timestamp" AT TIME ZONE %s)::int AS hour,
                         SUM(watt_hours) AS wh
                     FROM energy_readings
                     WHERE metric_type = 'consumption'
-                      AND (timestamp AT TIME ZONE %s)::date = %s
+                      AND ("timestamp" AT TIME ZONE %s)::date = %s
                     GROUP BY 1
                 ),
                 baseline_hourly AS (
                     SELECT
-                        EXTRACT(HOUR FROM timestamp AT TIME ZONE %s)::int AS hour,
+                        hour,
                         AVG(watt_hours_sum) AS avg_wh
                     FROM (
                         SELECT
-                            (timestamp AT TIME ZONE %s)::date AS d,
-                            EXTRACT(HOUR FROM timestamp AT TIME ZONE %s)::int AS hour,
+                            ("timestamp" AT TIME ZONE %s)::date AS d,
+                            EXTRACT(HOUR FROM "timestamp" AT TIME ZONE %s)::int AS hour,
                             SUM(watt_hours) AS watt_hours_sum
                         FROM energy_readings
                         WHERE metric_type = 'consumption'
-                          AND (timestamp AT TIME ZONE %s)::date >= (%s::date - INTERVAL '30 days')
-                          AND (timestamp AT TIME ZONE %s)::date < %s
+                          AND ("timestamp" AT TIME ZONE %s)::date >= (%s::date - INTERVAL '30 days')
+                          AND ("timestamp" AT TIME ZONE %s)::date < %s
                         GROUP BY 1, 2
                     ) sub
                     GROUP BY 1
@@ -146,7 +146,7 @@ class AnomalyDetector:
                 """,
                 (
                     self.timezone, self.timezone, target_date,
-                    self.timezone, self.timezone, self.timezone,
+                    self.timezone, self.timezone,
                     self.timezone, target_date, self.timezone, target_date,
                     self.SPIKE_INFO_MULT,
                 ),
@@ -181,20 +181,20 @@ class AnomalyDetector:
                     SELECT COALESCE(SUM(watt_hours), 0) AS total_wh
                     FROM energy_readings
                     WHERE metric_type = 'consumption'
-                      AND (timestamp AT TIME ZONE %s)::date = %s
-                      AND EXTRACT(HOUR FROM timestamp AT TIME ZONE %s) IN (23, 0, 1, 2, 3, 4)
+                      AND ("timestamp" AT TIME ZONE %s)::date = %s
+                      AND EXTRACT(HOUR FROM "timestamp" AT TIME ZONE %s) IN (23, 0, 1, 2, 3, 4)
                 ),
                 baseline_night AS (
                     SELECT AVG(night_total) AS avg_wh
                     FROM (
                         SELECT
-                            (timestamp AT TIME ZONE %s)::date AS d,
+                            ("timestamp" AT TIME ZONE %s)::date AS d,
                             SUM(watt_hours) AS night_total
                         FROM energy_readings
                         WHERE metric_type = 'consumption'
-                          AND (timestamp AT TIME ZONE %s)::date >= (%s::date - INTERVAL '30 days')
-                          AND (timestamp AT TIME ZONE %s)::date < %s
-                          AND EXTRACT(HOUR FROM timestamp AT TIME ZONE %s) IN (23, 0, 1, 2, 3, 4)
+                          AND ("timestamp" AT TIME ZONE %s)::date >= (%s::date - INTERVAL '30 days')
+                          AND ("timestamp" AT TIME ZONE %s)::date < %s
+                          AND EXTRACT(HOUR FROM "timestamp" AT TIME ZONE %s) IN (23, 0, 1, 2, 3, 4)
                         GROUP BY 1
                     ) sub
                 )

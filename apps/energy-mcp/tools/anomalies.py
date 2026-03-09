@@ -119,22 +119,22 @@ async def run_anomaly_check(
     spike_rows = await pool.fetch(
         """
         WITH today_hourly AS (
-            SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE $2)::int AS hour,
+            SELECT EXTRACT(HOUR FROM "timestamp" AT TIME ZONE $2)::int AS hour,
                    SUM(watt_hours) AS wh
             FROM energy_readings
             WHERE metric_type = 'consumption'
-              AND (timestamp AT TIME ZONE $2)::date = $1
+              AND ("timestamp" AT TIME ZONE $2)::date = $1
             GROUP BY 1
         ),
         baseline_hourly AS (
             SELECT hour, AVG(wh_sum) AS avg_wh FROM (
-                SELECT (timestamp AT TIME ZONE $2)::date AS d,
-                       EXTRACT(HOUR FROM timestamp AT TIME ZONE $2)::int AS hour,
+                SELECT ("timestamp" AT TIME ZONE $2)::date AS d,
+                       EXTRACT(HOUR FROM "timestamp" AT TIME ZONE $2)::int AS hour,
                        SUM(watt_hours) AS wh_sum
                 FROM energy_readings
                 WHERE metric_type = 'consumption'
-                  AND (timestamp AT TIME ZONE $2)::date >= ($1::date - 30)
-                  AND (timestamp AT TIME ZONE $2)::date < $1
+                  AND ("timestamp" AT TIME ZONE $2)::date >= ($1::date - 30)
+                  AND ("timestamp" AT TIME ZONE $2)::date < $1
                 GROUP BY 1, 2
             ) sub GROUP BY 1
         )
@@ -165,17 +165,17 @@ async def run_anomaly_check(
             SELECT COALESCE(SUM(watt_hours), 0) AS total
             FROM energy_readings
             WHERE metric_type = 'consumption'
-              AND (timestamp AT TIME ZONE $2)::date = $1
-              AND EXTRACT(HOUR FROM timestamp AT TIME ZONE $2) IN (23,0,1,2,3,4)
+              AND ("timestamp" AT TIME ZONE $2)::date = $1
+              AND EXTRACT(HOUR FROM "timestamp" AT TIME ZONE $2) IN (23,0,1,2,3,4)
         ),
         baseline AS (
             SELECT AVG(nt) AS avg_nt FROM (
-                SELECT (timestamp AT TIME ZONE $2)::date AS d, SUM(watt_hours) AS nt
+                SELECT ("timestamp" AT TIME ZONE $2)::date AS d, SUM(watt_hours) AS nt
                 FROM energy_readings
                 WHERE metric_type = 'consumption'
-                  AND (timestamp AT TIME ZONE $2)::date >= ($1::date - 30)
-                  AND (timestamp AT TIME ZONE $2)::date < $1
-                  AND EXTRACT(HOUR FROM timestamp AT TIME ZONE $2) IN (23,0,1,2,3,4)
+                  AND ("timestamp" AT TIME ZONE $2)::date >= ($1::date - 30)
+                  AND ("timestamp" AT TIME ZONE $2)::date < $1
+                  AND EXTRACT(HOUR FROM "timestamp" AT TIME ZONE $2) IN (23,0,1,2,3,4)
                 GROUP BY 1
             ) sub
         )
