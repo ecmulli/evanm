@@ -7,6 +7,7 @@ the API client + OAuth token management needed for collection.
 """
 
 import base64
+import collections
 import logging
 import time
 from datetime import datetime, timedelta
@@ -18,6 +19,7 @@ import requests
 from .config import Config
 from .db import Database
 from .models import (
+    EnphaseLifetimeResponse,
     EnphaseProductionResponse,
     EnphaseRgmStatsResponse,
     EnphaseTokenResponse,
@@ -51,6 +53,12 @@ class EnphaseClient:
             self._refresh_token = os.getenv("ENPHASE_REFRESH_TOKEN", "")
 
         self._token_expires_at: Optional[datetime] = None
+
+        # Rate limiter: track timestamps of recent API requests
+        # Enphase Watt (free) plan: 10 requests/minute
+        self._request_timestamps: collections.deque = collections.deque()
+        self._rate_limit = 10
+        self._rate_window = 60  # seconds
 
     def _get_basic_auth_header(self) -> str:
         credentials = f"{self.config.enphase_client_id}:{self.config.enphase_client_secret}"
@@ -107,11 +115,33 @@ class EnphaseClient:
 
         return self._access_token
 
+    def _wait_for_rate_limit(self) -> None:
+        """Sleep if needed to stay within the rate limit window."""
+        now = time.monotonic()
+
+        # Purge timestamps older than the window
+        while self._request_timestamps and now - self._request_timestamps[0] >= self._rate_window:
+            self._request_timestamps.popleft()
+
+        if len(self._request_timestamps) >= self._rate_limit:
+            # Wait until the oldest request falls outside the window
+            wait = self._rate_window - (now - self._request_timestamps[0]) + 0.5
+            if wait > 0:
+                logger.info(f"Rate limit: {len(self._request_timestamps)} requests in window, waiting {wait:.1f}s")
+                time.sleep(wait)
+                # Purge again after sleeping
+                now = time.monotonic()
+                while self._request_timestamps and now - self._request_timestamps[0] >= self._rate_window:
+                    self._request_timestamps.popleft()
+
+        self._request_timestamps.append(time.monotonic())
+
     def _make_api_request(
         self,
         endpoint: str,
         params: Optional[dict[str, Any]] = None,
         retry_on_401: bool = True,
+        _rate_retries: int = 0,
     ) -> dict[str, Any]:
         token = self._ensure_valid_token()
 
@@ -125,6 +155,9 @@ class EnphaseClient:
             params = {}
         params["key"] = self.config.enphase_api_key
 
+        # Proactive rate limiting
+        self._wait_for_rate_limit()
+
         logger.debug(f"API request: {endpoint}")
         response = requests.get(url, headers=headers, params=params)
 
@@ -132,6 +165,15 @@ class EnphaseClient:
             logger.info("Got 401, refreshing token and retrying...")
             self.refresh_access_token()
             return self._make_api_request(endpoint, params, retry_on_401=False)
+
+        # Handle 429 rate limit response: back off and retry (max 3 times)
+        if response.status_code == 429:
+            if _rate_retries >= 3:
+                raise Exception(f"Enphase API rate limit exceeded after {_rate_retries} retries")
+            retry_after = int(response.headers.get("Retry-After", 60))
+            logger.warning(f"Rate limited (429). Waiting {retry_after}s before retry ({_rate_retries + 1}/3)...")
+            time.sleep(retry_after)
+            return self._make_api_request(endpoint, params, retry_on_401=retry_on_401, _rate_retries=_rate_retries + 1)
 
         if response.status_code != 200:
             logger.error(f"API error: {response.status_code} {response.text}")
@@ -166,3 +208,37 @@ class EnphaseClient:
             params={"start_at": start_at, "end_at": end_at, "granularity": "15mins"},
         )
         return EnphaseRgmStatsResponse(**data)
+
+    def get_production_lifetime(
+        self, start_date: str | None = None, end_date: str | None = None
+    ) -> EnphaseLifetimeResponse:
+        """Fetch daily production Wh totals for a date range (or all history).
+
+        Much more efficient than telemetry for backfills — no date range limit.
+        Returns {system_id, start_date, production: [wh_day1, wh_day2, ...]}.
+        1 API call for any range.
+        """
+        endpoint = f"/api/v4/systems/{self.config.enphase_system_id}/energy_lifetime"
+        params = {}
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+        data = self._make_api_request(endpoint, params=params)
+        return EnphaseLifetimeResponse(**data)
+
+    def get_consumption_lifetime(
+        self, start_date: str | None = None, end_date: str | None = None
+    ) -> EnphaseLifetimeResponse:
+        """Fetch daily consumption Wh totals for a date range (or all history).
+
+        May return 405 on free Watt plan — caller should handle gracefully.
+        """
+        endpoint = f"/api/v4/systems/{self.config.enphase_system_id}/consumption_lifetime"
+        params = {}
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+        data = self._make_api_request(endpoint, params=params)
+        return EnphaseLifetimeResponse(**data)

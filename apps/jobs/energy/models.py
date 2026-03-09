@@ -51,6 +51,18 @@ class EnphaseRgmStatsResponse(BaseModel):
     meter_intervals: List[EnphaseMeterIntervalGroup] = Field(default_factory=list)
 
 
+class EnphaseLifetimeResponse(BaseModel):
+    """Response from energy_lifetime or consumption_lifetime endpoint.
+
+    Returns daily Wh totals as an array starting from start_date.
+    """
+
+    system_id: int
+    start_date: str = Field(..., description="YYYY-MM-DD of first element")
+    production: List[int] = Field(default_factory=list, description="Daily Wh values")
+    meta: Optional[dict] = None
+
+
 class EnphaseTokenResponse(BaseModel):
     """OAuth token response from Enphase."""
 

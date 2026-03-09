@@ -58,42 +58,79 @@ def run_collection(config: Config, db: Database):
 
 def run_backfill(config: Config, db: Database, days: int):
     """
-    Backfill historical data.
+    Backfill historical data using efficient endpoint strategy.
 
-    Fetches data day by day to stay within rate limits.
-    Each day = 2 API calls (production + consumption).
+    Phase 1: Fetch ALL production daily totals via energy_lifetime (1 API call).
+    Phase 2: Fetch consumption via rgm_stats in 7-day chunks (1 API call per chunk).
+    Phase 3: Aggregate and run anomaly detection.
+
+    Total API calls: 1 + ceil(N/7) (vs 2N before). 30 days = ~6 calls.
+    Rate limiter in EnphaseClient handles the 10 req/min limit automatically.
     """
     client = EnphaseClient(config, db)
     aggregator = Aggregator(db, config.timezone)
     detector = AnomalyDetector(db, config.timezone)
     tz = ZoneInfo(config.timezone)
 
-    logger.info(f"=== Backfilling {days} days of data ===")
-
     today = date.today()
-    for i in range(days, 0, -1):
-        target = today - timedelta(days=i)
-        start_dt = datetime(target.year, target.month, target.day, tzinfo=tz)
-        end_dt = start_dt + timedelta(days=1)
+    start_date = today - timedelta(days=days)
 
+    logger.info(f"=== Backfilling {days} days ({start_date} to {today - timedelta(days=1)}) ===")
+
+    # Phase 1: Production lifetime — 1 API call for all days
+    logger.info("Phase 1: Fetching production lifetime (1 API call)...")
+    prod_by_date: dict[date, int] = {}
+    try:
+        prod = client.get_production_lifetime(
+            start_date=str(start_date),
+            end_date=str(today - timedelta(days=1)),
+        )
+        # Map array index to date
+        base = date.fromisoformat(prod.start_date)
+        for i, wh in enumerate(prod.production):
+            d = base + timedelta(days=i)
+            prod_by_date[d] = wh
+        logger.info(f"Got {len(prod.production)} days of production data")
+    except Exception as e:
+        logger.error(f"energy_lifetime failed: {e}")
+        logger.info("Falling back to per-day telemetry for production")
+
+    # Phase 2: Consumption via rgm_stats in 7-day chunks
+    CHUNK_DAYS = 7
+    num_chunks = (days + CHUNK_DAYS - 1) // CHUNK_DAYS
+    logger.info(f"Phase 2: Fetching consumption in {num_chunks} chunks of up to {CHUNK_DAYS} days...")
+
+    chunk_start = start_date
+    chunk_num = 0
+    while chunk_start < today:
+        chunk_end = min(chunk_start + timedelta(days=CHUNK_DAYS), today)
+        chunk_num += 1
+
+        start_dt = datetime(chunk_start.year, chunk_start.month, chunk_start.day, tzinfo=tz)
+        end_dt = datetime(chunk_end.year, chunk_end.month, chunk_end.day, tzinfo=tz)
         start_at = int(start_dt.timestamp())
         end_at = int(end_dt.timestamp())
 
-        logger.info(f"Backfilling {target} ({days - i + 1}/{days})")
+        logger.info(f"  Chunk {chunk_num}/{num_chunks}: {chunk_start} to {chunk_end - timedelta(days=1)}")
 
         try:
-            # Fetch production
-            prod = client.get_production_intervals(start_at, end_at)
-            readings = [
-                {
-                    "timestamp": datetime.fromtimestamp(iv.end_at, tz).isoformat(),
-                    "metric_type": "production",
-                    "watt_hours": iv.wh_del or 0,
-                    "watts": iv.powr,
-                }
-                for iv in prod.intervals
-            ]
-            db.upsert_readings(readings)
+            # If production lifetime failed, fetch production telemetry for this chunk too
+            needs_prod = any(
+                (chunk_start + timedelta(days=d)) not in prod_by_date
+                for d in range((chunk_end - chunk_start).days)
+            )
+            if needs_prod:
+                prod_data = client.get_production_intervals(start_at, end_at)
+                readings = [
+                    {
+                        "timestamp": datetime.fromtimestamp(iv.end_at, tz).isoformat(),
+                        "metric_type": "production",
+                        "watt_hours": iv.wh_del or 0,
+                        "watts": iv.powr,
+                    }
+                    for iv in prod_data.intervals
+                ]
+                db.upsert_readings(readings)
 
             # Fetch consumption via rgm_stats (channel 2 = consumption)
             rgm = client.get_consumption_intervals(start_at, end_at)
@@ -109,19 +146,22 @@ def run_backfill(config: Config, db: Database, days: int):
                         })
             db.upsert_readings(cons_readings)
 
-            # Aggregate
-            aggregator.aggregate_date(target)
-
-            # Detect anomalies
-            detector.check_date(target)
-
-            logger.info(f"Backfilled {target}: {len(prod.intervals)} prod + {len(cons_readings)} cons intervals")
+            logger.info(f"  Got {len(cons_readings)} consumption intervals")
 
         except Exception as e:
-            logger.error(f"Failed to backfill {target}: {e}")
+            logger.error(f"Failed to backfill chunk {chunk_start}-{chunk_end}: {e}")
 
-        # Small delay to be nice to the API
-        time.sleep(1)
+        chunk_start = chunk_end
+
+    # Phase 3: Aggregate and detect anomalies
+    logger.info("Phase 3: Aggregating summaries and detecting anomalies...")
+    for i in range(days, 0, -1):
+        target = today - timedelta(days=i)
+        try:
+            aggregator.aggregate_date(target)
+            detector.check_date(target)
+        except Exception as e:
+            logger.error(f"Aggregation/anomaly detection failed for {target}: {e}")
 
     logger.info("=== Backfill complete ===")
 
