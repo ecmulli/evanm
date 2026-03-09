@@ -1,0 +1,53 @@
+name: Energy CI
+
+on:
+  pull_request:
+    paths:
+      - 'apps/jobs/energy/**'
+      - 'apps/energy-mcp/**'
+      - '.github/workflows/energy-*.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: apps/jobs/energy/requirements.txt
+
+      - name: Install job dependencies
+        run: pip install -r apps/jobs/energy/requirements.txt
+
+      - name: Verify job imports
+        run: |
+          python -c "
+          from apps.jobs.energy.config import Config
+          from apps.jobs.energy.models import EnphaseProductionResponse, EnphaseConsumptionResponse
+          from apps.jobs.energy.db import Database
+          from apps.jobs.energy.enphase_client import EnphaseClient
+          from apps.jobs.energy.collector import Collector
+          from apps.jobs.energy.aggregator import Aggregator
+          from apps.jobs.energy.anomaly_detector import AnomalyDetector
+          print('All job imports OK')
+          "
+
+      - name: Install MCP server dependencies
+        run: pip install mcp asyncpg pydantic python-dotenv
+
+      - name: Verify MCP server imports
+        run: |
+          python -c "
+          import sys, os
+          sys.path.insert(0, 'apps/energy-mcp')
+          from config import Config
+          from db import create_pool
+          from tools.usage import get_energy_usage
+          from tools.baseline import get_baseline_analysis, get_baseline_trend
+          from tools.anomalies import get_anomalies, run_anomaly_check
+          from tools.summary import get_daily_summary, get_weekly_summary, get_system_overview
+          print('All MCP server imports OK')
+          "
