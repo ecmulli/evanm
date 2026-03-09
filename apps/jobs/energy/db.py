@@ -38,7 +38,7 @@ class Database:
             cur.close()
 
     def upsert_readings(self, readings: list[dict]):
-        """Batch upsert energy readings. Skips duplicates."""
+        """Batch upsert energy readings. Updates existing rows if new data is non-zero."""
         if not readings:
             return 0
 
@@ -50,17 +50,25 @@ class Database:
                 """
                 INSERT INTO energy_readings ("timestamp", metric_type, watt_hours, watts)
                 VALUES %s
-                ON CONFLICT ("timestamp", metric_type) DO NOTHING
+                ON CONFLICT ("timestamp", metric_type) DO UPDATE
+                SET watt_hours = CASE
+                        WHEN EXCLUDED.watt_hours != 0 THEN EXCLUDED.watt_hours
+                        ELSE energy_readings.watt_hours
+                    END,
+                    watts = CASE
+                        WHEN EXCLUDED.watt_hours != 0 THEN EXCLUDED.watts
+                        ELSE energy_readings.watts
+                    END
                 """,
                 [
                     (r["timestamp"], r["metric_type"], r["watt_hours"], r.get("watts"))
                     for r in readings
                 ],
             )
-            inserted = cur.rowcount
+            affected = cur.rowcount
             conn.commit()
-            logger.info(f"Upserted {inserted} readings (skipped {len(readings) - inserted} duplicates)")
-            return inserted
+            logger.info(f"Upserted {affected} readings ({len(readings)} total)")
+            return affected
         except Exception:
             conn.rollback()
             raise
