@@ -1,6 +1,7 @@
 """Database connection management for energy jobs."""
 
 import logging
+import time
 from contextlib import contextmanager
 
 import psycopg2
@@ -14,10 +15,19 @@ class Database:
         self.database_url = database_url
         self._conn = None
 
-    def connect(self):
+    def connect(self, retries: int = 3, delay: float = 2.0):
         if self._conn is None or self._conn.closed:
-            self._conn = psycopg2.connect(self.database_url)
-            self._conn.autocommit = False
+            for attempt in range(1, retries + 1):
+                try:
+                    self._conn = psycopg2.connect(self.database_url)
+                    self._conn.autocommit = False
+                    return self._conn
+                except psycopg2.OperationalError:
+                    if attempt == retries:
+                        raise
+                    logger.warning(f"DB connect attempt {attempt}/{retries} failed, retrying in {delay}s...")
+                    time.sleep(delay)
+                    delay *= 2
         return self._conn
 
     def close(self):
