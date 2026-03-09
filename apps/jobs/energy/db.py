@@ -48,9 +48,9 @@ class Database:
             psycopg2.extras.execute_values(
                 cur,
                 """
-                INSERT INTO energy_readings (timestamp, metric_type, watt_hours, watts)
+                INSERT INTO energy_readings ("timestamp", metric_type, watt_hours, watts)
                 VALUES %s
-                ON CONFLICT (timestamp, metric_type) DO NOTHING
+                ON CONFLICT ("timestamp", metric_type) DO NOTHING
                 """,
                 [
                     (r["timestamp"], r["metric_type"], r["watt_hours"], r.get("watts"))

@@ -25,11 +25,11 @@ async def get_baseline_analysis(
     # Absolute minimum across the period
     abs_min = await pool.fetchrow(
         """
-        SELECT timestamp AT TIME ZONE $3 AS ts, watt_hours, watt_hours * 4 AS estimated_watts
+        SELECT "timestamp" AT TIME ZONE $3 AS ts, watt_hours, watt_hours * 4 AS estimated_watts
         FROM energy_readings
         WHERE metric_type = 'consumption'
-          AND (timestamp AT TIME ZONE $3)::date >= $1
-          AND (timestamp AT TIME ZONE $3)::date <= $2
+          AND ("timestamp" AT TIME ZONE $3)::date >= $1
+          AND ("timestamp" AT TIME ZONE $3)::date <= $2
         ORDER BY watt_hours ASC
         LIMIT 1
         """,
@@ -40,15 +40,15 @@ async def get_baseline_analysis(
     daily_mins = await pool.fetch(
         """
         SELECT
-            (timestamp AT TIME ZONE $3)::date AS date,
+            ("timestamp" AT TIME ZONE $3)::date AS date,
             MIN(watt_hours) AS min_wh,
             MIN(watt_hours) * 4 AS min_estimated_w,
-            (array_agg(timestamp AT TIME ZONE $3 ORDER BY watt_hours ASC))[1]::time AS min_time
+            (array_agg("timestamp" AT TIME ZONE $3 ORDER BY watt_hours ASC))[1]::time AS min_time
         FROM energy_readings
         WHERE metric_type = 'consumption'
-          AND (timestamp AT TIME ZONE $3)::date >= $1
-          AND (timestamp AT TIME ZONE $3)::date <= $2
-          AND EXTRACT(HOUR FROM timestamp AT TIME ZONE $3) IN (23, 0, 1, 2, 3, 4)
+          AND ("timestamp" AT TIME ZONE $3)::date >= $1
+          AND ("timestamp" AT TIME ZONE $3)::date <= $2
+          AND EXTRACT(HOUR FROM "timestamp" AT TIME ZONE $3) IN (23, 0, 1, 2, 3, 4)
         GROUP BY 1
         ORDER BY 1 DESC
         """,

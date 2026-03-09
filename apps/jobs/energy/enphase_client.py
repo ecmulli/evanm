@@ -18,8 +18,8 @@ import requests
 from .config import Config
 from .db import Database
 from .models import (
-    EnphaseConsumptionResponse,
     EnphaseProductionResponse,
+    EnphaseRgmStatsResponse,
     EnphaseTokenResponse,
 )
 
@@ -118,8 +118,12 @@ class EnphaseClient:
         url = f"{BASE_URL}{endpoint}"
         headers = {
             "Authorization": f"Bearer {token}",
-            "key": self.config.enphase_api_key,
         }
+
+        # API key must be a query parameter, not a header
+        if params is None:
+            params = {}
+        params["key"] = self.config.enphase_api_key
 
         logger.debug(f"API request: {endpoint}")
         response = requests.get(url, headers=headers, params=params)
@@ -148,11 +152,17 @@ class EnphaseClient:
 
     def get_consumption_intervals(
         self, start_at: int, end_at: int
-    ) -> EnphaseConsumptionResponse:
-        """Fetch 15-min consumption intervals for a time range."""
-        endpoint = f"/api/v4/systems/{self.config.enphase_system_id}/telemetry/consumption"
+    ) -> EnphaseRgmStatsResponse:
+        """Fetch 15-min consumption intervals via rgm_stats endpoint.
+
+        The telemetry/consumption endpoint requires a paid plan.
+        rgm_stats returns meter_intervals with channels:
+          - Channel 1: Production
+          - Channel 2: Consumption (net)
+        """
+        endpoint = f"/api/v4/systems/{self.config.enphase_system_id}/rgm_stats"
         data = self._make_api_request(
             endpoint,
             params={"start_at": start_at, "end_at": end_at, "granularity": "15mins"},
         )
-        return EnphaseConsumptionResponse(**data)
+        return EnphaseRgmStatsResponse(**data)

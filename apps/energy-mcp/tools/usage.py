@@ -54,15 +54,15 @@ async def get_energy_usage(
             rows = await pool.fetch(
                 """
                 SELECT
-                    date_trunc('hour', timestamp AT TIME ZONE $3) AS hour,
+                    date_trunc('hour', "timestamp" AT TIME ZONE $3) AS hour,
                     SUM(watt_hours) AS wh,
                     ROUND(SUM(watt_hours) / 1000.0, 3) AS kwh,
                     MAX(watts) AS peak_w,
                     MIN(watts) AS min_w
                 FROM energy_readings
                 WHERE metric_type = $1
-                  AND (timestamp AT TIME ZONE $3)::date >= $2
-                  AND (timestamp AT TIME ZONE $3)::date < $4
+                  AND ("timestamp" AT TIME ZONE $3)::date >= $2
+                  AND ("timestamp" AT TIME ZONE $3)::date < $4
                 GROUP BY 1
                 ORDER BY 1
                 """,
@@ -83,12 +83,12 @@ async def get_energy_usage(
         else:  # 15min
             rows = await pool.fetch(
                 """
-                SELECT timestamp AT TIME ZONE $3 AS ts, watt_hours, watts
+                SELECT "timestamp" AT TIME ZONE $3 AS ts, watt_hours, watts
                 FROM energy_readings
                 WHERE metric_type = $1
-                  AND (timestamp AT TIME ZONE $3)::date >= $2
-                  AND (timestamp AT TIME ZONE $3)::date < $4
-                ORDER BY timestamp
+                  AND ("timestamp" AT TIME ZONE $3)::date >= $2
+                  AND ("timestamp" AT TIME ZONE $3)::date < $4
+                ORDER BY "timestamp"
                 """,
                 m, start, timezone, end_exclusive,
             )

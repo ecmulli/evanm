@@ -33,7 +33,7 @@ class Aggregator:
                         MAX(watts) AS peak_w
                     FROM energy_readings
                     WHERE metric_type = 'production'
-                      AND (timestamp AT TIME ZONE %s)::date = %s
+                      AND ("timestamp" AT TIME ZONE %s)::date = %s
                 ),
                 cons AS (
                     SELECT
@@ -43,14 +43,14 @@ class Aggregator:
                         MIN(watt_hours) AS min_wh
                     FROM energy_readings
                     WHERE metric_type = 'consumption'
-                      AND (timestamp AT TIME ZONE %s)::date = %s
+                      AND ("timestamp" AT TIME ZONE %s)::date = %s
                 ),
                 night AS (
                     SELECT AVG(watt_hours)::integer AS avg_night_wh
                     FROM energy_readings
                     WHERE metric_type = 'consumption'
-                      AND (timestamp AT TIME ZONE %s)::date = %s
-                      AND EXTRACT(HOUR FROM timestamp AT TIME ZONE %s) IN (23, 0, 1, 2, 3, 4)
+                      AND ("timestamp" AT TIME ZONE %s)::date = %s
+                      AND EXTRACT(HOUR FROM "timestamp" AT TIME ZONE %s) IN (23, 0, 1, 2, 3, 4)
                 )
                 SELECT
                     prod.total_wh AS prod_wh,

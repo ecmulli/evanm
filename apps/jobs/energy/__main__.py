@@ -95,18 +95,19 @@ def run_backfill(config: Config, db: Database, days: int):
             ]
             db.upsert_readings(readings)
 
-            # Fetch consumption
-            cons = client.get_consumption_intervals(start_at, end_at)
-            readings = [
-                {
-                    "timestamp": datetime.fromtimestamp(iv.end_at, tz).isoformat(),
-                    "metric_type": "consumption",
-                    "watt_hours": iv.enwh or 0,
-                    "watts": iv.powr,
-                }
-                for iv in cons.intervals
-            ]
-            db.upsert_readings(readings)
+            # Fetch consumption via rgm_stats (channel 2 = consumption)
+            rgm = client.get_consumption_intervals(start_at, end_at)
+            cons_readings = []
+            for group in rgm.meter_intervals:
+                for iv in group.intervals:
+                    if iv.channel == 2:  # Consumption channel
+                        cons_readings.append({
+                            "timestamp": datetime.fromtimestamp(iv.end_at, tz).isoformat(),
+                            "metric_type": "consumption",
+                            "watt_hours": int(iv.wh_del or 0),
+                            "watts": iv.curr_w,
+                        })
+            db.upsert_readings(cons_readings)
 
             # Aggregate
             aggregator.aggregate_date(target)
@@ -114,7 +115,7 @@ def run_backfill(config: Config, db: Database, days: int):
             # Detect anomalies
             detector.check_date(target)
 
-            logger.info(f"Backfilled {target}: {len(prod.intervals)} prod + {len(cons.intervals)} cons intervals")
+            logger.info(f"Backfilled {target}: {len(prod.intervals)} prod + {len(cons_readings)} cons intervals")
 
         except Exception as e:
             logger.error(f"Failed to backfill {target}: {e}")
