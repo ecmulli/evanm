@@ -61,10 +61,10 @@ def run_backfill(config: Config, db: Database, days: int):
     Backfill historical data using efficient endpoint strategy.
 
     Phase 1: Fetch ALL production daily totals via energy_lifetime (1 API call).
-    Phase 2: Fetch consumption via rgm_stats day-by-day (1 API call/day).
+    Phase 2: Fetch consumption via rgm_stats in 7-day chunks (1 API call per chunk).
     Phase 3: Aggregate and run anomaly detection.
 
-    Total API calls: 1 + N days (vs 2N before).
+    Total API calls: 1 + ceil(N/7) (vs 2N before). 30 days = ~6 calls.
     Rate limiter in EnphaseClient handles the 10 req/min limit automatically.
     """
     client = EnphaseClient(config, db)
@@ -95,20 +95,31 @@ def run_backfill(config: Config, db: Database, days: int):
         logger.error(f"energy_lifetime failed: {e}")
         logger.info("Falling back to per-day telemetry for production")
 
-    # Phase 2: Consumption via rgm_stats (1 call per day)
-    logger.info(f"Phase 2: Fetching consumption data day-by-day ({days} API calls)...")
-    for i in range(days, 0, -1):
-        target = today - timedelta(days=i)
-        start_dt = datetime(target.year, target.month, target.day, tzinfo=tz)
-        end_dt = start_dt + timedelta(days=1)
+    # Phase 2: Consumption via rgm_stats in 7-day chunks
+    CHUNK_DAYS = 7
+    num_chunks = (days + CHUNK_DAYS - 1) // CHUNK_DAYS
+    logger.info(f"Phase 2: Fetching consumption in {num_chunks} chunks of up to {CHUNK_DAYS} days...")
+
+    chunk_start = start_date
+    chunk_num = 0
+    while chunk_start < today:
+        chunk_end = min(chunk_start + timedelta(days=CHUNK_DAYS), today)
+        chunk_num += 1
+
+        start_dt = datetime(chunk_start.year, chunk_start.month, chunk_start.day, tzinfo=tz)
+        end_dt = datetime(chunk_end.year, chunk_end.month, chunk_end.day, tzinfo=tz)
         start_at = int(start_dt.timestamp())
         end_at = int(end_dt.timestamp())
 
-        logger.info(f"  {target} ({days - i + 1}/{days})")
+        logger.info(f"  Chunk {chunk_num}/{num_chunks}: {chunk_start} to {chunk_end - timedelta(days=1)}")
 
         try:
-            # If we didn't get production from lifetime, fetch telemetry
-            if target not in prod_by_date:
+            # If production lifetime failed, fetch production telemetry for this chunk too
+            needs_prod = any(
+                (chunk_start + timedelta(days=d)) not in prod_by_date
+                for d in range((chunk_end - chunk_start).days)
+            )
+            if needs_prod:
                 prod_data = client.get_production_intervals(start_at, end_at)
                 readings = [
                     {
@@ -135,10 +146,12 @@ def run_backfill(config: Config, db: Database, days: int):
                         })
             db.upsert_readings(cons_readings)
 
-            logger.info(f"  {target}: {len(cons_readings)} consumption intervals")
+            logger.info(f"  Got {len(cons_readings)} consumption intervals")
 
         except Exception as e:
-            logger.error(f"Failed to backfill {target}: {e}")
+            logger.error(f"Failed to backfill chunk {chunk_start}-{chunk_end}: {e}")
+
+        chunk_start = chunk_end
 
     # Phase 3: Aggregate and detect anomalies
     logger.info("Phase 3: Aggregating summaries and detecting anomalies...")
