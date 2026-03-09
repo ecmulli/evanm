@@ -72,13 +72,13 @@ def main():
         f"&state={state}"
     )
 
+    # Start callback server BEFORE opening browser to avoid race condition
+    server = HTTPServer(("localhost", 8765), CallbackHandler)
+    print("Listening on http://localhost:8765/callback ...")
+
     print(f"\nOpening browser for Enphase authorization...")
     print(f"If the browser doesn't open, go to:\n{auth_url}\n")
     webbrowser.open(auth_url)
-
-    # Start callback server
-    server = HTTPServer(("localhost", 8765), CallbackHandler)
-    print("Waiting for OAuth callback on http://localhost:8765/callback ...")
     server.handle_request()
 
     if not _auth_code:

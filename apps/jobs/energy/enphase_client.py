@@ -118,8 +118,12 @@ class EnphaseClient:
         url = f"{BASE_URL}{endpoint}"
         headers = {
             "Authorization": f"Bearer {token}",
-            "key": self.config.enphase_api_key,
         }
+
+        # API key must be a query parameter, not a header
+        if params is None:
+            params = {}
+        params["key"] = self.config.enphase_api_key
 
         logger.debug(f"API request: {endpoint}")
         response = requests.get(url, headers=headers, params=params)
