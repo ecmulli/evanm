@@ -9,6 +9,14 @@ on:
         description: 'Number of days to backfill (leave empty for normal collection)'
         required: false
         type: number
+      start_date:
+        description: 'Backfill start date YYYY-MM-DD (inclusive)'
+        required: false
+        type: string
+      end_date:
+        description: 'Backfill end date YYYY-MM-DD (exclusive, defaults to today)'
+        required: false
+        type: string
 
 jobs:
   collect:
@@ -25,21 +33,18 @@ jobs:
       - name: Install dependencies
         run: pip install -r apps/jobs/energy/requirements.txt
 
-      - name: Run collection
-        if: ${{ !inputs.backfill_days }}
-        run: python -m apps.jobs.energy
-        env:
-          DATABASE_URL: ${{ secrets.ENERGY_DATABASE_URL }}
-          ENPHASE_CLIENT_ID: ${{ secrets.ENPHASE_CLIENT_ID }}
-          ENPHASE_CLIENT_SECRET: ${{ secrets.ENPHASE_CLIENT_SECRET }}
-          ENPHASE_API_KEY: ${{ secrets.ENPHASE_API_KEY }}
-          ENPHASE_SYSTEM_ID: ${{ secrets.ENPHASE_SYSTEM_ID }}
-          ENPHASE_REFRESH_TOKEN: ${{ secrets.ENPHASE_REFRESH_TOKEN }}
-          ENERGY_TIMEZONE: America/Chicago
-
-      - name: Run backfill
-        if: ${{ inputs.backfill_days }}
-        run: python -m apps.jobs.energy --backfill ${{ inputs.backfill_days }}
+      - name: Run energy job
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.start_date }}" ]; then
+            ARGS="--start-date ${{ inputs.start_date }}"
+            if [ -n "${{ inputs.end_date }}" ]; then
+              ARGS="$ARGS --end-date ${{ inputs.end_date }}"
+            fi
+          elif [ -n "${{ inputs.backfill_days }}" ]; then
+            ARGS="--backfill ${{ inputs.backfill_days }}"
+          fi
+          python -m apps.jobs.energy $ARGS
         env:
           DATABASE_URL: ${{ secrets.ENERGY_DATABASE_URL }}
           ENPHASE_CLIENT_ID: ${{ secrets.ENPHASE_CLIENT_ID }}
