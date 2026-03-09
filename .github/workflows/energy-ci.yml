@@ -26,7 +26,7 @@ jobs:
         run: |
           python -c "
           from apps.jobs.energy.config import Config
-          from apps.jobs.energy.models import EnphaseProductionResponse, EnphaseRgmStatsResponse
+          from apps.jobs.energy.models import EnphaseProductionResponse, EnphaseRgmStatsResponse, EnphaseLifetimeResponse
           from apps.jobs.energy.db import Database
           from apps.jobs.energy.enphase_client import EnphaseClient
           from apps.jobs.energy.collector import Collector

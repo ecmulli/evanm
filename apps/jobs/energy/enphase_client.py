@@ -19,6 +19,7 @@ import requests
 from .config import Config
 from .db import Database
 from .models import (
+    EnphaseLifetimeResponse,
     EnphaseProductionResponse,
     EnphaseRgmStatsResponse,
     EnphaseTokenResponse,
@@ -207,3 +208,37 @@ class EnphaseClient:
             params={"start_at": start_at, "end_at": end_at, "granularity": "15mins"},
         )
         return EnphaseRgmStatsResponse(**data)
+
+    def get_production_lifetime(
+        self, start_date: str | None = None, end_date: str | None = None
+    ) -> EnphaseLifetimeResponse:
+        """Fetch daily production Wh totals for a date range (or all history).
+
+        Much more efficient than telemetry for backfills — no date range limit.
+        Returns {system_id, start_date, production: [wh_day1, wh_day2, ...]}.
+        1 API call for any range.
+        """
+        endpoint = f"/api/v4/systems/{self.config.enphase_system_id}/energy_lifetime"
+        params = {}
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+        data = self._make_api_request(endpoint, params=params)
+        return EnphaseLifetimeResponse(**data)
+
+    def get_consumption_lifetime(
+        self, start_date: str | None = None, end_date: str | None = None
+    ) -> EnphaseLifetimeResponse:
+        """Fetch daily consumption Wh totals for a date range (or all history).
+
+        May return 405 on free Watt plan — caller should handle gracefully.
+        """
+        endpoint = f"/api/v4/systems/{self.config.enphase_system_id}/consumption_lifetime"
+        params = {}
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+        data = self._make_api_request(endpoint, params=params)
+        return EnphaseLifetimeResponse(**data)
