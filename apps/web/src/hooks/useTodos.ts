@@ -115,6 +115,26 @@ export function useTodos(includeCompleted = false) {
     [data, mutate],
   );
 
+  const createSmartTask = useCallback(
+    async (text: string, domainHint: TaskDomain) => {
+      const res = await fetch('/api/tasks/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, domain: domainHint }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(err.details || err.error || `Failed: ${res.status}`);
+      }
+
+      // Refresh todos in case AI routed to quick_todo
+      mutate();
+      return res.json();
+    },
+    [mutate],
+  );
+
   return {
     todos: data?.todos ?? [],
     count: data?.count ?? 0,
@@ -123,6 +143,7 @@ export function useTodos(includeCompleted = false) {
     addTodo,
     toggleTodo,
     deleteTodo,
+    createSmartTask,
     mutate,
   };
 }

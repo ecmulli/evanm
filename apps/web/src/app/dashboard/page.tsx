@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const addTodoRef = useRef<(text: string, domain: TaskDomain) => Promise<void>>(() => Promise.resolve());
+  const smartAddRef = useRef<(text: string, domain: TaskDomain) => Promise<unknown>>(() => Promise.resolve());
 
   const { tasks, count, isLoading, error, updateTaskStatus, refreshTasks } = useTasks({
     domain: domainFilter ?? undefined,
@@ -72,7 +73,10 @@ export default function DashboardPage() {
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4">
         {/* Quick To-Dos */}
-        <TodoSection onAddRef={(fn) => { addTodoRef.current = fn; }} />
+        <TodoSection
+          onAddRef={(fn) => { addTodoRef.current = fn; }}
+          onSmartAddRef={(fn) => { smartAddRef.current = fn; }}
+        />
 
         {/* Filters */}
         <FilterBar
@@ -121,7 +125,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Floating liquid-glass add bar */}
-      <FloatingAddBar onAdd={(text, domain) => addTodoRef.current(text, domain)} />
+      <FloatingAddBar
+        onAdd={(text, domain) => addTodoRef.current(text, domain)}
+        onSmartAdd={(text, domain) => smartAddRef.current(text, domain)}
+      />
     </div>
   );
 }

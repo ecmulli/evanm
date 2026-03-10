@@ -82,11 +82,14 @@ function TodoItem({
   );
 }
 
-export function TodoSection({ onAddRef }: { onAddRef?: (fn: (text: string, domain: TaskDomain) => Promise<void>) => void }) {
+export function TodoSection({ onAddRef, onSmartAddRef }: {
+  onAddRef?: (fn: (text: string, domain: TaskDomain) => Promise<void>) => void;
+  onSmartAddRef?: (fn: (text: string, domain: TaskDomain) => Promise<unknown>) => void;
+}) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
 
-  const { todos, isLoading, addTodo, toggleTodo, deleteTodo } =
+  const { todos, isLoading, addTodo, toggleTodo, deleteTodo, createSmartTask } =
     useTodos(showCompleted);
 
   // Expose addTodo upward so FloatingAddBar can call it
@@ -94,9 +97,12 @@ export function TodoSection({ onAddRef }: { onAddRef?: (fn: (text: string, domai
     await addTodo(text, domain);
   }, [addTodo]);
 
-  // Register the handler with parent on first render
+  // Register handlers with parent on first render
   if (onAddRef) {
     onAddRef(handleAdd);
+  }
+  if (onSmartAddRef) {
+    onSmartAddRef(createSmartTask);
   }
 
   const handleToggle = useCallback(
