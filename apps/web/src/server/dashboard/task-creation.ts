@@ -44,19 +44,17 @@ export interface CreateTaskResult {
 
 export async function parseTaskWithAI(
   text: string,
-  domainHint?: TaskDomain,
+  domain: TaskDomain,
 ): Promise<ParsedTask> {
   const anthropic = getAnthropicClient();
   const model = process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;
   const currentDate = new Date().toISOString().split('T')[0];
 
-  const userMessage = domainHint
-    ? `Domain hint: ${domainHint}\n\nTask: ${text}`
-    : text;
+  const userMessage = `Domain: ${domain}\n\nTask: ${text}`;
 
   const response = await anthropic.messages.create({
     model,
-    max_tokens: 1024,
+    max_tokens: 2048,
     system: buildTaskIntakePrompt(currentDate),
     messages: [{ role: 'user', content: userMessage }],
   });
@@ -66,19 +64,19 @@ export async function parseTaskWithAI(
     throw new Error('Unexpected response type from AI');
   }
 
-  // Strip any markdown code fences the model might add despite instructions
-  const jsonText = content.text
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
+  // Extract JSON object from response — the model may include code fences or trailing text
+  const rawText = content.text.trim();
+  const jsonStart = rawText.indexOf('{');
+  const jsonEnd = rawText.lastIndexOf('}');
+  if (jsonStart === -1 || jsonEnd === -1) {
+    throw new Error('No JSON object found in AI response');
+  }
+  const jsonText = rawText.slice(jsonStart, jsonEnd + 1);
 
   const parsed: ParsedTask = JSON.parse(jsonText);
 
-  // Validate database target
-  const validDatabases: DatabaseTarget[] = ['work', 'career', 'personal', 'quick_todo'];
-  if (!validDatabases.includes(parsed.database)) {
-    parsed.database = 'quick_todo';
-  }
+  // Domain selector is authoritative — override whatever the AI chose
+  parsed.database = domain;
 
   return parsed;
 }
@@ -202,6 +200,14 @@ async function createFullTask(parsed: ParsedTask): Promise<CreateTaskResult> {
           rich_text: [{ text: { content: String(value) } }],
         };
     }
+  }
+
+  // Default due date: 1 week from now if not set by AI or user
+  const dueDateKey = config.dueDateProperty;
+  if (!properties[dueDateKey]) {
+    const oneWeekFromNow = new Date();
+    oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+    properties[dueDateKey] = { date: { start: oneWeekFromNow.toISOString().split('T')[0] } };
   }
 
   // Create the page

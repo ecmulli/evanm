@@ -18,12 +18,13 @@ export async function POST(request: NextRequest) {
     }
 
     const validDomains: TaskDomain[] = ['work', 'career', 'personal'];
-    const domainHint: TaskDomain | undefined = validDomains.includes(body.domain)
-      ? body.domain
-      : undefined;
+    if (!body.domain || !validDomains.includes(body.domain)) {
+      return NextResponse.json({ error: 'domain is required (work, career, or personal)' }, { status: 400 });
+    }
+    const domain: TaskDomain = body.domain;
 
     // Step 1: AI parses the free-form text
-    const parsed = await parseTaskWithAI(text, domainHint);
+    const parsed = await parseTaskWithAI(text, domain);
 
     // Step 2: Create the task in Notion
     const result = await createTaskInNotion(parsed);
