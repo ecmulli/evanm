@@ -2,7 +2,7 @@
 
 import useSWR from 'swr';
 import { useCallback } from 'react';
-import type { TaskDomain, TaskStatus, UnifiedTask, TaskPriority } from '@/server/dashboard/types';
+import type { TaskDomain, TaskStatus, UnifiedTask } from '@/server/dashboard/types';
 import { STATUS_MAP } from '@/server/dashboard/types';
 
 interface UseTasksOptions {

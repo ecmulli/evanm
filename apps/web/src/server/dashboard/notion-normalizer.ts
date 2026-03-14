@@ -110,7 +110,7 @@ export function normalizeTask(page: any, domain: TaskDomain): UnifiedTask {
   // Extract full date range for start time and duration
   const dateFull = getDateFull(props, config.dueDateProperty);
   const startTime = extractStartTime(dateFull.start);
-  let durationHours = calculateDurationFromRange(dateFull.start, dateFull.end);
+  const durationHours = calculateDurationFromRange(dateFull.start, dateFull.end);
 
   const task: UnifiedTask = {
     id: page.id,
