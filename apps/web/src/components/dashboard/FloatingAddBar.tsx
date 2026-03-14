@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Plus, Loader2, Sparkles, ExternalLink, X } from 'lucide-react';
-import type { TaskDomain } from '@/server/dashboard/types';
+import { Plus, Loader2, Sparkles, ExternalLink, X, Pencil, Check } from 'lucide-react';
+import type { TaskDomain, UnifiedTask } from '@/server/dashboard/types';
 import { DOMAIN_CONFIG } from '@/server/dashboard/types';
 
 const DOMAINS: TaskDomain[] = ['work', 'career', 'personal'];
@@ -29,12 +29,22 @@ interface CreatedTask {
   database: string;
 }
 
+interface EditResult {
+  success: boolean;
+  updates: {
+    summary: string;
+  };
+}
+
 interface FloatingAddBarProps {
   onAdd: (text: string, domain: TaskDomain) => Promise<void>;
   onSmartAdd?: (text: string, domain: TaskDomain) => Promise<unknown>;
+  selectedTask?: UnifiedTask | null;
+  onEdit?: (instruction: string, task: UnifiedTask) => Promise<EditResult>;
+  onDeselect?: () => void;
 }
 
-export function FloatingAddBar({ onAdd, onSmartAdd }: FloatingAddBarProps) {
+export function FloatingAddBar({ onAdd, onSmartAdd, selectedTask, onEdit, onDeselect }: FloatingAddBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [selectedDomain, setSelectedDomain] = useState<TaskDomain>('personal');
   const [isAdding, setIsAdding] = useState(false);
@@ -43,14 +53,28 @@ export function FloatingAddBar({ onAdd, onSmartAdd }: FloatingAddBarProps) {
   const [isSmartMode, setIsSmartMode] = useState(false);
   const [smartError, setSmartError] = useState<string | null>(null);
   const [createdTask, setCreatedTask] = useState<CreatedTask | null>(null);
+  const [editSummary, setEditSummary] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const isEditMode = !!selectedTask;
 
   // Auto-dismiss confirmation after 6 seconds
   useEffect(() => {
-    if (!createdTask) return;
-    const timer = setTimeout(() => setCreatedTask(null), 6000);
+    if (!createdTask && !editSummary) return;
+    const timer = setTimeout(() => {
+      setCreatedTask(null);
+      setEditSummary(null);
+    }, 6000);
     return () => clearTimeout(timer);
-  }, [createdTask]);
+  }, [createdTask, editSummary]);
+
+  // Clear edit state when deselecting
+  useEffect(() => {
+    if (!selectedTask) {
+      setEditSummary(null);
+      setSmartError(null);
+    }
+  }, [selectedTask]);
 
   // Track visualViewport so the bar floats above the iOS keyboard
   useEffect(() => {
@@ -58,7 +82,6 @@ export function FloatingAddBar({ onAdd, onSmartAdd }: FloatingAddBarProps) {
     if (!vv) return;
 
     const update = () => {
-      // How many px the keyboard is pushing the viewport up from the bottom
       const offset = window.innerHeight - vv.height - vv.offsetTop;
       setKeyboardOffset(Math.max(0, offset));
     };
@@ -73,7 +96,7 @@ export function FloatingAddBar({ onAdd, onSmartAdd }: FloatingAddBarProps) {
     };
   }, []);
 
-  const handleAdd = useCallback(async () => {
+  const handleSubmit = useCallback(async () => {
     const text = inputValue.trim();
     if (!text || isAdding) return;
 
@@ -81,7 +104,14 @@ export function FloatingAddBar({ onAdd, onSmartAdd }: FloatingAddBarProps) {
     setSmartError(null);
 
     try {
-      if (isSmartMode && onSmartAdd) {
+      if (isEditMode && onEdit && selectedTask) {
+        // Edit mode: send instruction to AI
+        const result = await onEdit(text, selectedTask);
+        setInputValue('');
+        setEditSummary(result.updates.summary);
+        inputRef.current?.focus();
+      } else if (isSmartMode && onSmartAdd) {
+        // Smart create mode
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result: any = await onSmartAdd(text, selectedDomain);
         setInputValue('');
@@ -93,28 +123,35 @@ export function FloatingAddBar({ onAdd, onSmartAdd }: FloatingAddBarProps) {
         });
         inputRef.current?.focus();
       } else {
+        // Quick create mode
         await onAdd(text, selectedDomain);
         setInputValue('');
         inputRef.current?.focus();
       }
     } catch (err) {
-      if (isSmartMode) {
-        setSmartError(
-          err instanceof Error ? err.message : 'Failed to create task',
-        );
-      } else {
-        console.error('Failed to add todo:', err);
-      }
+      setSmartError(
+        err instanceof Error ? err.message : 'Failed to process',
+      );
     } finally {
       setIsAdding(false);
     }
-  }, [inputValue, selectedDomain, isAdding, isSmartMode, onAdd, onSmartAdd]);
+  }, [inputValue, selectedDomain, isAdding, isSmartMode, isEditMode, selectedTask, onAdd, onSmartAdd, onEdit]);
 
-  const domainColor = {
-    work: '#1C2B4A',
-    career: '#4A6B3A',
-    personal: '#A05040',
-  }[selectedDomain];
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSubmit();
+    } else if (e.key === 'Escape' && isEditMode) {
+      onDeselect?.();
+    }
+  }, [handleSubmit, isEditMode, onDeselect]);
+
+  const domainColor = isEditMode && selectedTask
+    ? DOMAIN_CONFIG[selectedTask.domain].color
+    : {
+        work: '#1C2B4A',
+        career: '#4A6B3A',
+        personal: '#A05040',
+      }[selectedDomain];
 
   return (
     <div
@@ -168,7 +205,24 @@ export function FloatingAddBar({ onAdd, onSmartAdd }: FloatingAddBarProps) {
           </div>
         )}
 
-        {/* Smart mode error */}
+        {/* Edit confirmation */}
+        {editSummary && (
+          <div
+            className="flex items-center gap-2 px-3.5 pt-3 pb-1 text-xs animate-in fade-in slide-in-from-bottom-2"
+            style={{ color: domainColor }}
+          >
+            <Check className="w-3 h-3 flex-shrink-0" />
+            <span className="font-medium truncate">{editSummary}</span>
+            <button
+              onClick={() => setEditSummary(null)}
+              className="flex-shrink-0 opacity-40 hover:opacity-70 transition-opacity ml-auto"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
+        {/* Error */}
         {smartError && (
           <div className="flex items-center gap-2 px-3.5 pt-3 pb-1">
             <span className="text-xs text-[#A0584A] truncate">{smartError}</span>
@@ -181,50 +235,82 @@ export function FloatingAddBar({ onAdd, onSmartAdd }: FloatingAddBarProps) {
           </div>
         )}
 
-        {/* Domain pills row */}
+        {/* Top row: domain pills (create mode) or selected task chip (edit mode) */}
         <div className="flex items-center gap-1.5 px-3.5 pt-3 pb-2">
-          {DOMAINS.map((d) => {
-            const styles = DOMAIN_PILL_STYLES[d];
-            const config = DOMAIN_CONFIG[d];
-            return (
-              <button
-                key={d}
-                onClick={() => setSelectedDomain(d)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
-                  selectedDomain === d ? styles.active : styles.inactive
-                }`}
+          {isEditMode && selectedTask ? (
+            <>
+              {/* Selected task chip */}
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                style={{
+                  backgroundColor: `${domainColor}15`,
+                  color: domainColor,
+                }}
               >
-                {config.label}
+                <Pencil className="w-2.5 h-2.5" />
+                <span className="truncate max-w-[200px]">{selectedTask.title}</span>
+              </div>
+              <span
+                className="text-[10px] opacity-50 flex-shrink-0"
+                style={{ color: domainColor }}
+              >
+                {DOMAIN_CONFIG[selectedTask.domain].label}
+              </span>
+              <button
+                onClick={onDeselect}
+                className="ml-auto flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-[#A8A29E] hover:text-[#1A1714] hover:bg-black/5 transition-all"
+                title="Cancel editing (Esc)"
+              >
+                <X className="w-3.5 h-3.5" />
               </button>
-            );
-          })}
+            </>
+          ) : (
+            <>
+              {/* Domain pills */}
+              {DOMAINS.map((d) => {
+                const styles = DOMAIN_PILL_STYLES[d];
+                const config = DOMAIN_CONFIG[d];
+                return (
+                  <button
+                    key={d}
+                    onClick={() => setSelectedDomain(d)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+                      selectedDomain === d ? styles.active : styles.inactive
+                    }`}
+                  >
+                    {config.label}
+                  </button>
+                );
+              })}
 
-          {/* Smart mode toggle */}
-          {onSmartAdd && (
-            <button
-              onClick={() => {
-                setIsSmartMode(!isSmartMode);
-                setSmartError(null);
-                setCreatedTask(null);
-              }}
-              className="ml-auto flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-all duration-200"
-              style={{
-                backgroundColor: isSmartMode ? domainColor : 'transparent',
-                color: isSmartMode ? '#fff' : '#A8A29E',
-              }}
-              title={
-                isSmartMode
-                  ? 'Smart mode: AI creates a full task'
-                  : 'Quick mode: saves as-is'
-              }
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-            </button>
+              {/* Smart mode toggle */}
+              {onSmartAdd && (
+                <button
+                  onClick={() => {
+                    setIsSmartMode(!isSmartMode);
+                    setSmartError(null);
+                    setCreatedTask(null);
+                  }}
+                  className="ml-auto flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-all duration-200"
+                  style={{
+                    backgroundColor: isSmartMode ? domainColor : 'transparent',
+                    color: isSmartMode ? '#fff' : '#A8A29E',
+                  }}
+                  title={
+                    isSmartMode
+                      ? 'Smart mode: AI creates a full task'
+                      : 'Quick mode: saves as-is'
+                  }
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </>
           )}
         </div>
 
-        {/* Smart mode hint */}
-        {isSmartMode && !isAdding && !smartError && !createdTask && (
+        {/* Hint text */}
+        {!isEditMode && isSmartMode && !isAdding && !smartError && !createdTask && (
           <div
             className="text-[10px] px-3.5 pb-1 opacity-50"
             style={{ color: domainColor }}
@@ -233,14 +319,14 @@ export function FloatingAddBar({ onAdd, onSmartAdd }: FloatingAddBarProps) {
           </div>
         )}
 
-        {/* Loading state for smart mode */}
-        {isSmartMode && isAdding && (
+        {/* Loading state */}
+        {isAdding && (
           <div
             className="flex items-center gap-1.5 px-3.5 pb-1 text-[11px]"
             style={{ color: domainColor }}
           >
             <Loader2 className="w-3 h-3 animate-spin" />
-            Creating task with AI...
+            {isEditMode ? 'Updating task...' : 'Creating task with AI...'}
           </div>
         )}
 
@@ -254,26 +340,38 @@ export function FloatingAddBar({ onAdd, onSmartAdd }: FloatingAddBarProps) {
               setInputValue(e.target.value);
               if (smartError) setSmartError(null);
             }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleAdd();
-            }}
+            onKeyDown={handleKeyDown}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            placeholder={isSmartMode ? 'Describe a task...' : 'Add a to-do...'}
+            placeholder={
+              isEditMode
+                ? 'Describe your edit...'
+                : isSmartMode
+                  ? 'Describe a task...'
+                  : 'Add a to-do...'
+            }
             className="flex-1 bg-transparent text-[16px] text-[#1A1714] placeholder-[#A8A29E] focus:outline-none font-sans leading-none py-1"
             disabled={isAdding}
-            aria-label={isSmartMode ? 'Describe a task' : 'New to-do'}
+            aria-label={
+              isEditMode
+                ? 'Describe your edit'
+                : isSmartMode
+                  ? 'Describe a task'
+                  : 'New to-do'
+            }
             style={{ WebkitTapHighlightColor: 'transparent' }}
           />
           <button
-            onClick={handleAdd}
+            onClick={handleSubmit}
             disabled={!inputValue.trim() || isAdding}
-            aria-label={isSmartMode ? 'Create smart task' : 'Add to-do'}
+            aria-label={isEditMode ? 'Apply edit' : isSmartMode ? 'Create smart task' : 'Add to-do'}
             className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-xl text-white transition-all duration-200 active:scale-90 disabled:opacity-30"
             style={{ backgroundColor: domainColor }}
           >
             {isAdding ? (
               <Loader2 className="w-4 h-4 animate-spin" />
+            ) : isEditMode ? (
+              <Pencil className="w-4 h-4" />
             ) : isSmartMode ? (
               <Sparkles className="w-4 h-4" />
             ) : (

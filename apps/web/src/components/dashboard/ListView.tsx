@@ -2,9 +2,10 @@
 
 import { useState, useMemo } from 'react';
 import { parseISO } from 'date-fns';
+import { ExternalLink } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import type { UnifiedTask, TaskDomain } from '@/server/dashboard/types';
-import { PRIORITY_CONFIG } from '@/server/dashboard/types';
+import { PRIORITY_CONFIG, DOMAIN_CONFIG } from '@/server/dashboard/types';
 import { TaskCard } from './TaskCard';
 import { StatusDropdown } from './StatusDropdown';
 import { DomainBadge } from './DomainBadge';
@@ -17,6 +18,8 @@ type SortDir = 'asc' | 'desc';
 interface ListViewProps {
   tasks: UnifiedTask[];
   onStatusChange: (taskId: string, rawStatus: string, domain: TaskDomain) => void;
+  selectedTaskId?: string | null;
+  onSelectTask?: (task: UnifiedTask) => void;
 }
 
 const PRIORITY_ORDER: Record<string, number> = {
@@ -65,7 +68,7 @@ function DueDateCell({ dueDate }: { dueDate: string | null }) {
   );
 }
 
-export function ListView({ tasks, onStatusChange }: ListViewProps) {
+export function ListView({ tasks, onStatusChange, selectedTaskId, onSelectTask }: ListViewProps) {
   const isMobile = useIsMobile();
   const [sortKey, setSortKey] = useState<SortKey>('dueDate');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -81,6 +84,13 @@ export function ListView({ tasks, onStatusChange }: ListViewProps) {
       setSortKey(key);
       setSortDir('asc');
     }
+  }
+
+  function handleRowClick(task: UnifiedTask, e: React.MouseEvent) {
+    // Don't select if clicking on interactive elements (checkbox, status dropdown, external link)
+    const target = e.target as HTMLElement;
+    if (target.closest('button, select, [role="listbox"], a')) return;
+    onSelectTask?.(task);
   }
 
   function SortHeader({ label, sortKeyName }: { label: string; sortKeyName: SortKey }) {
@@ -138,21 +148,45 @@ export function ListView({ tasks, onStatusChange }: ListViewProps) {
         <tbody>
           {sorted.map(task => {
             const isCompleted = task.status === 'done' || task.status === 'cancelled' || task.status === 'skipped';
+            const isSelected = selectedTaskId === task.id;
+            const domainColor = DOMAIN_CONFIG[task.domain].color;
+
             return (
-              <tr key={task.id} className={`border-b border-[#F7F6F4] hover:bg-[#F7F6F4] transition-colors ${isCompleted ? 'opacity-50' : ''}`}>
+              <tr
+                key={task.id}
+                onClick={(e) => handleRowClick(task, e)}
+                className={`border-b border-[#F7F6F4] transition-colors ${
+                  isSelected
+                    ? 'bg-opacity-[0.06]'
+                    : 'hover:bg-[#F7F6F4]'
+                } ${isCompleted ? 'opacity-50' : ''} ${onSelectTask ? 'cursor-pointer' : ''}`}
+                style={isSelected ? {
+                  backgroundColor: `${domainColor}0F`,
+                  borderLeft: `3px solid ${domainColor}`,
+                } : undefined}
+              >
                 <td className="pl-4 pr-1 py-3">
                   <CompleteCheckbox task={task} onStatusChange={onStatusChange} />
                 </td>
                 <td className="px-3 py-3"><DomainBadge domain={task.domain} /></td>
                 <td className="px-3 py-3">
-                  <a
-                    href={task.notionUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`text-sm font-medium text-[#1A1714] hover:text-[#A05040] transition-colors ${isCompleted ? 'line-through text-[#B5AFA9]' : ''}`}
-                  >
-                    {task.title}
-                  </a>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`text-sm font-medium text-[#1A1714] ${isCompleted ? 'line-through text-[#B5AFA9]' : ''}`}
+                    >
+                      {task.title}
+                    </span>
+                    <a
+                      href={task.notionUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 text-[#B5AFA9] hover:text-[#A05040] transition-colors"
+                      title="Open in Notion"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 </td>
                 <td className="px-3 py-3">
                   <StatusDropdown

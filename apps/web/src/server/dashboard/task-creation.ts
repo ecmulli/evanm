@@ -6,7 +6,7 @@ import type { TaskDomain } from './types';
 // Lazy-init Anthropic client
 let _anthropic: Anthropic | null = null;
 
-function getAnthropicClient(): Anthropic {
+export function getAnthropicClient(): Anthropic {
   if (!_anthropic) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
@@ -250,10 +250,10 @@ async function createFullTask(parsed: ParsedTask): Promise<CreateTaskResult> {
 
 // --- Helpers ---
 
-type NotionPropertyType = 'select' | 'multi_select' | 'date' | 'number' | 'rich_text' | 'status';
+export type NotionPropertyType = 'select' | 'multi_select' | 'date' | 'number' | 'rich_text' | 'status';
 
 /** Map known property names to their Notion types per domain. */
-function getPropertyType(domain: TaskDomain, propertyName: string): NotionPropertyType {
+export function getPropertyType(domain: TaskDomain, propertyName: string): NotionPropertyType {
   const typeMap: Record<string, NotionPropertyType> = {
     // Work
     'Priority': 'select',
@@ -280,7 +280,7 @@ function getPropertyType(domain: TaskDomain, propertyName: string): NotionProper
 }
 
 /** Parse simple markdown page body into Notion blocks. */
-function parsePageBodyToBlocks(
+export function parsePageBodyToBlocks(
   body: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): any[] {

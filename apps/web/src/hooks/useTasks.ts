@@ -2,7 +2,7 @@
 
 import useSWR from 'swr';
 import { useCallback } from 'react';
-import type { TaskDomain, TaskStatus, UnifiedTask } from '@/server/dashboard/types';
+import type { TaskDomain, TaskStatus, UnifiedTask, TaskPriority } from '@/server/dashboard/types';
 import { STATUS_MAP } from '@/server/dashboard/types';
 
 interface UseTasksOptions {
@@ -68,6 +68,38 @@ export function useTasks(options: UseTasksOptions = {}) {
     [data, mutate],
   );
 
+  const editTask = useCallback(
+    async (instruction: string, task: UnifiedTask) => {
+      const res = await fetch(`/api/tasks/${task.id}/edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instruction,
+          task: {
+            title: task.title,
+            status: task.rawStatus,
+            priority: task.priority,
+            dueDate: task.dueDate,
+            domain: task.domain,
+            metadata: task.metadata,
+          },
+          domain: task.domain,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.details || body.error || `Failed: ${res.status}`);
+      }
+
+      const result = await res.json();
+      // Refresh tasks to pick up changes
+      mutate();
+      return result;
+    },
+    [mutate],
+  );
+
   const refreshTasks = useCallback(async () => {
     const res = await fetch('/api/tasks', { method: 'POST' });
     if (!res.ok) throw new Error(`Failed to refresh: ${res.status}`);
@@ -81,6 +113,7 @@ export function useTasks(options: UseTasksOptions = {}) {
     isLoading,
     error,
     updateTaskStatus,
+    editTask,
     refreshTasks,
     mutate,
   };
