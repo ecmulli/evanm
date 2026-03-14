@@ -8,16 +8,18 @@ import { BoardView } from '@/components/dashboard/BoardView';
 import { CalendarView } from '@/components/dashboard/CalendarView';
 import { TodoSection } from '@/components/dashboard/TodoSection';
 import { FloatingAddBar } from '@/components/dashboard/FloatingAddBar';
-import type { TaskDomain } from '@/server/dashboard/types';
+import type { TaskDomain, UnifiedTask } from '@/server/dashboard/types';
 
 export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [domainFilter, setDomainFilter] = useState<TaskDomain | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<UnifiedTask | null>(null);
   const addTodoRef = useRef<(text: string, domain: TaskDomain) => Promise<void>>(() => Promise.resolve());
+  const smartAddRef = useRef<(text: string, domain: TaskDomain) => Promise<unknown>>(() => Promise.resolve());
 
-  const { tasks, count, isLoading, error, updateTaskStatus, refreshTasks } = useTasks({
+  const { tasks, count, isLoading, error, updateTaskStatus, editTask, refreshTasks } = useTasks({
     domain: domainFilter ?? undefined,
     includeCompleted: showCompleted,
   });
@@ -41,6 +43,32 @@ export default function DashboardPage() {
     },
     [updateTaskStatus],
   );
+
+  const handleSelectTask = useCallback((task: UnifiedTask) => {
+    setSelectedTask(prev => prev?.id === task.id ? null : task);
+  }, []);
+
+  const handleDeselect = useCallback(() => {
+    setSelectedTask(null);
+  }, []);
+
+  const handleEdit = useCallback(
+    async (instruction: string, task: UnifiedTask) => {
+      return editTask(instruction, task);
+    },
+    [editTask],
+  );
+
+  // Escape key deselects at page level
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedTask) {
+        setSelectedTask(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTask]);
 
   // Register service worker for PWA support
   useEffect(() => {
@@ -72,7 +100,10 @@ export default function DashboardPage() {
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4">
         {/* Quick To-Dos */}
-        <TodoSection onAddRef={(fn) => { addTodoRef.current = fn; }} />
+        <TodoSection
+          onAddRef={(fn) => { addTodoRef.current = fn; }}
+          onSmartAddRef={(fn) => { smartAddRef.current = fn; }}
+        />
 
         {/* Filters */}
         <FilterBar
@@ -107,7 +138,12 @@ export default function DashboardPage() {
           ) : (
             <>
               {viewMode === 'list' && (
-                <ListView tasks={tasks} onStatusChange={handleStatusChange} />
+                <ListView
+                  tasks={tasks}
+                  onStatusChange={handleStatusChange}
+                  selectedTaskId={selectedTask?.id ?? null}
+                  onSelectTask={handleSelectTask}
+                />
               )}
               {viewMode === 'board' && (
                 <BoardView tasks={tasks} onStatusChange={handleStatusChange} />
@@ -121,7 +157,13 @@ export default function DashboardPage() {
       </div>
 
       {/* Floating liquid-glass add bar */}
-      <FloatingAddBar onAdd={(text, domain) => addTodoRef.current(text, domain)} />
+      <FloatingAddBar
+        onAdd={(text, domain) => addTodoRef.current(text, domain)}
+        onSmartAdd={(text, domain) => smartAddRef.current(text, domain)}
+        selectedTask={selectedTask}
+        onEdit={handleEdit}
+        onDeselect={handleDeselect}
+      />
     </div>
   );
 }

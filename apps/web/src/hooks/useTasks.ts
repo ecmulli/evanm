@@ -68,6 +68,48 @@ export function useTasks(options: UseTasksOptions = {}) {
     [data, mutate],
   );
 
+  const editTask = useCallback(
+    async (instruction: string, task: UnifiedTask) => {
+      const res = await fetch(`/api/tasks/${task.id}/edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instruction,
+          task: {
+            title: task.title,
+            status: task.rawStatus,
+            priority: task.priority,
+            dueDate: task.dueDate,
+            domain: task.domain,
+            metadata: task.metadata,
+          },
+          domain: task.domain,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.details || body.error || `Failed: ${res.status}`);
+      }
+
+      const result = await res.json();
+
+      // Optimistic update: replace the edited task in the cache immediately
+      if (result.task && data) {
+        const updatedTasks = data.tasks.map(t =>
+          t.id === task.id ? result.task : t,
+        );
+        mutate({ tasks: updatedTasks, count: updatedTasks.length }, false);
+      }
+
+      // Also schedule a full revalidation to catch any side effects
+      setTimeout(() => mutate(), 2000);
+
+      return result;
+    },
+    [data, mutate],
+  );
+
   const refreshTasks = useCallback(async () => {
     const res = await fetch('/api/tasks', { method: 'POST' });
     if (!res.ok) throw new Error(`Failed to refresh: ${res.status}`);
@@ -81,6 +123,7 @@ export function useTasks(options: UseTasksOptions = {}) {
     isLoading,
     error,
     updateTaskStatus,
+    editTask,
     refreshTasks,
     mutate,
   };

@@ -13,6 +13,8 @@ export interface UnifiedTask {
   rawStatus: string;
   priority: TaskPriority | null;
   dueDate: string | null; // ISO date string
+  startTime: string | null; // e.g., "1:00 PM" — time portion of due date start
+  durationHours: number | null; // decimal hours (e.g., 1.5)
   metadata: {
     labels?: string[];
     estimatedHours?: number;
