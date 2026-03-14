@@ -42,6 +42,39 @@ function getDate(props: NotionProperties, key: string): string | null {
   return prop.date.start || null;
 }
 
+function getDateFull(props: NotionProperties, key: string): { start: string | null; end: string | null } {
+  const prop = props[key];
+  if (!prop || prop.type !== 'date' || !prop.date) return { start: null, end: null };
+  return { start: prop.date.start || null, end: prop.date.end || null };
+}
+
+function extractStartTime(dateStr: string | null): string | null {
+  if (!dateStr || !dateStr.includes('T')) return null;
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return null;
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+function calculateDurationFromRange(start: string | null, end: string | null): number | null {
+  if (!start || !end || !start.includes('T') || !end.includes('T')) return null;
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return null;
+  const hours = (endDate.getTime() - startDate.getTime()) / 3_600_000;
+  return hours > 0 ? Math.round(hours * 100) / 100 : null;
+}
+
+function parseTimeEstimateToHours(estimate: string | undefined): number | null {
+  if (!estimate) return null;
+  const map: Record<string, number> = {
+    '10 min': 0.17,
+    '30 min': 0.5,
+    '60 min': 1,
+    '90+ min': 1.5,
+  };
+  return map[estimate] ?? null;
+}
+
 function getNumber(props: NotionProperties, key: string): number | undefined {
   const prop = props[key];
   if (!prop || prop.type !== 'number') return undefined;
@@ -74,6 +107,11 @@ export function normalizeTask(page: any, domain: TaskDomain): UnifiedTask {
   const rawStatus = getStatusValue(props, config.statusProperty);
   const rawPriority = config.priorityProperty ? getSelect(props, config.priorityProperty) : undefined;
 
+  // Extract full date range for start time and duration
+  const dateFull = getDateFull(props, config.dueDateProperty);
+  const startTime = extractStartTime(dateFull.start);
+  let durationHours = calculateDurationFromRange(dateFull.start, dateFull.end);
+
   const task: UnifiedTask = {
     id: page.id,
     title: getTitle(props, config.titleProperty),
@@ -83,20 +121,28 @@ export function normalizeTask(page: any, domain: TaskDomain): UnifiedTask {
     rawStatus,
     priority: normalizePriority(domain, rawPriority),
     dueDate: getDate(props, config.dueDateProperty),
+    startTime,
+    durationHours,
     metadata: {},
     createdAt: page.created_time,
     updatedAt: page.last_edited_time,
   };
 
-  // Domain-specific metadata
+  // Domain-specific metadata + duration fallbacks
   if (domain === 'work') {
     task.metadata.labels = getMultiSelect(props, 'Labels');
     task.metadata.estimatedHours = getNumber(props, 'Est Duration Hrs');
+    if (!task.durationHours && task.metadata.estimatedHours) {
+      task.durationHours = task.metadata.estimatedHours;
+    }
   } else if (domain === 'career') {
     task.metadata.phase = getSelect(props, 'Phase');
     task.metadata.category = getSelect(props, 'Category');
     task.metadata.cadence = getSelect(props, 'Cadence');
     task.metadata.timeEstimate = getSelect(props, 'Time Estimate');
+    if (!task.durationHours) {
+      task.durationHours = parseTimeEstimateToHours(task.metadata.timeEstimate);
+    }
   } else if (domain === 'personal') {
     task.metadata.description = getRichText(props, 'Description');
     task.metadata.personalCategory = getSelect(props, 'Category');

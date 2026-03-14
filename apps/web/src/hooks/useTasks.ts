@@ -93,11 +93,21 @@ export function useTasks(options: UseTasksOptions = {}) {
       }
 
       const result = await res.json();
-      // Refresh tasks to pick up changes
-      mutate();
+
+      // Optimistic update: replace the edited task in the cache immediately
+      if (result.task && data) {
+        const updatedTasks = data.tasks.map(t =>
+          t.id === task.id ? result.task : t,
+        );
+        mutate({ tasks: updatedTasks, count: updatedTasks.length }, false);
+      }
+
+      // Also schedule a full revalidation to catch any side effects
+      setTimeout(() => mutate(), 2000);
+
       return result;
     },
-    [mutate],
+    [data, mutate],
   );
 
   const refreshTasks = useCallback(async () => {

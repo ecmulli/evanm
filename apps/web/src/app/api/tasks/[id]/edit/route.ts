@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiAuth } from '@/server/dashboard/auth';
 import { taskCache } from '@/server/dashboard/cache';
+import { getNotionClient } from '@/server/dashboard/notion-client';
+import { normalizeTask } from '@/server/dashboard/notion-normalizer';
 import { parseEditWithAI, updateTaskInNotionFull } from '@/server/dashboard/task-update';
 import type { TaskContext } from '@/server/dashboard/task-update';
 import type { TaskDomain } from '@/server/dashboard/types';
@@ -39,8 +41,14 @@ export async function POST(
     // Invalidate caches so task lists refresh
     taskCache.invalidateAll();
 
+    // Re-fetch the updated page so the client can optimistically update
+    const notion = getNotionClient();
+    const updatedPage = await notion.pages.retrieve({ page_id: id });
+    const updatedTask = normalizeTask(updatedPage, domain);
+
     return NextResponse.json({
       success: true,
+      task: updatedTask,
       updates: {
         propertyUpdates: parsed.propertyUpdates,
         pageBodyUpdate: parsed.pageBodyUpdate,

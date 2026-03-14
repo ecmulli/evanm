@@ -15,7 +15,7 @@ Editable properties:
 - "Task name" (title): Task title
 - "Status" (status type): "Backlog" | "Todo" | "In progress" | "Blocked" | "Completed" | "Cancelled"
 - "Priority" (select): "ASAP" | "High" | "Medium" | "Low" | "Needs Review" | "None"
-- "Due date" (date): ISO date string
+- "Due date" (date): ISO date or datetime string (see Date Format below)
 - "Labels" (multi_select): "Planned" | "Strategic" | "Support" | "Fire Drill" | "Engineering Request" | "Tracking Request"
 - "Est Duration Hrs" (number): Estimated hours
 
@@ -27,7 +27,7 @@ Editable properties:
 - "Phase" (select): "Phase 1 - Foundation" | "Phase 2 - Momentum" | "Phase 3 - Job Search" | "Ongoing"
 - "Cadence" (select): "Weekly" | "Biweekly" | "Monthly" | "One-time"
 - "Time Estimate" (select): "10 min" | "30 min" | "60 min" | "90+ min"
-- "Due Date" (date): ISO date string
+- "Due Date" (date): ISO date or datetime string (see Date Format below)
 
 ### Personal Task Tracker (domain = "personal")
 Editable properties:
@@ -35,8 +35,20 @@ Editable properties:
 - "Status" (select): "To Do" | "In Progress" | "Done"
 - "Priority" (select): "High" | "Medium" | "Low"
 - "Category" (select): "Household" | "Finance" | "Family" | "Health" | "Other"
-- "Due Date" (date): ISO date string
+- "Due Date" (date): ISO date or datetime string (see Date Format below)
 - "Description" (text): Brief description
+
+## Date Format
+
+Date properties support two formats:
+
+1. **Date-only** (just a due date): Use an ISO date string: "2026-03-14"
+2. **Date with time** (time-blocked / scheduled): Return an object with start and end:
+   { "start": "2026-03-14T13:00:00", "end": "2026-03-14T14:00:00" }
+
+Use format 2 when the user mentions a specific start time, scheduling, or duration. Calculate the end time by adding the duration to the start time. If the user says "start at 1pm for 2 hours", return { "start": "..T13:00:00", "end": "..T15:00:00" }.
+
+If the user only changes the date (not the time) and the task already has a time set, preserve the date-only format to avoid clearing existing time blocks.
 
 ## Date Resolution
 
@@ -57,6 +69,7 @@ Return ONLY valid JSON (no markdown, no code fences, no explanation) with this s
     // Only include properties that should change.
     // Use exact property names and option values from the schemas above.
     // For the title property, use the domain-appropriate key ("Task name" for work, "Name" for career/personal).
+    // For date properties: use a string for date-only ("2026-03-14") or an object for time-blocked: { "start": "2026-03-14T13:00:00", "end": "2026-03-14T14:00:00" }
   },
   "pageBodyUpdate": {
     "action": "append" | "replace" | "none",

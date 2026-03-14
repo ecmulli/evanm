@@ -5,14 +5,12 @@ import { parseISO } from 'date-fns';
 import { ExternalLink } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import type { UnifiedTask, TaskDomain } from '@/server/dashboard/types';
-import { PRIORITY_CONFIG, DOMAIN_CONFIG } from '@/server/dashboard/types';
+import { DOMAIN_CONFIG } from '@/server/dashboard/types';
 import { TaskCard } from './TaskCard';
 import { StatusDropdown } from './StatusDropdown';
-import { DomainBadge } from './DomainBadge';
-import { PriorityIndicator } from './PriorityIndicator';
 import { CompleteCheckbox } from './CompleteCheckbox';
 
-type SortKey = 'domain' | 'title' | 'status' | 'priority' | 'dueDate';
+type SortKey = 'title' | 'status' | 'startTime' | 'durationHours' | 'dueDate';
 type SortDir = 'asc' | 'desc';
 
 interface ListViewProps {
@@ -22,25 +20,28 @@ interface ListViewProps {
   onSelectTask?: (task: UnifiedTask) => void;
 }
 
-const PRIORITY_ORDER: Record<string, number> = {
-  urgent: 0, high: 1, medium: 2, low: 3, none: 4,
-};
-
 function compareTasks(a: UnifiedTask, b: UnifiedTask, key: SortKey, dir: SortDir): number {
   let cmp = 0;
   switch (key) {
-    case 'domain':
-      cmp = a.domain.localeCompare(b.domain);
-      break;
     case 'title':
       cmp = a.title.localeCompare(b.title);
       break;
     case 'status':
       cmp = a.status.localeCompare(b.status);
       break;
-    case 'priority':
-      cmp = (PRIORITY_ORDER[a.priority ?? 'none'] ?? 5) - (PRIORITY_ORDER[b.priority ?? 'none'] ?? 5);
+    case 'startTime': {
+      // Sort by time string — null sorts last
+      const ta = a.startTime ?? '\xFF';
+      const tb = b.startTime ?? '\xFF';
+      cmp = ta.localeCompare(tb);
       break;
+    }
+    case 'durationHours': {
+      const da = a.durationHours ?? Infinity;
+      const db = b.durationHours ?? Infinity;
+      cmp = da - db;
+      break;
+    }
     case 'dueDate': {
       const da = a.dueDate ? parseISO(a.dueDate).getTime() : Infinity;
       const db = b.dueDate ? parseISO(b.dueDate).getTime() : Infinity;
@@ -68,6 +69,17 @@ function DueDateCell({ dueDate }: { dueDate: string | null }) {
   );
 }
 
+function StartTimeCell({ startTime }: { startTime: string | null }) {
+  if (!startTime) return <span className="text-[#B5AFA9]">&mdash;</span>;
+  return <span className="text-xs font-medium text-[#6B6560]">{startTime}</span>;
+}
+
+function DurationCell({ hours }: { hours: number | null }) {
+  if (hours == null) return <span className="text-[#B5AFA9]">&mdash;</span>;
+  const label = hours === Math.floor(hours) ? `${hours}h` : `${hours}h`;
+  return <span className="text-xs font-medium text-[#6B6560]">{label}</span>;
+}
+
 export function ListView({ tasks, onStatusChange, selectedTaskId, onSelectTask }: ListViewProps) {
   const isMobile = useIsMobile();
   const [sortKey, setSortKey] = useState<SortKey>('dueDate');
@@ -87,7 +99,6 @@ export function ListView({ tasks, onStatusChange, selectedTaskId, onSelectTask }
   }
 
   function handleRowClick(task: UnifiedTask, e: React.MouseEvent) {
-    // Don't select if clicking on interactive elements (checkbox, status dropdown, external link)
     const target = e.target as HTMLElement;
     if (target.closest('button, select, [role="listbox"], a')) return;
     onSelectTask?.(task);
@@ -131,18 +142,18 @@ export function ListView({ tasks, onStatusChange, selectedTaskId, onSelectTask }
     );
   }
 
-  // Desktop: table
+  // Desktop: table with domain-colored rows
   return (
     <div className="bg-white rounded-2xl border border-[#E5E0DB] overflow-hidden shadow-sm">
       <table className="w-full">
         <thead>
           <tr className="border-b border-[#E5E0DB] bg-[#F7F6F4]">
             <th className="pl-4 pr-1 py-2.5 w-10"></th>
-            <th className="px-3 py-2.5 w-20"><SortHeader label="Domain" sortKeyName="domain" /></th>
             <th className="px-3 py-2.5"><SortHeader label="Title" sortKeyName="title" /></th>
             <th className="px-3 py-2.5 w-32"><SortHeader label="Status" sortKeyName="status" /></th>
-            <th className="px-3 py-2.5 w-24"><SortHeader label="Priority" sortKeyName="priority" /></th>
-            <th className="px-3 py-2.5 w-32"><SortHeader label="Due" sortKeyName="dueDate" /></th>
+            <th className="px-3 py-2.5 w-20"><SortHeader label="Start" sortKeyName="startTime" /></th>
+            <th className="px-3 py-2.5 w-16"><SortHeader label="Dur" sortKeyName="durationHours" /></th>
+            <th className="px-3 py-2.5 w-28"><SortHeader label="Due" sortKeyName="dueDate" /></th>
           </tr>
         </thead>
         <tbody>
@@ -150,25 +161,23 @@ export function ListView({ tasks, onStatusChange, selectedTaskId, onSelectTask }
             const isCompleted = task.status === 'done' || task.status === 'cancelled' || task.status === 'skipped';
             const isSelected = selectedTaskId === task.id;
             const domainColor = DOMAIN_CONFIG[task.domain].color;
+            const domainBgColor = DOMAIN_CONFIG[task.domain].bgColor;
 
             return (
               <tr
                 key={task.id}
                 onClick={(e) => handleRowClick(task, e)}
-                className={`border-b border-[#F7F6F4] transition-colors ${
-                  isSelected
-                    ? 'bg-opacity-[0.06]'
-                    : 'hover:bg-[#F7F6F4]'
-                } ${isCompleted ? 'opacity-50' : ''} ${onSelectTask ? 'cursor-pointer' : ''}`}
-                style={isSelected ? {
-                  backgroundColor: `${domainColor}0F`,
-                  borderLeft: `3px solid ${domainColor}`,
-                } : undefined}
+                className={`border-b border-[#F7F6F4]/60 transition-colors ${
+                  isCompleted ? 'opacity-50' : ''
+                } ${onSelectTask ? 'cursor-pointer' : ''}`}
+                style={{
+                  backgroundColor: isSelected ? `${domainColor}18` : domainBgColor,
+                  borderLeft: `3px solid ${isSelected ? domainColor : `${domainColor}50`}`,
+                }}
               >
                 <td className="pl-4 pr-1 py-3">
                   <CompleteCheckbox task={task} onStatusChange={onStatusChange} />
                 </td>
-                <td className="px-3 py-3"><DomainBadge domain={task.domain} /></td>
                 <td className="px-3 py-3">
                   <div className="flex items-center gap-1.5">
                     <span
@@ -195,14 +204,8 @@ export function ListView({ tasks, onStatusChange, selectedTaskId, onSelectTask }
                     onStatusChange={rawStatus => onStatusChange(task.id, rawStatus, task.domain)}
                   />
                 </td>
-                <td className="px-3 py-3">
-                  {task.priority && (
-                    <div className="flex items-center gap-1.5">
-                      <PriorityIndicator priority={task.priority} />
-                      <span className="text-xs text-[#6B6560]">{PRIORITY_CONFIG[task.priority].label}</span>
-                    </div>
-                  )}
-                </td>
+                <td className="px-3 py-3"><StartTimeCell startTime={task.startTime} /></td>
+                <td className="px-3 py-3"><DurationCell hours={task.durationHours} /></td>
                 <td className="px-3 py-3 text-sm"><DueDateCell dueDate={task.dueDate} /></td>
               </tr>
             );
