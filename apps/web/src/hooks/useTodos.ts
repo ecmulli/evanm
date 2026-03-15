@@ -3,6 +3,7 @@
 import useSWR from 'swr';
 import { useCallback } from 'react';
 import type { TaskDomain } from '@/server/dashboard/types';
+import { authedFetcher, checkAuth } from '@/hooks/fetcher';
 
 export interface Todo {
   id: string;
@@ -17,18 +18,12 @@ interface TodosResponse {
   count: number;
 }
 
-const fetcher = (url: string) =>
-  fetch(url).then((res) => {
-    if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
-    return res.json();
-  });
-
 export function useTodos(includeCompleted = false) {
   const url = `/api/todos${includeCompleted ? '?includeCompleted=true' : ''}`;
 
   const { data, error, isLoading, mutate } = useSWR<TodosResponse>(
     url,
-    fetcher,
+    authedFetcher,
     {
       revalidateOnFocus: false,
       refreshInterval: 3 * 60 * 1000,
@@ -59,6 +54,7 @@ export function useTodos(includeCompleted = false) {
         body: JSON.stringify({ name, domain }),
       });
 
+      checkAuth(res);
       if (!res.ok) {
         mutate();
         throw new Error(`Failed to add todo: ${res.status}`);
@@ -85,6 +81,7 @@ export function useTodos(includeCompleted = false) {
         body: JSON.stringify({ done }),
       });
 
+      checkAuth(res);
       if (!res.ok) {
         mutate();
         throw new Error(`Failed to toggle todo: ${res.status}`);
@@ -105,6 +102,7 @@ export function useTodos(includeCompleted = false) {
 
       const res = await fetch(`/api/todos/${id}`, { method: 'DELETE' });
 
+      checkAuth(res);
       if (!res.ok) {
         mutate();
         throw new Error(`Failed to delete todo: ${res.status}`);
@@ -123,6 +121,7 @@ export function useTodos(includeCompleted = false) {
         body: JSON.stringify({ text, domain: domainHint }),
       });
 
+      checkAuth(res);
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.details || err.error || `Failed: ${res.status}`);

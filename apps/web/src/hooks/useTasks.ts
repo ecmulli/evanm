@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import { useCallback } from 'react';
 import type { TaskDomain, TaskStatus, UnifiedTask } from '@/server/dashboard/types';
 import { STATUS_MAP } from '@/server/dashboard/types';
+import { authedFetcher, checkAuth } from '@/hooks/fetcher';
 
 interface UseTasksOptions {
   domain?: TaskDomain;
@@ -15,11 +16,6 @@ interface TasksResponse {
   tasks: UnifiedTask[];
   count: number;
 }
-
-const fetcher = (url: string) => fetch(url).then(res => {
-  if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
-  return res.json();
-});
 
 function buildUrl(options: UseTasksOptions): string {
   const params = new URLSearchParams();
@@ -33,7 +29,7 @@ function buildUrl(options: UseTasksOptions): string {
 export function useTasks(options: UseTasksOptions = {}) {
   const url = buildUrl(options);
 
-  const { data, error, isLoading, mutate } = useSWR<TasksResponse>(url, fetcher, {
+  const { data, error, isLoading, mutate } = useSWR<TasksResponse>(url, authedFetcher, {
     revalidateOnFocus: false,
     refreshInterval: 3 * 60 * 1000, // 3 minutes — match server cache TTL
     dedupingInterval: 5000,
@@ -56,6 +52,7 @@ export function useTasks(options: UseTasksOptions = {}) {
         body: JSON.stringify({ status: rawStatus, domain }),
       });
 
+      checkAuth(res);
       if (!res.ok) {
         // Revert optimistic update on error
         mutate();
@@ -87,6 +84,7 @@ export function useTasks(options: UseTasksOptions = {}) {
         }),
       });
 
+      checkAuth(res);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.details || body.error || `Failed: ${res.status}`);
@@ -112,6 +110,7 @@ export function useTasks(options: UseTasksOptions = {}) {
 
   const refreshTasks = useCallback(async () => {
     const res = await fetch('/api/tasks', { method: 'POST' });
+    checkAuth(res);
     if (!res.ok) throw new Error(`Failed to refresh: ${res.status}`);
     const freshData = await res.json();
     mutate(freshData, false);
