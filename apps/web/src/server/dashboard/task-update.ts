@@ -12,6 +12,8 @@ export interface TaskContext {
   status: string;
   priority: string | null;
   dueDate: string | null;
+  startTime: string | null;
+  durationHours: number | null;
   domain: TaskDomain;
   metadata: Record<string, unknown>;
 }
@@ -47,12 +49,16 @@ export async function parseEditWithAI(
   const model = process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;
   const currentDate = new Date().toISOString().split('T')[0];
 
+  const scheduleInfo = task.startTime
+    ? `${task.dueDate} at ${task.startTime}${task.durationHours ? ` (${task.durationHours}h duration)` : ''}`
+    : task.dueDate || 'not set';
+
   const taskContext = `Current task:
 - Title: ${task.title}
 - Domain: ${domain}
 - Status: ${task.status}
 - Priority: ${task.priority || 'not set'}
-- Due Date: ${task.dueDate || 'not set'}
+- Due Date / Schedule: ${scheduleInfo}
 - Labels: ${(task.metadata?.labels as string[])?.join(', ') || 'none'}
 - Category: ${(task.metadata?.category as string) || 'not set'}
 - Phase: ${(task.metadata?.phase as string) || 'not set'}`;
