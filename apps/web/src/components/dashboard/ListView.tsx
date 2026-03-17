@@ -133,7 +133,13 @@ export function ListView({ tasks, onStatusChange, selectedTaskId, onSelectTask }
     return (
       <div className="space-y-2">
         {sorted.map(task => (
-          <TaskCard key={task.id} task={task} onStatusChange={onStatusChange} />
+          <TaskCard
+            key={task.id}
+            task={task}
+            onStatusChange={onStatusChange}
+            selected={selectedTaskId === task.id}
+            onSelect={onSelectTask}
+          />
         ))}
         {sorted.length === 0 && (
           <p className="text-center text-[#BEA09A] py-8 text-sm">No tasks found</p>
