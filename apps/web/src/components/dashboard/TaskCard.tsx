@@ -11,6 +11,8 @@ interface TaskCardProps {
   onStatusChange: (taskId: string, rawStatus: string, domain: UnifiedTask['domain']) => void;
   compact?: boolean;
   disabled?: boolean;
+  selected?: boolean;
+  onSelect?: (task: UnifiedTask) => void;
 }
 
 function DueDateLabel({ dueDate }: { dueDate: string | null }) {
@@ -42,17 +44,28 @@ function DueDateLabel({ dueDate }: { dueDate: string | null }) {
   );
 }
 
-export function TaskCard({ task, onStatusChange, compact, disabled }: TaskCardProps) {
+export function TaskCard({ task, onStatusChange, compact, disabled, selected, onSelect }: TaskCardProps) {
   const isCompleted =
     task.status === 'done' || task.status === 'cancelled' || task.status === 'skipped';
   const domainConfig = DOMAIN_CONFIG[task.domain];
 
+  function handleCardClick(e: React.MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (target.closest('button, select, [role="listbox"], a')) return;
+    onSelect?.(task);
+  }
+
   return (
     <div
-      className={`bg-white rounded-2xl border border-[#E5E0DB] px-4 py-3.5 hover:border-[#C8C2BC] hover:shadow-sm transition-all ${
+      onClick={handleCardClick}
+      className={`rounded-2xl border px-4 py-3.5 hover:border-[#C8C2BC] hover:shadow-sm transition-all ${
         isCompleted ? 'opacity-50' : ''
-      }`}
-      style={{ borderLeft: `3px solid ${domainConfig.color}` }}
+      } ${selected ? 'border-[#C8C2BC] shadow-sm' : 'border-[#E5E0DB]'} ${onSelect ? 'cursor-pointer' : ''}`}
+      style={{
+        borderLeft: `3px solid ${domainConfig.color}`,
+        backgroundColor: selected ? `${domainConfig.color}08` : 'white',
+        boxShadow: selected ? `0 0 0 2px ${domainConfig.color}40` : undefined,
+      }}
     >
       <div className="flex items-start gap-3">
         {/* Checkbox */}

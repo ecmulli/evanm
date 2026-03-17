@@ -77,6 +77,8 @@ export function useTasks(options: UseTasksOptions = {}) {
             status: task.rawStatus,
             priority: task.priority,
             dueDate: task.dueDate,
+            startTime: task.startTime,
+            durationHours: task.durationHours,
             domain: task.domain,
             metadata: task.metadata,
           },
