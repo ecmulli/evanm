@@ -56,6 +56,8 @@ Today's date is ${currentDate}. Resolve relative dates:
 - "end of week" → this Friday
 - "end of month" → last day of current month
 
+**IMPORTANT: All times are in US Central Time (America/Chicago).** If the user mentions a specific time, include the Central Time offset in the ISO string. Use -06:00 for CST (Nov–Mar) or -05:00 for CDT (Mar–Nov). Since today is ${currentDate}, determine the correct offset based on whether US daylight saving time is in effect.
+
 If no due date is mentioned, set it to null — the system will default to 1 week from today.
 
 ## Page Body

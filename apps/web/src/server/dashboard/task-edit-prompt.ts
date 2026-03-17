@@ -40,13 +40,16 @@ Editable properties:
 
 ## Date Format
 
+**IMPORTANT: All times are in US Central Time (America/Chicago). The user is in the Central timezone.**
+
 Date properties support two formats:
 
 1. **Date-only** (just a due date): Use an ISO date string: "2026-03-14"
-2. **Date with time** (time-blocked / scheduled): Return an object with start and end:
-   { "start": "2026-03-14T13:00:00", "end": "2026-03-14T14:00:00" }
+2. **Date with time** (time-blocked / scheduled): Return an object with start and end, using the Central Time offset:
+   { "start": "2026-03-14T13:00:00-05:00", "end": "2026-03-14T14:00:00-05:00" }
+   Use -06:00 for CST (Nov–Mar) or -05:00 for CDT (Mar–Nov). Since today is ${currentDate}, determine the correct offset based on whether US daylight saving time is in effect.
 
-Use format 2 when the user mentions a specific start time, scheduling, or duration. Calculate the end time by adding the duration to the start time. If the user says "start at 1pm for 2 hours", return { "start": "..T13:00:00", "end": "..T15:00:00" }.
+Use format 2 when the user mentions a specific start time, scheduling, or duration. Calculate the end time by adding the duration to the start time. If the user says "start at 1pm for 2 hours", return { "start": "..T13:00:00-05:00", "end": "..T15:00:00-05:00" }.
 
 If the user only changes the date (not the time) and the task already has a time set, preserve the date-only format to avoid clearing existing time blocks.
 
