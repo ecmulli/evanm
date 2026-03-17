@@ -52,7 +52,7 @@ function extractStartTime(dateStr: string | null): string | null {
   if (!dateStr || !dateStr.includes('T')) return null;
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) return null;
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago' });
 }
 
 function calculateDurationFromRange(start: string | null, end: string | null): number | null {
