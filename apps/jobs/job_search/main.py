@@ -27,10 +27,7 @@ async def main(dry_run: bool = False):
 
     # Step 1: Fetch and pre-filter jobs from all sources
     print("Fetching jobs from job boards...")
-    all_jobs = fetch_jobs(
-        results_per_query=25,
-        hours_old=72,  # 3 days to catch weekend posts
-    )
+    all_jobs = fetch_jobs()
     print(f"\nAfter search + title pre-filter: {len(all_jobs)} jobs")
 
     if not all_jobs:
