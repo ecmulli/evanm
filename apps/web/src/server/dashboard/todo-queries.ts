@@ -28,11 +28,16 @@ function normalizeTodo(page: any): Todo {
       ? domainRaw
       : 'personal';
 
+  // Extract date
+  const dateRaw = props['Date']?.date?.start || null;
+  const date = dateRaw ? dateRaw.split('T')[0] : null;
+
   return {
     id: page.id,
     name,
     done,
     domain,
+    date,
     createdAt: page.created_time,
   };
 }
@@ -74,6 +79,7 @@ export async function fetchTodos(includeCompleted = false): Promise<Todo[]> {
 export async function createTodoInNotion(
   name: string,
   domain: TaskDomain,
+  date: string | null = null,
 ): Promise<Todo> {
   const notion = getNotionClient();
 
@@ -83,6 +89,7 @@ export async function createTodoInNotion(
       Name: { title: [{ text: { content: name } }] },
       Domain: { select: { name: capitalize(domain) } },
       Done: { checkbox: false },
+      ...(date ? { Date: { date: { start: date } } } : {}),
     },
   });
 

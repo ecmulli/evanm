@@ -52,7 +52,11 @@ export async function POST(request: NextRequest) {
       ? body.domain
       : 'personal';
 
-    const todo = await createTodoInNotion(name, domain);
+    // Default to today (Central Time) if no date provided
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+    const date: string | null = body.date !== undefined ? body.date : today;
+
+    const todo = await createTodoInNotion(name, domain, date);
 
     // Invalidate cache
     taskCache.invalidate(TODO_CACHE_KEY);

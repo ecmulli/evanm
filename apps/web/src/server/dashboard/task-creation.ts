@@ -108,12 +108,17 @@ async function createQuickTodo(parsed: ParsedTask): Promise<CreateTaskResult> {
 
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+  // Use AI-inferred date, or default to today (Central Time)
+  const dateValue = parsed.properties?.Date as string | null;
+  const date = dateValue || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+
   const response = await notion.pages.create({
     parent: { database_id: TODOS_DB_ID },
     properties: {
       Name: { title: [{ text: { content: parsed.title } }] },
       Domain: { select: { name: capitalize(domain) } },
       Done: { checkbox: false },
+      Date: { date: { start: date } },
     },
   });
 
@@ -269,6 +274,8 @@ export function getPropertyType(domain: TaskDomain, propertyName: string): Notio
     'Time Estimate': 'select',
     // Personal
     'Description': 'rich_text',
+    // Quick todos
+    'Date': 'date',
   };
 
   // Status is handled separately above, but include for completeness

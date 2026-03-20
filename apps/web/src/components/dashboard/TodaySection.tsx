@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2, Calendar } from 'lucide-react';
 import { useTodos, type Todo } from '@/hooks/useTodos';
 import type { TaskDomain } from '@/server/dashboard/types';
 import { DOMAIN_CONFIG } from '@/server/dashboard/types';
@@ -9,28 +9,29 @@ import { TodoItem } from './TodoItem';
 
 const DOMAINS: TaskDomain[] = ['work', 'career', 'personal'];
 
-export function TodoSection({ onAddRef, onSmartAddRef }: {
-  onAddRef?: (fn: (text: string, domain: TaskDomain) => Promise<void>) => void;
-  onSmartAddRef?: (fn: (text: string, domain: TaskDomain) => Promise<unknown>) => void;
-}) {
+function getTodayCentral(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+}
+
+function formatTodayHeader(): string {
+  return new Date().toLocaleDateString('en-US', {
+    timeZone: 'America/Chicago',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+export function TodaySection() {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
 
-  const { todos, isLoading, addTodo, toggleTodo, deleteTodo, createSmartTask } =
-    useTodos(showCompleted);
+  const { todos, isLoading, toggleTodo, deleteTodo } = useTodos(showCompleted);
 
-  // Expose addTodo upward so FloatingAddBar can call it
-  const handleAdd = useCallback(async (text: string, domain: TaskDomain) => {
-    await addTodo(text, domain);
-  }, [addTodo]);
-
-  // Register handlers with parent on first render
-  if (onAddRef) {
-    onAddRef(handleAdd);
-  }
-  if (onSmartAddRef) {
-    onSmartAddRef(createSmartTask);
-  }
+  const todayStr = getTodayCentral();
+  const todayTodos = todos.filter((t) => t.date === todayStr);
+  const activeTodos = todayTodos.filter((t) => !t.done);
+  const doneTodos = todayTodos.filter((t) => t.done);
 
   const handleToggle = useCallback(
     async (id: string, done: boolean) => {
@@ -54,9 +55,6 @@ export function TodoSection({ onAddRef, onSmartAddRef }: {
     [deleteTodo],
   );
 
-  const activeTodos = todos.filter((t) => !t.done);
-  const doneTodos = todos.filter((t) => t.done);
-
   const groupedActive = DOMAINS.reduce(
     (acc, d) => {
       const items = activeTodos.filter((t) => t.domain === d);
@@ -67,6 +65,11 @@ export function TodoSection({ onAddRef, onSmartAddRef }: {
   );
 
   const activeCount = activeTodos.length;
+
+  // Don't render the section at all if there are no today todos
+  if (!isLoading && todayTodos.length === 0) {
+    return null;
+  }
 
   return (
     <section className="bg-white border border-[#E5E0DB] rounded-2xl overflow-hidden shadow-sm">
@@ -81,9 +84,11 @@ export function TodoSection({ onAddRef, onSmartAddRef }: {
         ) : (
           <ChevronRight className="w-4 h-4 text-[#B5AFA9]" />
         )}
-        <span className="text-sm font-semibold text-[#1A1714] tracking-tight">Quick To-Dos</span>
+        <Calendar className="w-4 h-4 text-[#A05040]" />
+        <span className="text-sm font-semibold text-[#1A1714] tracking-tight">Today</span>
+        <span className="text-xs text-[#B5AFA9] font-medium">{formatTodayHeader()}</span>
         {activeCount > 0 && (
-          <span className="text-xs bg-[#1C2B4A] text-white px-1.5 py-0.5 rounded-full font-mono tabular-nums leading-none">
+          <span className="text-xs bg-[#A05040] text-white px-1.5 py-0.5 rounded-full font-mono tabular-nums leading-none ml-auto">
             {activeCount}
           </span>
         )}
@@ -91,16 +96,15 @@ export function TodoSection({ onAddRef, onSmartAddRef }: {
 
       {isExpanded && (
         <div className="border-t border-[#E5E0DB]">
-          {/* Todo list */}
           <div className="px-4 pb-1">
-            {isLoading && todos.length === 0 ? (
+            {isLoading && todayTodos.length === 0 ? (
               <div className="flex items-center gap-2 py-4 text-[#B5AFA9] text-sm">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Loading...
               </div>
             ) : activeTodos.length === 0 && doneTodos.length === 0 ? (
               <p className="text-sm text-[#B5AFA9] py-3">
-                Nothing here yet. Type above and press Enter.
+                Nothing scheduled for today.
               </p>
             ) : (
               <div>
@@ -148,17 +152,19 @@ export function TodoSection({ onAddRef, onSmartAddRef }: {
           </div>
 
           {/* Show completed toggle */}
-          <div className="flex items-center px-4 py-3 border-t border-[#E5E0DB]">
-            <label className="flex items-center gap-2 text-xs text-[#6B6560] cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={showCompleted}
-                onChange={(e) => setShowCompleted(e.target.checked)}
-                className="rounded border-[#C8C2BC] text-[#4A6B3A] focus:ring-[#4A6B3A] w-3.5 h-3.5"
-              />
-              Show completed
-            </label>
-          </div>
+          {(activeTodos.length > 0 || doneTodos.length > 0) && (
+            <div className="flex items-center px-4 py-3 border-t border-[#E5E0DB]">
+              <label className="flex items-center gap-2 text-xs text-[#6B6560] cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={showCompleted}
+                  onChange={(e) => setShowCompleted(e.target.checked)}
+                  className="rounded border-[#C8C2BC] text-[#A05040] focus:ring-[#A05040] w-3.5 h-3.5"
+                />
+                Show completed
+              </label>
+            </div>
+          )}
         </div>
       )}
     </section>

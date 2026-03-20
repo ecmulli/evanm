@@ -10,6 +10,7 @@ export interface Todo {
   name: string;
   done: boolean;
   domain: TaskDomain;
+  date: string | null;
   createdAt: string;
 }
 
@@ -32,13 +33,18 @@ export function useTodos(includeCompleted = false) {
   );
 
   const addTodo = useCallback(
-    async (name: string, domain: TaskDomain) => {
+    async (name: string, domain: TaskDomain, date?: string | null) => {
+      // Default to today (Central Time) client-side for optimistic update
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+      const todoDate = date !== undefined ? date : today;
+
       // Optimistic: prepend temp item
       const tempTodo: Todo = {
         id: `temp-${Date.now()}`,
         name,
         done: false,
         domain,
+        date: todoDate,
         createdAt: new Date().toISOString(),
       };
       if (data) {
@@ -51,7 +57,7 @@ export function useTodos(includeCompleted = false) {
       const res = await fetch('/api/todos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, domain }),
+        body: JSON.stringify({ name, domain, date: todoDate }),
       });
 
       checkAuth(res);
