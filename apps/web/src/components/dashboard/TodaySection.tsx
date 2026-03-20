@@ -66,11 +66,6 @@ export function TodaySection() {
 
   const activeCount = activeTodos.length;
 
-  // Don't render the section at all if there are no today todos
-  if (!isLoading && todayTodos.length === 0) {
-    return null;
-  }
-
   return (
     <section className="bg-white border border-[#E5E0DB] rounded-2xl overflow-hidden shadow-sm">
       {/* Header */}

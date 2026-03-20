@@ -20,14 +20,27 @@ const DOMAIN_CHECK_STYLES: Record<TaskDomain, { checked: string; unchecked: stri
   },
 };
 
+function formatDate(dateStr: string): string {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+  if (dateStr === today) return 'Today';
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (dateStr === tomorrow.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' })) return 'Tomorrow';
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 export function TodoItem({
   todo,
   onToggle,
   onDelete,
+  showDate = false,
 }: {
   todo: Todo;
   onToggle: (id: string, done: boolean) => void;
   onDelete: (id: string) => void;
+  showDate?: boolean;
 }) {
   const [deleting, setDeleting] = useState(false);
   const checkStyles = DOMAIN_CHECK_STYLES[todo.domain as TaskDomain] ?? DOMAIN_CHECK_STYLES.personal;
@@ -53,6 +66,11 @@ export function TodoItem({
         }`}
       >
         {todo.name}
+        {showDate && todo.date && (
+          <span className="ml-2 text-[11px] text-[#B5AFA9] font-medium">
+            {formatDate(todo.date)}
+          </span>
+        )}
       </span>
 
       <button

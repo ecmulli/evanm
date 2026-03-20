@@ -122,6 +122,7 @@ export function TodoSection({ onAddRef, onSmartAddRef }: {
                           todo={todo}
                           onToggle={handleToggle}
                           onDelete={handleDelete}
+                          showDate
                         />
                       ))}
                     </div>
