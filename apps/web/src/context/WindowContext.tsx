@@ -123,7 +123,7 @@ export function WindowProvider({ children }: WindowProviderProps) {
         id: generateWindowId(),
         appType: config.appType,
         title: config.title,
-        position: config.position || getDefaultPosition(0),
+        position: config.position || getDefaultPosition(),
         zIndex: topZIndex + 1,
         isMinimized: false,
         contentId: config.contentId,
