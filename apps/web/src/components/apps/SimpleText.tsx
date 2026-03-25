@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
-import { getTextContent } from '@/data/content';
+import { useTextContent } from '@/context/ContentContext';
 import { useOpenApp } from '@/hooks/useWindow';
 
 interface SimpleTextProps {
@@ -11,7 +11,7 @@ interface SimpleTextProps {
 }
 
 export default function SimpleText({ contentId }: SimpleTextProps) {
-  const content = getTextContent(contentId);
+  const content = useTextContent(contentId);
   const { openFolder, openSimpleText } = useOpenApp();
 
   if (!content) {
@@ -23,6 +23,10 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
   }
 
   const isAboutMe = contentId === 'about-me';
+
+  // Determine parent folder for back navigation
+  const KNOWN_FOLDERS = ['thoughts', 'projects'];
+  const parentFolder = KNOWN_FOLDERS.find(f => contentId.startsWith(`${f}-`));
 
   // Handle internal links like #folder/projects or #file/about-me
   const handleInternalLink = (href: string) => {
@@ -42,6 +46,18 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
 
   return (
     <div className="p-4 h-full overflow-auto">
+      {parentFolder && (
+        <button
+          onClick={() => openFolder(
+            parentFolder.charAt(0).toUpperCase() + parentFolder.slice(1),
+            parentFolder
+          )}
+          className="mb-3 text-xs text-[#A0584A] hover:text-[#152A54] cursor-pointer flex items-center gap-1"
+        >
+          <span>&larr;</span>
+          <span>Back to {parentFolder.charAt(0).toUpperCase() + parentFolder.slice(1)}</span>
+        </button>
+      )}
       {isAboutMe && (
         <div className="mb-4 flex justify-center">
           <Image 
