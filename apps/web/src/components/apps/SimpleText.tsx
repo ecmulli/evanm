@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
-import { getTextContent } from '@/data/content';
+import { useTextContent } from '@/context/ContentContext';
 import { useOpenApp } from '@/hooks/useWindow';
 
 interface SimpleTextProps {
@@ -11,7 +11,7 @@ interface SimpleTextProps {
 }
 
 export default function SimpleText({ contentId }: SimpleTextProps) {
-  const content = getTextContent(contentId);
+  const content = useTextContent(contentId);
   const { openFolder, openSimpleText } = useOpenApp();
 
   if (!content) {
