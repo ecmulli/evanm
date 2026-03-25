@@ -85,8 +85,8 @@ export default function WindowFrame({
 
         {/* Window Content */}
         <div
-          className="overflow-auto bg-white font-sans text-sm antialiased"
-          style={{ height: 'calc(100% - 26px)' }}
+          className="overflow-auto bg-white text-sm antialiased"
+          style={{ height: 'calc(100% - 26px)', fontFamily: "'Palatino Linotype', Palatino, 'Book Antiqua', serif" }}
         >
           {children}
         </div>
@@ -144,9 +144,10 @@ export default function WindowFrame({
 
         {/* Window Content */}
         <div
-          className="overflow-auto bg-white font-sans text-sm antialiased"
+          className="overflow-auto bg-white text-sm antialiased"
           style={{
             height: `calc(100% - 26px)`,
+            fontFamily: "'Palatino Linotype', Palatino, 'Book Antiqua', serif",
           }}
         >
           {children}
