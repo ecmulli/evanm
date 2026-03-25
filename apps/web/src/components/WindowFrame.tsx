@@ -12,8 +12,8 @@ interface WindowFrameProps {
   children: ReactNode;
   position: Position;
   zIndex: number;
-  width?: number;
-  height?: number;
+  width?: number | string;
+  height?: number | string;
   minWidth?: number;
   minHeight?: number;
   onClose: () => void;
@@ -26,8 +26,8 @@ export default function WindowFrame({
   children,
   position,
   zIndex,
-  width = 400,
-  height = 300,
+  width = '80%',
+  height = '80%',
   minWidth = 200,
   minHeight = 150,
   onClose,
@@ -108,9 +108,9 @@ export default function WindowFrame({
         ref={nodeRef}
         className="retro-window absolute"
         style={{
-          width: `${width}px`,
+          width: typeof width === 'number' ? `${width}px` : width,
           minWidth: `${minWidth}px`,
-          height: `${height}px`,
+          height: typeof height === 'number' ? `${height}px` : height,
           minHeight: `${minHeight}px`,
           zIndex,
         }}

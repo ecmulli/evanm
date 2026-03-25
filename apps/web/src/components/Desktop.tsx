@@ -10,8 +10,24 @@ import Folder from './apps/Folder';
 import { useWindow } from '@/hooks/useWindow';
 import { useView } from '@/context/ViewContext';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { desktopIcons } from '@/data/content';
+import { desktopIcons, getTextContent } from '@/data/content';
 import { WindowState } from '@/types/window';
+
+const KNOWN_FOLDERS = ['thoughts', 'projects'];
+
+function contentIdToPath(contentId: string): string {
+  for (const folder of KNOWN_FOLDERS) {
+    if (contentId.startsWith(`${folder}-`)) {
+      const slug = contentId.slice(folder.length + 1);
+      return `/${folder}/${slug}`;
+    }
+  }
+  return `/${contentId}`;
+}
+
+interface DesktopProps {
+  initialContentId?: string;
+}
 
 function WindowContent({ window }: { window: WindowState }) {
   switch (window.appType) {
@@ -26,48 +42,60 @@ function WindowContent({ window }: { window: WindowState }) {
   }
 }
 
-function getWindowDimensions(appType: string): { width: number; height: number } {
+function getWindowDimensions(appType: string): { width: number | string; height: number | string } {
   switch (appType) {
     case 'simpletext':
-      return { width: 450, height: 350 };
+      return { width: '80%', height: '80%' };
     case 'stickies':
       return { width: 320, height: 450 };
     case 'folder':
-      return { width: 400, height: 300 };
+      return { width: '60%', height: '60%' };
     default:
-      return { width: 400, height: 300 };
+      return { width: '80%', height: '80%' };
   }
 }
 
-export default function Desktop() {
+export default function Desktop({ initialContentId }: DesktopProps) {
   const { visibleWindows, closeWindow, openWindow, updateWindowPosition } = useWindow();
   const { settings } = useView();
   const isMobile = useIsMobile();
 
-  // Open "About Me.txt" window centered on page load
+  // Open initial content window centered on page load
   useEffect(() => {
-    // Only open if no windows are currently open (first load)
     if (visibleWindows.length === 0) {
-      const windowWidth = 450;
-      const windowHeight = 350;
-      const menuBarHeight = 32;
-      
-      // Calculate center position relative to the desktop container
-      // Desktop container height is calc(100vh - 32px), width is 100vw
+      const contentId = initialContentId || 'about-me';
+      const content = getTextContent(contentId);
+      const title = content?.title || 'About Me.txt';
+
+      // Center an 80% window: position at 10% from edges
       const desktopWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
-      const desktopHeight = typeof window !== 'undefined' ? window.innerHeight - menuBarHeight : 800 - menuBarHeight;
-      
-      const centerX = (desktopWidth - windowWidth) / 2;
-      const centerY = (desktopHeight - windowHeight) / 2;
-      
+      const desktopHeight = typeof window !== 'undefined' ? window.innerHeight - 32 : 768;
+      const centerX = desktopWidth * 0.1;
+      const centerY = desktopHeight * 0.1;
+
       openWindow({
         appType: 'simpletext',
-        title: 'About Me.txt',
-        contentId: 'about-me',
+        title,
+        contentId,
         position: { x: centerX, y: centerY },
       });
     }
-  }, []); // Empty dependency array - only run on mount
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // URL sync: update browser URL to match the current window's content
+  useEffect(() => {
+    const current = visibleWindows[0];
+    if (current?.appType === 'simpletext' && current.contentId) {
+      const path = contentIdToPath(current.contentId);
+      if (window.location.pathname !== path) {
+        window.history.replaceState(null, '', path);
+      }
+    } else if (current?.appType === 'folder') {
+      // Folder open — keep URL as-is (or set to /)
+    } else if (window.location.pathname !== '/') {
+      window.history.replaceState(null, '', '/');
+    }
+  }, [visibleWindows]);
 
   return (
     <div className="desktop-environment">
