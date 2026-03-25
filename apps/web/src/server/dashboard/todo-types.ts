@@ -5,6 +5,8 @@ export interface Todo {
   name: string;
   done: boolean;
   domain: TaskDomain;
+  dueDate: string | null;
+  startTime: string | null;
   createdAt: string;
 }
 

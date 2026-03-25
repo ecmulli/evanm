@@ -8,7 +8,7 @@ import { CompleteCheckbox } from './CompleteCheckbox';
 
 interface TaskCardProps {
   task: UnifiedTask;
-  onStatusChange: (taskId: string, rawStatus: string, domain: UnifiedTask['domain']) => void;
+  onStatusChange: (taskId: string, rawStatus: string) => void;
   compact?: boolean;
   disabled?: boolean;
   selected?: boolean;
@@ -78,10 +78,9 @@ export function TaskCard({ task, onStatusChange, compact, disabled, selected, on
           {/* Tags row */}
           <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
             <StatusDropdown
-              domain={task.domain}
               currentRawStatus={task.rawStatus}
               onStatusChange={(rawStatus) =>
-                onStatusChange(task.id, rawStatus, task.domain)
+                onStatusChange(task.id, rawStatus)
               }
               disabled={disabled}
             />
@@ -113,17 +112,10 @@ export function TaskCard({ task, onStatusChange, compact, disabled, selected, on
                   {task.durationHours}h
                 </span>
               )}
-              {task.metadata.labels && task.metadata.labels.length > 0 && (
-                <div className="flex gap-1 flex-wrap">
-                  {task.metadata.labels.map((label) => (
-                    <span
-                      key={label}
-                      className="text-xs text-[#6B6560] bg-[#F7F6F4] border border-[#E5E0DB] px-2 py-0.5 rounded-full"
-                    >
-                      {label}
-                    </span>
-                  ))}
-                </div>
+              {task.metadata.category && (
+                <span className="text-xs text-[#6B6560] bg-[#F7F6F4] border border-[#E5E0DB] px-2 py-0.5 rounded-full">
+                  {task.metadata.category}
+                </span>
               )}
             </div>
           )}

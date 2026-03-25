@@ -1,4 +1,4 @@
-import { getNotionClient, DB_CONFIG } from './notion-client';
+import { getNotionClient, PROPS } from './notion-client';
 import { getAnthropicClient, getPropertyType, parsePageBodyToBlocks } from './task-creation';
 import { buildTaskEditPrompt } from './task-edit-prompt';
 import type { TaskDomain } from './types';
@@ -43,7 +43,6 @@ export interface ParsedEdit {
 export async function parseEditWithAI(
   instruction: string,
   task: TaskContext,
-  domain: TaskDomain,
 ): Promise<ParsedEdit> {
   const anthropic = getAnthropicClient();
   const model = process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;
@@ -53,15 +52,14 @@ export async function parseEditWithAI(
     ? `${task.dueDate} at ${task.startTime}${task.durationHours ? ` (${task.durationHours}h duration)` : ''}`
     : task.dueDate || 'not set';
 
-  const taskContext = `Current task:
+  const taskContext = `Current item:
 - Title: ${task.title}
-- Domain: ${domain}
+- Domain: ${task.domain}
 - Status: ${task.status}
 - Priority: ${task.priority || 'not set'}
 - Due Date / Schedule: ${scheduleInfo}
-- Labels: ${(task.metadata?.labels as string[])?.join(', ') || 'none'}
 - Category: ${(task.metadata?.category as string) || 'not set'}
-- Phase: ${(task.metadata?.phase as string) || 'not set'}`;
+- Time Estimate: ${(task.metadata?.timeEstimate as string) || 'not set'}`;
 
   const userMessage = `${taskContext}
 
@@ -79,7 +77,6 @@ Edit instruction: ${instruction}`;
     throw new Error('Unexpected response type from AI');
   }
 
-  // Extract JSON from response
   const rawText = content.text.trim();
   const jsonStart = rawText.indexOf('{');
   const jsonEnd = rawText.lastIndexOf('}');
@@ -95,59 +92,30 @@ Edit instruction: ${instruction}`;
 
 export async function updateTaskInNotionFull(
   taskId: string,
-  domain: TaskDomain,
   updates: PropertyUpdates,
   pageBodyUpdate?: PageBodyUpdate,
 ): Promise<void> {
   const notion = getNotionClient();
-  const config = DB_CONFIG[domain];
 
-  // Build Notion properties payload from flat updates
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const properties: Record<string, any> = {};
 
   for (const [key, value] of Object.entries(updates)) {
     if (value === null || value === undefined) continue;
 
-    // Handle title property
-    if (key === config.titleProperty) {
+    // Handle title
+    if (key === PROPS.title) {
       properties[key] = {
         title: [{ text: { content: String(value) } }],
       };
       continue;
     }
 
-    // Handle status property — uses different Notion types per domain
-    if (key === config.statusProperty) {
-      if (config.statusPropertyType === 'status') {
-        properties[key] = { status: { name: String(value) } };
-      } else {
-        properties[key] = { select: { name: String(value) } };
-      }
-      continue;
-    }
-
-    // Use the property type mapper for everything else
-    const propType = getPropertyType(domain, key);
+    const propType = getPropertyType(key);
 
     switch (propType) {
-      case 'status':
-        properties[key] = { status: { name: String(value) } };
-        break;
       case 'select':
         properties[key] = { select: { name: String(value) } };
-        break;
-      case 'multi_select':
-        if (Array.isArray(value)) {
-          properties[key] = {
-            multi_select: value.map((v) => ({ name: String(v) })),
-          };
-        } else {
-          // Single value — wrap in array
-          properties[key] = {
-            multi_select: [{ name: String(value) }],
-          };
-        }
         break;
       case 'date':
         if (typeof value === 'object' && value !== null && !Array.isArray(value) && 'start' in value) {
@@ -174,7 +142,7 @@ export async function updateTaskInNotionFull(
     }
   }
 
-  // Update the page properties if there are any
+  // Update properties
   if (Object.keys(properties).length > 0) {
     await notion.pages.update({
       page_id: taskId,
@@ -187,24 +155,18 @@ export async function updateTaskInNotionFull(
     const blocks = parsePageBodyToBlocks(pageBodyUpdate.content);
     if (blocks.length > 0) {
       if (pageBodyUpdate.action === 'append') {
-        // Append new blocks at the end
         await notion.blocks.children.append({
           block_id: taskId,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           children: blocks as any,
         });
       } else if (pageBodyUpdate.action === 'replace') {
-        // For replace: delete existing blocks then add new ones
         const existingBlocks = await notion.blocks.children.list({
           block_id: taskId,
         });
-
-        // Delete all existing blocks
         for (const block of existingBlocks.results) {
           await notion.blocks.delete({ block_id: block.id });
         }
-
-        // Add the new blocks
         await notion.blocks.children.append({
           block_id: taskId,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

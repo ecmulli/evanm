@@ -15,13 +15,13 @@ import { useDroppable } from '@dnd-kit/core';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import type { UnifiedTask, TaskDomain, TaskStatus } from '@/server/dashboard/types';
+import type { UnifiedTask, TaskStatus } from '@/server/dashboard/types';
 import { BOARD_COLUMNS, STATUS_CONFIG, denormalizeStatus } from '@/server/dashboard/types';
 import { TaskCard } from './TaskCard';
 
 interface BoardViewProps {
   tasks: UnifiedTask[];
-  onStatusChange: (taskId: string, rawStatus: string, domain: TaskDomain) => void;
+  onStatusChange: (taskId: string, rawStatus: string) => void;
 }
 
 function DroppableColumn({
@@ -99,7 +99,6 @@ export function BoardView({ tasks, onStatusChange }: BoardViewProps) {
     const grouped: Record<TaskStatus, UnifiedTask[]> = {
       todo: [],
       in_progress: [],
-      blocked: [],
       done: [],
       skipped: [],
       cancelled: [],
@@ -126,10 +125,9 @@ export function BoardView({ tasks, onStatusChange }: BoardViewProps) {
     const task = active.data.current?.task as UnifiedTask | undefined;
     if (!task || task.status === targetStatus) return;
 
-    // Map normalized status back to raw status for the task's domain
-    const rawStatus = denormalizeStatus(task.domain, targetStatus);
+    const rawStatus = denormalizeStatus(targetStatus);
     if (rawStatus) {
-      onStatusChange(task.id, rawStatus, task.domain);
+      onStatusChange(task.id, rawStatus);
     }
   }
 

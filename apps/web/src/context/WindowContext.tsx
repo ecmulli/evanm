@@ -12,11 +12,15 @@ const generateWindowId = (): string => {
   return `window-${windowIdCounter}-${Date.now()}`;
 };
 
-// Default window positions with slight offset for cascading effect
-const getDefaultPosition = (windowCount: number) => ({
-  x: 100 + (windowCount * 30) % 200,
-  y: 100 + (windowCount * 30) % 150,
-});
+// Center the window (80% width capped at 750px, 80% height)
+const MAX_WINDOW_WIDTH = 750;
+const getDefaultPosition = () => {
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1200;
+  const vh = typeof window !== 'undefined' ? window.innerHeight - 32 : 768;
+  const winWidth = Math.min(vw * 0.8, MAX_WINDOW_WIDTH);
+  const winHeight = vh * 0.8;
+  return { x: (vw - winWidth) / 2, y: (vh - winHeight) / 2 };
+};
 
 interface WindowProviderProps {
   children: ReactNode;
@@ -108,33 +112,28 @@ export function WindowProvider({ children }: WindowProviderProps) {
   }, []);
 
   const openWindow = useCallback((config: OpenWindowConfig) => {
-    // Check if a window with the same contentId is already open
     setWindows(prev => {
-      const existingWindow = prev.find(w => 
+      // Check if this exact window is already open
+      const existingWindow = prev.find(w =>
         w.contentId === config.contentId && w.appType === config.appType
       );
-      
       if (existingWindow) {
-        // Focus existing window by bringing it to top
-        const newTopZ = topZIndex + 1;
-        setTopZIndex(newTopZ);
-        return prev.map(w =>
-          w.id === existingWindow.id ? { ...w, zIndex: newTopZ } : w
-        );
+        return prev; // Already showing this content
       }
 
+      // Single-window mode: replace all existing windows
       const newWindow: WindowState = {
         id: generateWindowId(),
         appType: config.appType,
         title: config.title,
-        position: config.position || getDefaultPosition(prev.length),
+        position: config.position || getDefaultPosition(),
         zIndex: topZIndex + 1,
         isMinimized: false,
         contentId: config.contentId,
       };
 
       setTopZIndex(p => p + 1);
-      return [...prev, newWindow];
+      return [newWindow];
     });
   }, [topZIndex]);
 

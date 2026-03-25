@@ -9,15 +9,22 @@ import { CalendarView } from '@/components/dashboard/CalendarView';
 import { TodoSection } from '@/components/dashboard/TodoSection';
 import { FloatingAddBar } from '@/components/dashboard/FloatingAddBar';
 import type { TaskDomain, UnifiedTask } from '@/server/dashboard/types';
+import type { Todo } from '@/hooks/useTodos';
+
+// A selected item can be either a task or a todo
+type SelectedItem =
+  | { kind: 'task'; task: UnifiedTask }
+  | { kind: 'todo'; todo: Todo };
 
 export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [domainFilter, setDomainFilter] = useState<TaskDomain | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<UnifiedTask | null>(null);
+  const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
   const addTodoRef = useRef<(text: string, domain: TaskDomain) => Promise<void>>(() => Promise.resolve());
   const smartAddRef = useRef<(text: string, domain: TaskDomain) => Promise<unknown>>(() => Promise.resolve());
+  const editTodoRef = useRef<(instruction: string, todo: Todo) => Promise<unknown>>(() => Promise.resolve());
 
   const { tasks, count, isLoading, error, updateTaskStatus, editTask, refreshTasks } = useTasks({
     domain: domainFilter ?? undefined,
@@ -34,9 +41,9 @@ export default function DashboardPage() {
   }, [refreshTasks]);
 
   const handleStatusChange = useCallback(
-    async (taskId: string, rawStatus: string, domain: TaskDomain) => {
+    async (taskId: string, rawStatus: string) => {
       try {
-        await updateTaskStatus(taskId, rawStatus, domain);
+        await updateTaskStatus(taskId, rawStatus);
       } catch (err) {
         console.error('Failed to update task status:', err);
       }
@@ -45,30 +52,45 @@ export default function DashboardPage() {
   );
 
   const handleSelectTask = useCallback((task: UnifiedTask) => {
-    setSelectedTask(prev => prev?.id === task.id ? null : task);
+    setSelectedItem(prev =>
+      prev?.kind === 'task' && prev.task.id === task.id ? null : { kind: 'task', task },
+    );
+  }, []);
+
+  const handleSelectTodo = useCallback((todo: Todo) => {
+    setSelectedItem(prev =>
+      prev?.kind === 'todo' && prev.todo.id === todo.id ? null : { kind: 'todo', todo },
+    );
   }, []);
 
   const handleDeselect = useCallback(() => {
-    setSelectedTask(null);
+    setSelectedItem(null);
   }, []);
 
-  const handleEdit = useCallback(
+  const handleEditTask = useCallback(
     async (instruction: string, task: UnifiedTask) => {
       return editTask(instruction, task);
     },
     [editTask],
   );
 
+  const handleEditTodo = useCallback(
+    async (instruction: string, todo: Todo) => {
+      return editTodoRef.current(instruction, todo);
+    },
+    [],
+  );
+
   // Escape key deselects at page level
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && selectedTask) {
-        setSelectedTask(null);
+      if (e.key === 'Escape' && selectedItem) {
+        setSelectedItem(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedTask]);
+  }, [selectedItem]);
 
   // Register service worker for PWA support
   useEffect(() => {
@@ -78,6 +100,10 @@ export default function DashboardPage() {
       });
     }
   }, []);
+
+  // Derive props for FloatingAddBar based on selection type
+  const selectedTask = selectedItem?.kind === 'task' ? selectedItem.task : null;
+  const selectedTodo = selectedItem?.kind === 'todo' ? selectedItem.todo : null;
 
   return (
     <div className="min-h-screen bg-[#F7F6F4] font-sans pb-32">
@@ -103,6 +129,9 @@ export default function DashboardPage() {
         <TodoSection
           onAddRef={(fn) => { addTodoRef.current = fn; }}
           onSmartAddRef={(fn) => { smartAddRef.current = fn; }}
+          onEditRef={(fn) => { editTodoRef.current = fn; }}
+          selectedTodoId={selectedTodo?.id ?? null}
+          onSelectTodo={handleSelectTodo}
         />
 
         {/* Filters */}
@@ -161,7 +190,9 @@ export default function DashboardPage() {
         onAdd={(text, domain) => addTodoRef.current(text, domain)}
         onSmartAdd={(text, domain) => smartAddRef.current(text, domain)}
         selectedTask={selectedTask}
-        onEdit={handleEdit}
+        selectedTodo={selectedTodo}
+        onEditTask={handleEditTask}
+        onEditTodo={handleEditTodo}
         onDeselect={handleDeselect}
       />
     </div>

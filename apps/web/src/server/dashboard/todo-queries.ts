@@ -1,12 +1,16 @@
-import { getNotionClient } from './notion-client';
+import { getNotionClient, NOTION_DB_ID, PROPS } from './notion-client';
 import type { Todo } from './todo-types';
 import type { TaskDomain } from './types';
 
-const TODOS_DB_ID =
-  process.env.NOTION_TODOS_DB || '3296a969f3204d79bd19e02c1645689c';
-
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function extractStartTime(dateStr: string | null): string | null {
+  if (!dateStr || !dateStr.includes('T')) return null;
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return null;
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago' });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -14,25 +18,33 @@ function normalizeTodo(page: any): Todo {
   const props = page.properties;
 
   // Extract title
-  const titleProp = props['Name'];
+  const titleProp = props[PROPS.title];
   const name =
     titleProp?.title?.[0]?.plain_text || titleProp?.title?.[0]?.text?.content || '';
 
-  // Extract checkbox
-  const done = props['Done']?.checkbox ?? false;
+  // Status-based done check
+  const status = props[PROPS.status]?.select?.name || 'To Do';
+  const done = status === 'Done';
 
-  // Extract domain select
-  const domainRaw = props['Domain']?.select?.name?.toLowerCase() || 'personal';
+  // Domain
+  const domainRaw = props[PROPS.domain]?.select?.name?.toLowerCase() || 'personal';
   const domain: TaskDomain =
     domainRaw === 'work' || domainRaw === 'career' || domainRaw === 'personal'
       ? domainRaw
       : 'personal';
+
+  // Due date
+  const dueDateProp = props[PROPS.dueDate];
+  const dueDate = dueDateProp?.date?.start || null;
+  const startTime = extractStartTime(dueDate);
 
   return {
     id: page.id,
     name,
     done,
     domain,
+    dueDate,
+    startTime,
     createdAt: page.created_time,
   };
 }
@@ -41,9 +53,18 @@ export async function fetchTodos(includeCompleted = false): Promise<Todo[]> {
   const notion = getNotionClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const filter: any = includeCompleted
-    ? undefined
-    : { property: 'Done', checkbox: { equals: false } };
+  const conditions: any[] = [
+    { property: PROPS.type, select: { equals: 'Quick To-Do' } },
+  ];
+
+  if (!includeCompleted) {
+    conditions.push(
+      { property: PROPS.status, select: { does_not_equal: 'Done' } },
+      { property: PROPS.status, select: { does_not_equal: 'Cancelled' } },
+    );
+  }
+
+  const filter = conditions.length === 1 ? conditions[0] : { and: conditions };
 
   const todos: Todo[] = [];
   let hasMore = true;
@@ -51,7 +72,7 @@ export async function fetchTodos(includeCompleted = false): Promise<Todo[]> {
 
   while (hasMore) {
     const response = await notion.databases.query({
-      database_id: TODOS_DB_ID,
+      database_id: NOTION_DB_ID,
       filter,
       sorts: [{ timestamp: 'created_time', direction: 'descending' }],
       start_cursor: startCursor,
@@ -78,11 +99,12 @@ export async function createTodoInNotion(
   const notion = getNotionClient();
 
   const response = await notion.pages.create({
-    parent: { database_id: TODOS_DB_ID },
+    parent: { database_id: NOTION_DB_ID },
     properties: {
-      Name: { title: [{ text: { content: name } }] },
-      Domain: { select: { name: capitalize(domain) } },
-      Done: { checkbox: false },
+      [PROPS.title]: { title: [{ text: { content: name } }] },
+      [PROPS.type]: { select: { name: 'Quick To-Do' } },
+      [PROPS.domain]: { select: { name: capitalize(domain) } },
+      [PROPS.status]: { select: { name: 'To Do' } },
     },
   });
 
@@ -98,7 +120,7 @@ export async function toggleTodoInNotion(
   await notion.pages.update({
     page_id: pageId,
     properties: {
-      Done: { checkbox: done },
+      [PROPS.status]: { select: { name: done ? 'Done' : 'To Do' } },
     },
   });
 }

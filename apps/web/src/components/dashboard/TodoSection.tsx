@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Trash2, Loader2, Check } from 'lucide-react';
+import { ChevronDown, ChevronRight, Trash2, Loader2, Check, Clock } from 'lucide-react';
 import { useTodos, type Todo } from '@/hooks/useTodos';
 import type { TaskDomain } from '@/server/dashboard/types';
 import { DOMAIN_CONFIG } from '@/server/dashboard/types';
@@ -23,27 +23,65 @@ const DOMAIN_CHECK_STYLES: Record<TaskDomain, { checked: string; unchecked: stri
   },
 };
 
+function formatTodoDate(dueDate: string | null, startTime: string | null): string | null {
+  if (!dueDate) return null;
+  const date = new Date(dueDate);
+  if (isNaN(date.getTime())) return null;
+
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const dateOnly = dueDate.split('T')[0];
+  const todayStr = today.toISOString().split('T')[0];
+  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+  let label: string;
+  if (dateOnly === todayStr) {
+    label = 'Today';
+  } else if (dateOnly === tomorrowStr) {
+    label = 'Tomorrow';
+  } else {
+    label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' });
+  }
+
+  if (startTime) {
+    label += ` ${startTime}`;
+  }
+
+  return label;
+}
 
 function TodoItem({
   todo,
+  isSelected,
   onToggle,
   onDelete,
+  onSelect,
 }: {
   todo: Todo;
+  isSelected: boolean;
   onToggle: (id: string, done: boolean) => void;
   onDelete: (id: string) => void;
+  onSelect: (todo: Todo) => void;
 }) {
   const [deleting, setDeleting] = useState(false);
   const checkStyles = DOMAIN_CHECK_STYLES[todo.domain as TaskDomain] ?? DOMAIN_CHECK_STYLES.personal;
+  const dateLabel = formatTodoDate(todo.dueDate, todo.startTime);
 
   return (
     <div
-      className={`group flex items-center gap-3 py-2 px-1 rounded-lg transition-all duration-200 ${
-        todo.done ? 'opacity-40' : 'hover:bg-[#F0EEEB]'
+      onClick={() => onSelect(todo)}
+      className={`group flex items-center gap-3 py-2 px-1 rounded-lg transition-all duration-200 cursor-pointer ${
+        isSelected
+          ? 'bg-[#E8EDF5] ring-1 ring-[#1C2B4A]/20'
+          : todo.done
+            ? 'opacity-40'
+            : 'hover:bg-[#F0EEEB]'
       }`}
     >
       <button
-        onClick={() => onToggle(todo.id, !todo.done)}
+        onClick={(e) => { e.stopPropagation(); onToggle(todo.id, !todo.done); }}
         className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
           todo.done ? checkStyles.checked : checkStyles.unchecked
         }`}
@@ -59,8 +97,16 @@ function TodoItem({
         {todo.name}
       </span>
 
+      {dateLabel && (
+        <span className="flex items-center gap-1 text-[11px] text-[#8B8580] flex-shrink-0">
+          <Clock className="w-3 h-3" />
+          {dateLabel}
+        </span>
+      )}
+
       <button
-        onClick={async () => {
+        onClick={async (e) => {
+          e.stopPropagation();
           setDeleting(true);
           try {
             await onDelete(todo.id);
@@ -82,28 +128,33 @@ function TodoItem({
   );
 }
 
-export function TodoSection({ onAddRef, onSmartAddRef }: {
+export function TodoSection({
+  onAddRef,
+  onSmartAddRef,
+  onEditRef,
+  selectedTodoId,
+  onSelectTodo,
+}: {
   onAddRef?: (fn: (text: string, domain: TaskDomain) => Promise<void>) => void;
   onSmartAddRef?: (fn: (text: string, domain: TaskDomain) => Promise<unknown>) => void;
+  onEditRef?: (fn: (instruction: string, todo: Todo) => Promise<unknown>) => void;
+  selectedTodoId?: string | null;
+  onSelectTodo?: (todo: Todo) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
 
-  const { todos, isLoading, addTodo, toggleTodo, deleteTodo, createSmartTask } =
+  const { todos, isLoading, addTodo, toggleTodo, deleteTodo, editTodo, createSmartTask } =
     useTodos(showCompleted);
 
-  // Expose addTodo upward so FloatingAddBar can call it
+  // Expose handlers upward
   const handleAdd = useCallback(async (text: string, domain: TaskDomain) => {
     await addTodo(text, domain);
   }, [addTodo]);
 
-  // Register handlers with parent on first render
-  if (onAddRef) {
-    onAddRef(handleAdd);
-  }
-  if (onSmartAddRef) {
-    onSmartAddRef(createSmartTask);
-  }
+  if (onAddRef) onAddRef(handleAdd);
+  if (onSmartAddRef) onSmartAddRef(createSmartTask);
+  if (onEditRef) onEditRef(editTodo);
 
   const handleToggle = useCallback(
     async (id: string, done: boolean) => {
@@ -125,6 +176,13 @@ export function TodoSection({ onAddRef, onSmartAddRef }: {
       }
     },
     [deleteTodo],
+  );
+
+  const handleSelect = useCallback(
+    (todo: Todo) => {
+      onSelectTodo?.(todo);
+    },
+    [onSelectTodo],
   );
 
   const activeTodos = todos.filter((t) => !t.done);
@@ -193,8 +251,10 @@ export function TodoSection({ onAddRef, onSmartAddRef }: {
                         <TodoItem
                           key={todo.id}
                           todo={todo}
+                          isSelected={selectedTodoId === todo.id}
                           onToggle={handleToggle}
                           onDelete={handleDelete}
+                          onSelect={handleSelect}
                         />
                       ))}
                     </div>
@@ -210,8 +270,10 @@ export function TodoSection({ onAddRef, onSmartAddRef }: {
                       <TodoItem
                         key={todo.id}
                         todo={todo}
+                        isSelected={selectedTodoId === todo.id}
                         onToggle={handleToggle}
                         onDelete={handleDelete}
+                        onSelect={handleSelect}
                       />
                     ))}
                   </div>
