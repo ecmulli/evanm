@@ -10,12 +10,21 @@ export interface Todo {
   name: string;
   done: boolean;
   domain: TaskDomain;
+  dueDate: string | null;
+  startTime: string | null;
   createdAt: string;
 }
 
 interface TodosResponse {
   todos: Todo[];
   count: number;
+}
+
+interface EditResult {
+  success: boolean;
+  updates: {
+    summary: string;
+  };
 }
 
 export function useTodos(includeCompleted = false) {
@@ -39,6 +48,8 @@ export function useTodos(includeCompleted = false) {
         name,
         done: false,
         domain,
+        dueDate: null,
+        startTime: null,
         createdAt: new Date().toISOString(),
       };
       if (data) {
@@ -113,6 +124,43 @@ export function useTodos(includeCompleted = false) {
     [data, mutate],
   );
 
+  const editTodo = useCallback(
+    async (instruction: string, todo: Todo): Promise<EditResult> => {
+      const res = await fetch(`/api/todos/${todo.id}/edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instruction,
+          todo: {
+            title: todo.name,
+            status: todo.done ? 'Done' : 'To Do',
+            priority: null,
+            dueDate: todo.dueDate,
+            startTime: todo.startTime,
+            durationHours: null,
+            domain: todo.domain,
+            metadata: {},
+          },
+        }),
+      });
+
+      checkAuth(res);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.details || body.error || `Failed: ${res.status}`);
+      }
+
+      const result = await res.json();
+
+      // Revalidate
+      setTimeout(() => mutate(), 2000);
+      mutate();
+
+      return result;
+    },
+    [mutate],
+  );
+
   const createSmartTask = useCallback(
     async (text: string, domainHint: TaskDomain) => {
       const res = await fetch('/api/tasks/create', {
@@ -127,7 +175,6 @@ export function useTodos(includeCompleted = false) {
         throw new Error(err.details || err.error || `Failed: ${res.status}`);
       }
 
-      // Refresh todos in case AI routed to quick_todo
       mutate();
       return res.json();
     },
@@ -142,6 +189,7 @@ export function useTodos(includeCompleted = false) {
     addTodo,
     toggleTodo,
     deleteTodo,
+    editTodo,
     createSmartTask,
     mutate,
   };

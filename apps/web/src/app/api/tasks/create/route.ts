@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     const parsed = await parseTaskWithAI(text, domain);
 
     // Step 2: Create the task in Notion
-    const result = await createTaskInNotion(parsed);
+    const result = await createTaskInNotion(parsed, domain);
 
     // Invalidate all caches so task lists refresh
     taskCache.invalidateAll();

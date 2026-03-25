@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { parseISO } from 'date-fns';
 import { ExternalLink } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import type { UnifiedTask, TaskDomain } from '@/server/dashboard/types';
+import type { UnifiedTask } from '@/server/dashboard/types';
 import { DOMAIN_CONFIG } from '@/server/dashboard/types';
 import { TaskCard } from './TaskCard';
 import { StatusDropdown } from './StatusDropdown';
@@ -15,7 +15,7 @@ type SortDir = 'asc' | 'desc';
 
 interface ListViewProps {
   tasks: UnifiedTask[];
-  onStatusChange: (taskId: string, rawStatus: string, domain: TaskDomain) => void;
+  onStatusChange: (taskId: string, rawStatus: string) => void;
   selectedTaskId?: string | null;
   onSelectTask?: (task: UnifiedTask) => void;
 }
@@ -205,9 +205,8 @@ export function ListView({ tasks, onStatusChange, selectedTaskId, onSelectTask }
                 </td>
                 <td className="px-3 py-3">
                   <StatusDropdown
-                    domain={task.domain}
                     currentRawStatus={task.rawStatus}
-                    onStatusChange={rawStatus => onStatusChange(task.id, rawStatus, task.domain)}
+                    onStatusChange={rawStatus => onStatusChange(task.id, rawStatus)}
                   />
                 </td>
                 <td className="px-3 py-3"><StartTimeCell startTime={task.startTime} /></td>
