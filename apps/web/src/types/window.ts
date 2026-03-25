@@ -54,6 +54,7 @@ export interface TextContent {
   id: string;
   title: string;
   content: string;
+  description?: string;
 }
 
 export interface FolderContent {

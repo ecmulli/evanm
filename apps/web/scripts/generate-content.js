@@ -27,8 +27,11 @@ function parseFrontmatter(fileContent) {
     
     const titleMatch = frontmatter.match(/title:\s*(.+)/);
     const title = titleMatch ? titleMatch[1].trim() : 'Untitled.txt';
-    
-    return { title, content };
+
+    const descMatch = frontmatter.match(/description:\s*(.+)/);
+    const description = descMatch ? descMatch[1].trim() : undefined;
+
+    return { title, content, description };
   }
   
   return { title: 'Untitled.txt', content: fileContent.trim() };
@@ -67,10 +70,10 @@ function generateContent() {
   for (const filename of rootFiles) {
     const filePath = path.join(CONTENT_DIR, filename);
     const fileContent = fs.readFileSync(filePath, 'utf-8');
-    const { title, content } = parseFrontmatter(fileContent);
+    const { title, content, description } = parseFrontmatter(fileContent);
     const id = filenameToId(filename);
-    
-    textContents[id] = { id, title, content };
+
+    textContents[id] = { id, title, content, ...(description && { description }) };
     
     // Add to desktop icons
     desktopIcons.push({
@@ -98,10 +101,10 @@ function generateContent() {
     for (const filename of files) {
       const filePath = path.join(subdirPath, filename);
       const fileContent = fs.readFileSync(filePath, 'utf-8');
-      const { title, content } = parseFrontmatter(fileContent);
+      const { title, content, description } = parseFrontmatter(fileContent);
       const contentId = `${subdir}-${filenameToId(filename)}`;
-      
-      textContents[contentId] = { id: contentId, title, content };
+
+      textContents[contentId] = { id: contentId, title, content, ...(description && { description }) };
       
       items.push({
         id: `${contentId}-icon`,
