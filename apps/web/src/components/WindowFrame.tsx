@@ -85,7 +85,7 @@ export default function WindowFrame({
 
         {/* Window Content */}
         <div
-          className="overflow-auto bg-white"
+          className="overflow-auto bg-white font-sans text-sm antialiased"
           style={{ height: 'calc(100% - 26px)' }}
         >
           {children}
@@ -144,7 +144,7 @@ export default function WindowFrame({
 
         {/* Window Content */}
         <div
-          className="overflow-auto bg-white"
+          className="overflow-auto bg-white font-sans text-sm antialiased"
           style={{
             height: `calc(100% - 26px)`,
           }}

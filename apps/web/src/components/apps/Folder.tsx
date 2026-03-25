@@ -41,10 +41,10 @@ export default function Folder({ contentId }: FolderProps) {
               }
             }}
           >
-            <div className="w-12 h-12 flex items-center justify-center">
+            <div className="w-14 h-14 flex items-center justify-center">
               <PixelFileIcon color="#152A54" />
             </div>
-            <span className="text-[10px] text-center mt-1 max-w-[70px] break-words text-gray-800">
+            <span className="text-xs text-center mt-1 max-w-[100px] break-words text-gray-800">
               {item.label}
             </span>
           </div>
