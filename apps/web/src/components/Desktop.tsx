@@ -67,17 +67,10 @@ export default function Desktop({ initialContentId }: DesktopProps) {
       const content = getTextContent(contentId);
       const title = content?.title || 'About Me.txt';
 
-      // Center an 80% window: position at 10% from edges
-      const desktopWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
-      const desktopHeight = typeof window !== 'undefined' ? window.innerHeight - 32 : 768;
-      const centerX = desktopWidth * 0.1;
-      const centerY = desktopHeight * 0.1;
-
       openWindow({
         appType: 'simpletext',
         title,
         contentId,
-        position: { x: centerX, y: centerY },
       });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

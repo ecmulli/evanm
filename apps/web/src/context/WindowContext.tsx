@@ -12,11 +12,14 @@ const generateWindowId = (): string => {
   return `window-${windowIdCounter}-${Date.now()}`;
 };
 
-// Center the window at 10% from edges (for 80% width/height windows)
+// Center the window (80% width capped at 750px, 80% height)
+const MAX_WINDOW_WIDTH = 750;
 const getDefaultPosition = () => {
-  const w = typeof window !== 'undefined' ? window.innerWidth : 1200;
-  const h = typeof window !== 'undefined' ? window.innerHeight - 32 : 768;
-  return { x: w * 0.1, y: h * 0.1 };
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1200;
+  const vh = typeof window !== 'undefined' ? window.innerHeight - 32 : 768;
+  const winWidth = Math.min(vw * 0.8, MAX_WINDOW_WIDTH);
+  const winHeight = vh * 0.8;
+  return { x: (vw - winWidth) / 2, y: (vh - winHeight) / 2 };
 };
 
 interface WindowProviderProps {

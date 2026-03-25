@@ -109,6 +109,7 @@ export default function WindowFrame({
         className="retro-window absolute"
         style={{
           width: typeof width === 'number' ? `${width}px` : width,
+          maxWidth: '750px',
           minWidth: `${minWidth}px`,
           height: typeof height === 'number' ? `${height}px` : height,
           minHeight: `${minHeight}px`,
