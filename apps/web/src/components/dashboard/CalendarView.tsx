@@ -17,14 +17,14 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import type { UnifiedTask, TaskDomain } from '@/server/dashboard/types';
+import type { UnifiedTask } from '@/server/dashboard/types';
 import { DOMAIN_CONFIG } from '@/server/dashboard/types';
 import { StatusDropdown } from './StatusDropdown';
 import { CompleteCheckbox } from './CompleteCheckbox';
 
 interface CalendarViewProps {
   tasks: UnifiedTask[];
-  onStatusChange: (taskId: string, rawStatus: string, domain: TaskDomain) => void;
+  onStatusChange: (taskId: string, rawStatus: string) => void;
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -305,9 +305,8 @@ function AgendaItem({
         </a>
       </div>
       <StatusDropdown
-        domain={task.domain}
         currentRawStatus={task.rawStatus}
-        onStatusChange={rawStatus => onStatusChange(task.id, rawStatus, task.domain)}
+        onStatusChange={rawStatus => onStatusChange(task.id, rawStatus)}
       />
     </div>
   );

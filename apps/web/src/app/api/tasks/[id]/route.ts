@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateApiAuth } from '@/server/dashboard/auth';
 import { taskCache } from '@/server/dashboard/cache';
 import { updateTaskInNotion } from '@/server/dashboard/notion-queries';
-import { DOMAIN_STATUSES, type TaskDomain } from '@/server/dashboard/types';
+import { RAW_STATUSES } from '@/server/dashboard/types';
 
 // PATCH /api/tasks/:id — update a task's status
 export async function PATCH(
@@ -16,27 +16,24 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status, domain } = body as { status: string; domain: TaskDomain };
+    const { status } = body as { status: string };
 
-    if (!status || !domain) {
-      return NextResponse.json({ error: 'Missing status or domain' }, { status: 400 });
+    if (!status) {
+      return NextResponse.json({ error: 'Missing status' }, { status: 400 });
     }
 
-    // Validate the raw status is valid for this domain
-    const validStatuses = DOMAIN_STATUSES[domain];
-    if (!validStatuses?.includes(status)) {
+    if (!RAW_STATUSES.includes(status)) {
       return NextResponse.json(
-        { error: `Invalid status "${status}" for domain "${domain}". Valid: ${validStatuses?.join(', ')}` },
+        { error: `Invalid status "${status}". Valid: ${RAW_STATUSES.join(', ')}` },
         { status: 400 },
       );
     }
 
-    await updateTaskInNotion(id, domain, status);
+    await updateTaskInNotion(id, status);
 
-    // Invalidate cache so next fetch gets fresh data
     taskCache.invalidateAll();
 
-    return NextResponse.json({ success: true, id, status, domain });
+    return NextResponse.json({ success: true, id, status });
   } catch (error) {
     console.error('Error updating task:', error);
     return NextResponse.json(

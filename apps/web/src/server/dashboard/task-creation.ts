@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { getNotionClient, DB_CONFIG, NOTION_USER_ID } from './notion-client';
+import { getNotionClient, NOTION_DB_ID, PROPS } from './notion-client';
 import { buildTaskIntakePrompt } from './task-intake-prompt';
 import type { TaskDomain } from './types';
 
@@ -21,10 +21,7 @@ const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
 
 // --- Types ---
 
-type DatabaseTarget = 'work' | 'career' | 'personal' | 'quick_todo';
-
 export interface ParsedTask {
-  database: DatabaseTarget;
   title: string;
   properties: Record<string, string | number | string[] | null>;
   pageBody: string | null;
@@ -36,7 +33,7 @@ export interface CreateTaskResult {
   url: string;
   domain: TaskDomain;
   title: string;
-  database: DatabaseTarget;
+  type: 'task';
   properties: Record<string, string | number | string[] | null>;
 }
 
@@ -64,7 +61,7 @@ export async function parseTaskWithAI(
     throw new Error('Unexpected response type from AI');
   }
 
-  // Extract JSON object from response — the model may include code fences or trailing text
+  // Extract JSON object from response
   const rawText = content.text.trim();
   const jsonStart = rawText.indexOf('{');
   const jsonEnd = rawText.lastIndexOf('}');
@@ -73,115 +70,38 @@ export async function parseTaskWithAI(
   }
   const jsonText = rawText.slice(jsonStart, jsonEnd + 1);
 
-  const parsed: ParsedTask = JSON.parse(jsonText);
-
-  // Domain selector is authoritative — override whatever the AI chose
-  parsed.database = domain;
-
-  return parsed;
+  return JSON.parse(jsonText) as ParsedTask;
 }
 
 // --- Notion Creation ---
 
-const TODOS_DB_ID =
-  process.env.NOTION_TODOS_DB || '3296a969f3204d79bd19e02c1645689c';
-
 export async function createTaskInNotion(
   parsed: ParsedTask,
+  domain: TaskDomain,
 ): Promise<CreateTaskResult> {
-  if (parsed.database === 'quick_todo') {
-    return createQuickTodo(parsed);
-  }
-  return createFullTask(parsed);
-}
-
-async function createQuickTodo(parsed: ParsedTask): Promise<CreateTaskResult> {
   const notion = getNotionClient();
-
-  // Determine domain from properties or default to personal
-  const domainRaw = (parsed.properties?.Domain as string) || 'Personal';
-  const domainLower = domainRaw.toLowerCase() as TaskDomain;
-  const domain: TaskDomain =
-    domainLower === 'work' || domainLower === 'career' || domainLower === 'personal'
-      ? domainLower
-      : 'personal';
-
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-  const response = await notion.pages.create({
-    parent: { database_id: TODOS_DB_ID },
-    properties: {
-      Name: { title: [{ text: { content: parsed.title } }] },
-      Domain: { select: { name: capitalize(domain) } },
-      Done: { checkbox: false },
-    },
-  });
-
-  return {
-    id: response.id,
-    url: (response as { url?: string }).url || `https://notion.so/${response.id.replace(/-/g, '')}`,
-    domain,
-    title: parsed.title,
-    database: 'quick_todo',
-    properties: parsed.properties,
-  };
-}
-
-async function createFullTask(parsed: ParsedTask): Promise<CreateTaskResult> {
-  const notion = getNotionClient();
-  const domain = parsed.database as TaskDomain;
-  const config = DB_CONFIG[domain];
-
-  // Build properties object
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const properties: Record<string, any> = {};
-
-  // Title
-  properties[config.titleProperty] = {
-    title: [{ text: { content: parsed.title } }],
+  const properties: Record<string, any> = {
+    [PROPS.title]: { title: [{ text: { content: parsed.title } }] },
+    [PROPS.type]: { select: { name: 'Task' } },
+    [PROPS.domain]: { select: { name: capitalize(domain) } },
+    [PROPS.status]: { select: { name: 'To Do' } },
   };
 
-  // Status — always set to "todo" equivalent
-  if (config.statusPropertyType === 'status') {
-    properties[config.statusProperty] = { status: { name: 'Todo' } };
-  } else {
-    properties[config.statusProperty] = { select: { name: 'To Do' } };
-  }
-
-  // Assignee for work tasks
-  if (domain === 'work' && config.assigneeProperty) {
-    properties[config.assigneeProperty] = {
-      people: [{ id: NOTION_USER_ID }],
-    };
-  }
-
-  // Map AI-inferred properties to Notion format
+  // Map AI-inferred properties
   for (const [key, value] of Object.entries(parsed.properties)) {
     if (value === null || value === undefined) continue;
 
-    // Skip properties we already handle above or that aren't real Notion properties
-    if (
-      key === 'Domain' || key === 'Done' ||
-      key === config.statusProperty ||
-      key === config.titleProperty
-    ) continue;
+    // Skip properties we already set above
+    if (key === PROPS.status || key === PROPS.title || key === PROPS.domain || key === PROPS.type) continue;
 
-    // Determine the Notion property type from the key and domain
-    const propType = getPropertyType(domain, key);
+    const propType = getPropertyType(key);
 
     switch (propType) {
-      case 'status':
-        properties[key] = { status: { name: String(value) } };
-        break;
       case 'select':
         properties[key] = { select: { name: String(value) } };
-        break;
-      case 'multi_select':
-        if (Array.isArray(value)) {
-          properties[key] = {
-            multi_select: value.map((v) => ({ name: String(v) })),
-          };
-        }
         break;
       case 'date':
         properties[key] = { date: { start: String(value) } };
@@ -195,24 +115,21 @@ async function createFullTask(parsed: ParsedTask): Promise<CreateTaskResult> {
         };
         break;
       default:
-        // Unknown property type, try as rich_text
         properties[key] = {
           rich_text: [{ text: { content: String(value) } }],
         };
     }
   }
 
-  // Default due date: 1 week from now if not set by AI or user
-  const dueDateKey = config.dueDateProperty;
-  if (!properties[dueDateKey]) {
+  // Default due date: 1 week from now if not set
+  if (!properties[PROPS.dueDate]) {
     const oneWeekFromNow = new Date();
     oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
-    properties[dueDateKey] = { date: { start: oneWeekFromNow.toISOString().split('T')[0] } };
+    properties[PROPS.dueDate] = { date: { start: oneWeekFromNow.toISOString().split('T')[0] } };
   }
 
-  // Create the page
   const response = await notion.pages.create({
-    parent: { database_id: config.databaseId },
+    parent: { database_id: NOTION_DB_ID },
     properties,
   });
 
@@ -233,7 +150,6 @@ async function createFullTask(parsed: ParsedTask): Promise<CreateTaskResult> {
         });
       }
     } catch (err) {
-      // Page body is nice-to-have; don't fail the whole creation
       console.error('Failed to append page body:', err);
     }
   }
@@ -243,38 +159,25 @@ async function createFullTask(parsed: ParsedTask): Promise<CreateTaskResult> {
     url,
     domain,
     title: parsed.title,
-    database: parsed.database,
+    type: 'task',
     properties: parsed.properties,
   };
 }
 
 // --- Helpers ---
 
-export type NotionPropertyType = 'select' | 'multi_select' | 'date' | 'number' | 'rich_text' | 'status';
+export type NotionPropertyType = 'select' | 'date' | 'number' | 'rich_text';
 
-/** Map known property names to their Notion types per domain. */
-export function getPropertyType(domain: TaskDomain, propertyName: string): NotionPropertyType {
+export function getPropertyType(propertyName: string): NotionPropertyType {
   const typeMap: Record<string, NotionPropertyType> = {
-    // Work
     'Priority': 'select',
-    'Labels': 'multi_select',
-    'Due date': 'date',
-    'Due Date': 'date',
-    'Est Duration Hrs': 'number',
-    'Summary': 'rich_text',
-    // Career
     'Category': 'select',
-    'Phase': 'select',
-    'Cadence': 'select',
     'Time Estimate': 'select',
-    // Personal
-    'Description': 'rich_text',
+    'Due Date': 'date',
+    'Domain': 'select',
+    'Type': 'select',
+    'Status': 'select',
   };
-
-  // Status is handled separately above, but include for completeness
-  if (propertyName === 'Status') {
-    return domain === 'work' ? 'status' : 'select';
-  }
 
   return typeMap[propertyName] || 'rich_text';
 }

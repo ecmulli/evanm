@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiAuth } from '@/server/dashboard/auth';
 import { taskCache } from '@/server/dashboard/cache';
-import { fetchAllTasks, type FetchResult } from '@/server/dashboard/notion-queries';
-import type { TaskDomain, TaskStatus } from '@/server/dashboard/types';
+import { fetchAllTasks } from '@/server/dashboard/notion-queries';
+import type { TaskDomain, TaskStatus, UnifiedTask } from '@/server/dashboard/types';
 
 const CACHE_KEY = 'tasks:all';
 const CACHE_KEY_COMPLETED = 'tasks:all:completed';
+
+interface FetchResult {
+  tasks: UnifiedTask[];
+  errors: Record<string, string>;
+}
 
 async function getTasks(includeCompleted: boolean): Promise<FetchResult> {
   const cacheKey = includeCompleted ? CACHE_KEY_COMPLETED : CACHE_KEY;

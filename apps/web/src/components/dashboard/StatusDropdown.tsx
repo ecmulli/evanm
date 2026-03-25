@@ -1,17 +1,15 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import type { TaskDomain } from '@/server/dashboard/types';
-import { DOMAIN_STATUSES, STATUS_MAP, STATUS_CONFIG } from '@/server/dashboard/types';
+import { RAW_STATUSES, STATUS_MAP, STATUS_CONFIG } from '@/server/dashboard/types';
 
 interface StatusDropdownProps {
-  domain: TaskDomain;
   currentRawStatus: string;
   onStatusChange: (rawStatus: string) => void;
   disabled?: boolean;
 }
 
-export function StatusDropdown({ domain, currentRawStatus, onStatusChange, disabled }: StatusDropdownProps) {
+export function StatusDropdown({ currentRawStatus, onStatusChange, disabled }: StatusDropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -25,8 +23,7 @@ export function StatusDropdown({ domain, currentRawStatus, onStatusChange, disab
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const statuses = DOMAIN_STATUSES[domain];
-  const normalizedCurrent = STATUS_MAP[domain]?.[currentRawStatus] || 'todo';
+  const normalizedCurrent = STATUS_MAP[currentRawStatus] || 'todo';
   const currentConfig = STATUS_CONFIG[normalizedCurrent];
 
   return (
@@ -47,8 +44,8 @@ export function StatusDropdown({ domain, currentRawStatus, onStatusChange, disab
 
       {open && (
         <div className="absolute z-50 mt-1 py-1 bg-white rounded-xl shadow-lg border border-[#E5E0DB] min-w-[140px] left-0">
-          {statuses.map(rawStatus => {
-            const normalized = STATUS_MAP[domain]?.[rawStatus] || 'todo';
+          {RAW_STATUSES.map(rawStatus => {
+            const normalized = STATUS_MAP[rawStatus] || 'todo';
             const config = STATUS_CONFIG[normalized];
             const isActive = rawStatus === currentRawStatus;
             return (

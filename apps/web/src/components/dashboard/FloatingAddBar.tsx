@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Plus, Loader2, Sparkles, ExternalLink, X, Pencil, Check } from 'lucide-react';
 import type { TaskDomain, UnifiedTask } from '@/server/dashboard/types';
 import { DOMAIN_CONFIG } from '@/server/dashboard/types';
+import type { Todo } from '@/hooks/useTodos';
 
 const DOMAINS: TaskDomain[] = ['work', 'career', 'personal'];
 
@@ -26,7 +27,7 @@ interface CreatedTask {
   title: string;
   domain: TaskDomain;
   url: string;
-  database: string;
+  type: string;
 }
 
 interface EditResult {
@@ -40,11 +41,21 @@ interface FloatingAddBarProps {
   onAdd: (text: string, domain: TaskDomain) => Promise<void>;
   onSmartAdd?: (text: string, domain: TaskDomain) => Promise<unknown>;
   selectedTask?: UnifiedTask | null;
-  onEdit?: (instruction: string, task: UnifiedTask) => Promise<EditResult>;
+  selectedTodo?: Todo | null;
+  onEditTask?: (instruction: string, task: UnifiedTask) => Promise<EditResult>;
+  onEditTodo?: (instruction: string, todo: Todo) => Promise<unknown>;
   onDeselect?: () => void;
 }
 
-export function FloatingAddBar({ onAdd, onSmartAdd, selectedTask, onEdit, onDeselect }: FloatingAddBarProps) {
+export function FloatingAddBar({
+  onAdd,
+  onSmartAdd,
+  selectedTask,
+  selectedTodo,
+  onEditTask,
+  onEditTodo,
+  onDeselect,
+}: FloatingAddBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [selectedDomain, setSelectedDomain] = useState<TaskDomain>('personal');
   const [isAdding, setIsAdding] = useState(false);
@@ -56,7 +67,9 @@ export function FloatingAddBar({ onAdd, onSmartAdd, selectedTask, onEdit, onDese
   const [editSummary, setEditSummary] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const isEditMode = !!selectedTask;
+  const isEditMode = !!(selectedTask || selectedTodo);
+  const editItemTitle = selectedTask?.title || selectedTodo?.name || '';
+  const editItemDomain = selectedTask?.domain || selectedTodo?.domain || 'personal';
 
   // Auto-dismiss confirmation after 6 seconds
   useEffect(() => {
@@ -70,11 +83,11 @@ export function FloatingAddBar({ onAdd, onSmartAdd, selectedTask, onEdit, onDese
 
   // Clear edit state when deselecting
   useEffect(() => {
-    if (!selectedTask) {
+    if (!selectedTask && !selectedTodo) {
       setEditSummary(null);
       setSmartError(null);
     }
-  }, [selectedTask]);
+  }, [selectedTask, selectedTodo]);
 
   // Track visualViewport so the bar floats above the iOS keyboard
   useEffect(() => {
@@ -104,14 +117,19 @@ export function FloatingAddBar({ onAdd, onSmartAdd, selectedTask, onEdit, onDese
     setSmartError(null);
 
     try {
-      if (isEditMode && onEdit && selectedTask) {
-        // Edit mode: send instruction to AI
-        const result = await onEdit(text, selectedTask);
-        setInputValue('');
-        setEditSummary(result.updates.summary);
-        inputRef.current?.focus();
+      if (isEditMode) {
+        if (selectedTask && onEditTask) {
+          const result = await onEditTask(text, selectedTask);
+          setInputValue('');
+          setEditSummary(result.updates.summary);
+          inputRef.current?.focus();
+        } else if (selectedTodo && onEditTodo) {
+          const result = await onEditTodo(text, selectedTodo) as EditResult;
+          setInputValue('');
+          setEditSummary(result.updates.summary);
+          inputRef.current?.focus();
+        }
       } else if (isSmartMode && onSmartAdd) {
-        // Smart create mode
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result: any = await onSmartAdd(text, selectedDomain);
         setInputValue('');
@@ -119,11 +137,10 @@ export function FloatingAddBar({ onAdd, onSmartAdd, selectedTask, onEdit, onDese
           title: result.task.title,
           domain: result.task.domain,
           url: result.task.url,
-          database: result.task.database,
+          type: result.task.type || 'task',
         });
         inputRef.current?.focus();
       } else {
-        // Quick create mode
         await onAdd(text, selectedDomain);
         setInputValue('');
         inputRef.current?.focus();
@@ -135,7 +152,7 @@ export function FloatingAddBar({ onAdd, onSmartAdd, selectedTask, onEdit, onDese
     } finally {
       setIsAdding(false);
     }
-  }, [inputValue, selectedDomain, isAdding, isSmartMode, isEditMode, selectedTask, onAdd, onSmartAdd, onEdit]);
+  }, [inputValue, selectedDomain, isAdding, isSmartMode, isEditMode, selectedTask, selectedTodo, onAdd, onSmartAdd, onEditTask, onEditTodo]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -145,8 +162,8 @@ export function FloatingAddBar({ onAdd, onSmartAdd, selectedTask, onEdit, onDese
     }
   }, [handleSubmit, isEditMode, onDeselect]);
 
-  const domainColor = isEditMode && selectedTask
-    ? DOMAIN_CONFIG[selectedTask.domain].color
+  const domainColor = isEditMode
+    ? DOMAIN_CONFIG[editItemDomain].color
     : {
         work: '#1C2B4A',
         career: '#4A6B3A',
@@ -186,7 +203,7 @@ export function FloatingAddBar({ onAdd, onSmartAdd, selectedTask, onEdit, onDese
             <Sparkles className="w-3 h-3 flex-shrink-0" />
             <span className="font-medium truncate">{createdTask.title}</span>
             <span className="text-[10px] opacity-60 flex-shrink-0">
-              → {createdTask.database.replace('_', ' ')}
+              → {createdTask.type}
             </span>
             <a
               href={createdTask.url}
@@ -235,11 +252,11 @@ export function FloatingAddBar({ onAdd, onSmartAdd, selectedTask, onEdit, onDese
           </div>
         )}
 
-        {/* Top row: domain pills (create mode) or selected task chip (edit mode) */}
+        {/* Top row: domain pills (create mode) or selected item chip (edit mode) */}
         <div className="flex items-center gap-1.5 px-3.5 pt-3 pb-2">
-          {isEditMode && selectedTask ? (
+          {isEditMode ? (
             <>
-              {/* Selected task chip */}
+              {/* Selected item chip */}
               <div
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
                 style={{
@@ -248,13 +265,13 @@ export function FloatingAddBar({ onAdd, onSmartAdd, selectedTask, onEdit, onDese
                 }}
               >
                 <Pencil className="w-2.5 h-2.5" />
-                <span className="truncate max-w-[200px]">{selectedTask.title}</span>
+                <span className="truncate max-w-[200px]">{editItemTitle}</span>
               </div>
               <span
                 className="text-[10px] opacity-50 flex-shrink-0"
                 style={{ color: domainColor }}
               >
-                {DOMAIN_CONFIG[selectedTask.domain].label}
+                {selectedTodo ? 'To-Do' : DOMAIN_CONFIG[editItemDomain].label}
               </span>
               <button
                 onClick={onDeselect}
@@ -315,7 +332,7 @@ export function FloatingAddBar({ onAdd, onSmartAdd, selectedTask, onEdit, onDese
             className="text-[10px] px-3.5 pb-1 opacity-50"
             style={{ color: domainColor }}
           >
-            AI will route to the right tracker with inferred properties
+            AI will create a full task with inferred properties
           </div>
         )}
 
@@ -326,7 +343,7 @@ export function FloatingAddBar({ onAdd, onSmartAdd, selectedTask, onEdit, onDese
             style={{ color: domainColor }}
           >
             <Loader2 className="w-3 h-3 animate-spin" />
-            {isEditMode ? 'Updating task...' : 'Creating task with AI...'}
+            {isEditMode ? 'Updating...' : isSmartMode ? 'Creating task with AI...' : 'Adding...'}
           </div>
         )}
 
@@ -345,7 +362,9 @@ export function FloatingAddBar({ onAdd, onSmartAdd, selectedTask, onEdit, onDese
             onBlur={() => setIsFocused(false)}
             placeholder={
               isEditMode
-                ? 'Describe your edit...'
+                ? selectedTodo
+                  ? 'e.g., "schedule for 2pm today" or "rename to..."'
+                  : 'Describe your edit...'
                 : isSmartMode
                   ? 'Describe a task...'
                   : 'Add a to-do...'

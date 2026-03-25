@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { Check } from 'lucide-react';
-import type { UnifiedTask, TaskDomain } from '@/server/dashboard/types';
+import type { UnifiedTask } from '@/server/dashboard/types';
 import { denormalizeStatus } from '@/server/dashboard/types';
 
 interface CompleteCheckboxProps {
   task: UnifiedTask;
-  onStatusChange: (taskId: string, rawStatus: string, domain: TaskDomain) => void;
+  onStatusChange: (taskId: string, rawStatus: string) => void;
 }
 
 export function CompleteCheckbox({ task, onStatusChange }: CompleteCheckboxProps) {
@@ -21,11 +21,11 @@ export function CompleteCheckbox({ task, onStatusChange }: CompleteCheckboxProps
     if (isAnimating) return;
 
     const targetStatus = isCompleted ? 'todo' : 'done';
-    const rawStatus = denormalizeStatus(task.domain, targetStatus);
+    const rawStatus = denormalizeStatus(targetStatus);
     if (!rawStatus) return;
 
     setIsAnimating(true);
-    onStatusChange(task.id, rawStatus, task.domain);
+    onStatusChange(task.id, rawStatus);
 
     // Reset animation after a brief delay
     setTimeout(() => setIsAnimating(false), 600);

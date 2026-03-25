@@ -31,15 +31,15 @@ export function useTasks(options: UseTasksOptions = {}) {
 
   const { data, error, isLoading, mutate } = useSWR<TasksResponse>(url, authedFetcher, {
     revalidateOnFocus: false,
-    refreshInterval: 3 * 60 * 1000, // 3 minutes — match server cache TTL
+    refreshInterval: 3 * 60 * 1000,
     dedupingInterval: 5000,
   });
 
   const updateTaskStatus = useCallback(
-    async (taskId: string, rawStatus: string, domain: TaskDomain) => {
+    async (taskId: string, rawStatus: string) => {
       // Optimistic update
       if (data) {
-        const normalizedStatus = STATUS_MAP[domain]?.[rawStatus] || 'todo';
+        const normalizedStatus = STATUS_MAP[rawStatus] || 'todo';
         const optimisticTasks = data.tasks.map(t =>
           t.id === taskId ? { ...t, status: normalizedStatus, rawStatus } : t,
         );
@@ -49,17 +49,15 @@ export function useTasks(options: UseTasksOptions = {}) {
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: rawStatus, domain }),
+        body: JSON.stringify({ status: rawStatus }),
       });
 
       checkAuth(res);
       if (!res.ok) {
-        // Revert optimistic update on error
         mutate();
         throw new Error(`Failed to update: ${res.status}`);
       }
 
-      // Revalidate after successful write
       mutate();
     },
     [data, mutate],
@@ -82,7 +80,6 @@ export function useTasks(options: UseTasksOptions = {}) {
             domain: task.domain,
             metadata: task.metadata,
           },
-          domain: task.domain,
         }),
       });
 
@@ -94,7 +91,6 @@ export function useTasks(options: UseTasksOptions = {}) {
 
       const result = await res.json();
 
-      // Optimistic update: replace the edited task in the cache immediately
       if (result.task && data) {
         const updatedTasks = data.tasks.map(t =>
           t.id === task.id ? result.task : t,
@@ -102,7 +98,6 @@ export function useTasks(options: UseTasksOptions = {}) {
         mutate({ tasks: updatedTasks, count: updatedTasks.length }, false);
       }
 
-      // Also schedule a full revalidation to catch any side effects
       setTimeout(() => mutate(), 2000);
 
       return result;

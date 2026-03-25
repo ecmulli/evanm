@@ -1,6 +1,6 @@
-import type { TaskDomain, TaskPriority, TaskStatus, UnifiedTask } from './types';
+import type { TaskDomain, TaskPriority, TaskStatus, TaskType, UnifiedTask } from './types';
 import { PRIORITY_MAP, STATUS_MAP } from './types';
-import { DB_CONFIG } from './notion-client';
+import { PROPS } from './notion-client';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type NotionProperties = Record<string, any>;
@@ -16,24 +16,10 @@ function getTitle(props: NotionProperties, key: string): string {
   return '';
 }
 
-function getStatusValue(props: NotionProperties, key: string): string {
-  const prop = props[key];
-  if (!prop) return '';
-  if (prop.type === 'status') return prop.status?.name || '';
-  if (prop.type === 'select') return prop.select?.name || '';
-  return '';
-}
-
 function getSelect(props: NotionProperties, key: string): string | undefined {
   const prop = props[key];
-  if (!prop || prop.type !== 'select') return undefined;
-  return prop.select?.name || undefined;
-}
-
-function getMultiSelect(props: NotionProperties, key: string): string[] {
-  const prop = props[key];
-  if (!prop || prop.type !== 'multi_select') return [];
-  return prop.multi_select?.map((s: { name: string }) => s.name) || [];
+  if (!prop || (prop.type !== 'select' && prop.type !== 'status')) return undefined;
+  return prop.select?.name || prop.status?.name || undefined;
 }
 
 function getDate(props: NotionProperties, key: string): string | null {
@@ -75,78 +61,51 @@ function parseTimeEstimateToHours(estimate: string | undefined): number | null {
   return map[estimate] ?? null;
 }
 
-function getNumber(props: NotionProperties, key: string): number | undefined {
-  const prop = props[key];
-  if (!prop || prop.type !== 'number') return undefined;
-  return prop.number ?? undefined;
-}
-
-function getRichText(props: NotionProperties, key: string): string | undefined {
-  const prop = props[key];
-  if (!prop || prop.type !== 'rich_text') return undefined;
-  const text = prop.rich_text?.map((t: { plain_text: string }) => t.plain_text).join('');
-  return text || undefined;
-}
-
 // ===== Normalization =====
 
-function normalizeStatus(domain: TaskDomain, rawStatus: string): TaskStatus {
-  return STATUS_MAP[domain]?.[rawStatus] || 'todo';
-}
-
-function normalizePriority(domain: TaskDomain, rawPriority: string | undefined): TaskPriority | null {
-  if (!rawPriority) return null;
-  return PRIORITY_MAP[domain]?.[rawPriority] || null;
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function normalizeTask(page: any, domain: TaskDomain): UnifiedTask {
+export function normalizeTask(page: any): UnifiedTask {
   const props = page.properties;
-  const config = DB_CONFIG[domain];
 
-  const rawStatus = getStatusValue(props, config.statusProperty);
-  const rawPriority = config.priorityProperty ? getSelect(props, config.priorityProperty) : undefined;
+  const rawStatus = getSelect(props, PROPS.status) || '';
+  const rawPriority = getSelect(props, PROPS.priority);
+  const rawType = getSelect(props, PROPS.type) || 'Task';
+  const rawDomain = getSelect(props, PROPS.domain)?.toLowerCase() || 'personal';
+
+  const domain: TaskDomain =
+    rawDomain === 'work' || rawDomain === 'career' || rawDomain === 'personal'
+      ? rawDomain
+      : 'personal';
+
+  const type: TaskType = rawType === 'Quick To-Do' ? 'quick_todo' : 'task';
 
   // Extract full date range for start time and duration
-  const dateFull = getDateFull(props, config.dueDateProperty);
+  const dateFull = getDateFull(props, PROPS.dueDate);
   const startTime = extractStartTime(dateFull.start);
   const durationHours = calculateDurationFromRange(dateFull.start, dateFull.end);
 
+  const category = getSelect(props, PROPS.category);
+  const timeEstimate = getSelect(props, PROPS.timeEstimate);
+
   const task: UnifiedTask = {
     id: page.id,
-    title: getTitle(props, config.titleProperty),
+    title: getTitle(props, PROPS.title),
     notionUrl: page.url || `https://notion.so/${page.id.replace(/-/g, '')}`,
+    type,
     domain,
-    status: normalizeStatus(domain, rawStatus),
+    status: STATUS_MAP[rawStatus] || 'todo',
     rawStatus,
-    priority: normalizePriority(domain, rawPriority),
-    dueDate: getDate(props, config.dueDateProperty),
+    priority: rawPriority ? (PRIORITY_MAP[rawPriority] || null) : null,
+    dueDate: getDate(props, PROPS.dueDate),
     startTime,
-    durationHours,
-    metadata: {},
+    durationHours: durationHours || parseTimeEstimateToHours(timeEstimate),
+    metadata: {
+      category,
+      timeEstimate,
+    },
     createdAt: page.created_time,
     updatedAt: page.last_edited_time,
   };
-
-  // Domain-specific metadata + duration fallbacks
-  if (domain === 'work') {
-    task.metadata.labels = getMultiSelect(props, 'Labels');
-    task.metadata.estimatedHours = getNumber(props, 'Est Duration Hrs');
-    if (!task.durationHours && task.metadata.estimatedHours) {
-      task.durationHours = task.metadata.estimatedHours;
-    }
-  } else if (domain === 'career') {
-    task.metadata.phase = getSelect(props, 'Phase');
-    task.metadata.category = getSelect(props, 'Category');
-    task.metadata.cadence = getSelect(props, 'Cadence');
-    task.metadata.timeEstimate = getSelect(props, 'Time Estimate');
-    if (!task.durationHours) {
-      task.durationHours = parseTimeEstimateToHours(task.metadata.timeEstimate);
-    }
-  } else if (domain === 'personal') {
-    task.metadata.description = getRichText(props, 'Description');
-    task.metadata.personalCategory = getSelect(props, 'Category');
-  }
 
   return task;
 }
