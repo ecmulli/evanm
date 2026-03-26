@@ -2,6 +2,7 @@
 
 This guide helps AI agents (Cursor, Claude, etc.) understand how to add and manage content on evanm.xyz.
 
+
 ## Architecture Overview
 
 ```
