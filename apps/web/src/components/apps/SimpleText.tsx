@@ -45,21 +45,21 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
   };
 
   return (
-    <div className="p-4 h-full overflow-auto">
+    <div className="px-6 py-5 h-full overflow-auto sm:px-8 sm:py-6">
       {parentFolder && (
         <button
           onClick={() => openFolder(
             parentFolder.charAt(0).toUpperCase() + parentFolder.slice(1),
             parentFolder
           )}
-          className="mb-3 text-xs text-[#A0584A] hover:text-[#152A54] cursor-pointer flex items-center gap-1"
+          className="mb-4 text-xs tracking-wide uppercase text-[#A0584A] hover:text-[#152A54] cursor-pointer flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity"
         >
           <span>&larr;</span>
           <span>Back to {parentFolder.charAt(0).toUpperCase() + parentFolder.slice(1)}</span>
         </button>
       )}
       {isAboutMe && (
-        <div className="mb-4 flex justify-center">
+        <div className="mb-5 flex justify-center">
           <Image 
             src="/pfp.svg" 
             alt="Profile Picture" 
@@ -69,12 +69,11 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
           />
         </div>
       )}
-      <div className="markdown-content text-xs sm:text-sm leading-relaxed text-[#2A2520] max-w-prose">
+      <div className="markdown-content leading-[1.75] text-[#2A2520] max-w-[620px] mx-auto">
         <ReactMarkdown
           components={{
-            // Custom image rendering with Next.js Image
             img: ({ src, alt }) => (
-              <span className="block my-2">
+              <span className="block my-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img 
                   src={src || ''} 
@@ -83,7 +82,6 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
                 />
               </span>
             ),
-            // Style links - handle internal links specially
             a: ({ href, children }) => {
               const isInternal = href?.startsWith('#folder/') || href?.startsWith('#file/');
               
@@ -91,7 +89,7 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
                 return (
                   <button
                     onClick={() => handleInternalLink(href || '')}
-                    className="text-[#A0584A] underline hover:text-[#152A54] cursor-pointer"
+                    className="text-[#A0584A] underline decoration-[#A0584A]/40 underline-offset-2 hover:text-[#152A54] hover:decoration-[#152A54]/40 cursor-pointer transition-colors"
                   >
                     {children}
                   </button>
@@ -103,58 +101,61 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
                   href={href} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-[#A0584A] underline hover:text-[#152A54]"
+                  className="text-[#A0584A] underline decoration-[#A0584A]/40 underline-offset-2 hover:text-[#152A54] hover:decoration-[#152A54]/40 transition-colors"
                 >
                   {children}
                 </a>
               );
             },
-            // Style headers - make them visually distinct
             h1: ({ children }) => (
-              <h1 className="text-2xl font-bold mt-4 mb-3 text-[#152A54] border-b border-[#A0584A] pb-1">{children}</h1>
+              <h1 className="text-[1.65rem] font-bold mt-6 mb-4 text-[#152A54] border-b border-[#A0584A]/30 pb-2 leading-snug">{children}</h1>
             ),
             h2: ({ children }) => (
-              <h2 className="text-lg font-semibold mt-4 mb-2 text-[#152A54]">{children}</h2>
+              <h2 className="text-xl font-semibold mt-7 mb-3 text-[#152A54] leading-snug">{children}</h2>
             ),
             h3: ({ children }) => (
-              <h3 className="text-base font-semibold mt-3 mb-1 text-[#3A3530]">{children}</h3>
+              <h3 className="text-[1.05rem] font-semibold mt-5 mb-2 text-[#3A3530] leading-snug">{children}</h3>
             ),
-            // Style paragraphs
             p: ({ children }) => (
-              <p className="mb-2">{children}</p>
+              <p className="mb-4">{children}</p>
             ),
-            // Style lists
             ul: ({ children }) => (
-              <ul className="list-disc ml-4 mb-2">{children}</ul>
+              <ul className="list-disc ml-5 mb-4 space-y-1">{children}</ul>
             ),
             ol: ({ children }) => (
-              <ol className="list-decimal ml-4 mb-2">{children}</ol>
+              <ol className="list-decimal ml-5 mb-4 space-y-1">{children}</ol>
             ),
-            // Style code
+            li: ({ children }) => (
+              <li className="pl-1">{children}</li>
+            ),
             code: ({ children, className }) => {
               const isBlock = className?.includes('language-');
               if (isBlock) {
                 return (
-                  <code className="block bg-[#f5f5f5] p-2 my-2 rounded text-xs overflow-x-auto">
+                  <code className="block bg-[#f5f0eb] p-3 my-4 rounded text-[0.8rem] overflow-x-auto font-mono leading-relaxed border border-[#e8e0d8]">
                     {children}
                   </code>
                 );
               }
               return (
-                <code className="bg-[#f5f5f5] px-1 rounded text-xs">
+                <code className="bg-[#f5f0eb] px-1.5 py-0.5 rounded text-[0.85em] font-mono border border-[#e8e0d8]">
                   {children}
                 </code>
               );
             },
-            // Style blockquotes
             blockquote: ({ children }) => (
-              <blockquote className="border-l-2 border-[#A0584A] pl-2 my-2 italic text-gray-600">
+              <blockquote className="border-l-[3px] border-[#A0584A]/50 pl-4 my-5 italic text-[#6B6560]">
                 {children}
               </blockquote>
             ),
-            // Style horizontal rules
             hr: () => (
-              <hr className="my-3 border-t border-gray-300" />
+              <hr className="my-6 border-t border-[#e8e0d8]" />
+            ),
+            strong: ({ children }) => (
+              <strong className="font-semibold text-[#1A1714]">{children}</strong>
+            ),
+            em: ({ children }) => (
+              <em className="italic">{children}</em>
             ),
           }}
         >
