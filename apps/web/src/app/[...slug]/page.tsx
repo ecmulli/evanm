@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Desktop from '@/components/Desktop';
-import { textContents } from '@/data/content';
+import { ContentProvider } from '@/context/ContentContext';
+import { fetchNotionContent } from '@/server/content/notion-content';
+import { unstable_cache } from 'next/cache';
 
 const KNOWN_FOLDERS = ['thoughts', 'projects'];
 
@@ -12,25 +14,21 @@ function slugToContentId(slug: string[]): string {
   return slug.join('-');
 }
 
+// Cache content fetching with 60-second revalidation
+const getCachedContent = unstable_cache(
+  async () => fetchNotionContent(),
+  ['site-content'],
+  { revalidate: 60 }
+);
+
 interface PageProps {
   params: Promise<{ slug: string[] }>;
-}
-
-export function generateStaticParams() {
-  return Object.keys(textContents).map((contentId) => {
-    for (const folder of KNOWN_FOLDERS) {
-      if (contentId.startsWith(`${folder}-`)) {
-        const fileSlug = contentId.slice(folder.length + 1);
-        return { slug: [folder, fileSlug] };
-      }
-    }
-    return { slug: [contentId] };
-  });
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const contentId = slugToContentId(slug);
+  const { textContents } = await getCachedContent();
   const content = textContents[contentId];
 
   if (!content) {
@@ -57,11 +55,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function ContentPage({ params }: PageProps) {
   const { slug } = await params;
   const contentId = slugToContentId(slug);
-  const content = textContents[contentId];
+  const content = await getCachedContent();
 
-  if (!content) {
+  if (!content.textContents[contentId]) {
     notFound();
   }
 
-  return <Desktop initialContentId={contentId} />;
+  return (
+    <ContentProvider content={content}>
+      <Desktop initialContentId={contentId} />
+    </ContentProvider>
+  );
 }

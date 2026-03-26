@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
-import { getTextContent } from '@/data/content';
+import { useTextContent } from '@/context/ContentContext';
 import { useOpenApp } from '@/hooks/useWindow';
 
 interface SimpleTextProps {
@@ -11,7 +11,7 @@ interface SimpleTextProps {
 }
 
 export default function SimpleText({ contentId }: SimpleTextProps) {
-  const content = getTextContent(contentId);
+  const content = useTextContent(contentId);
   const { openFolder, openSimpleText } = useOpenApp();
 
   if (!content) {
@@ -45,7 +45,7 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
   };
 
   return (
-    <div className="p-4 h-full overflow-auto">
+    <div className="p-4 xl:p-6 2xl:p-8 h-full overflow-auto">
       {parentFolder && (
         <button
           onClick={() => openFolder(
@@ -69,7 +69,7 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
           />
         </div>
       )}
-      <div className="markdown-content text-sm sm:text-xs leading-relaxed text-[#1a1510] font-semibold">
+      <div className="markdown-content text-xs sm:text-sm xl:text-base 2xl:text-lg leading-relaxed text-[#2A2520]">
         <ReactMarkdown
           components={{
             // Custom image rendering with Next.js Image
@@ -111,13 +111,13 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
             },
             // Style headers - make them visually distinct
             h1: ({ children }) => (
-              <h1 className="text-xl font-bold mt-4 mb-3 text-[#152A54] border-b border-[#A0584A] pb-1">{children}</h1>
+              <h1 className="text-2xl 2xl:text-3xl font-bold mt-4 mb-3 text-[#152A54] border-b border-[#A0584A] pb-1">{children}</h1>
             ),
             h2: ({ children }) => (
-              <h2 className="text-lg font-bold mt-4 mb-2 text-[#152A54]">{children}</h2>
+              <h2 className="text-lg 2xl:text-xl font-semibold mt-4 mb-2 text-[#152A54]">{children}</h2>
             ),
             h3: ({ children }) => (
-              <h3 className="text-base font-bold mt-3 mb-1 text-[#3A3530]">{children}</h3>
+              <h3 className="text-base font-semibold mt-3 mb-1 text-[#3A3530]">{children}</h3>
             ),
             // Style paragraphs
             p: ({ children }) => (
@@ -135,13 +135,13 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
               const isBlock = className?.includes('language-');
               if (isBlock) {
                 return (
-                  <code className="block bg-[#f5f5f5] p-2 my-2 rounded text-[10px] overflow-x-auto">
+                  <code className="block bg-[#f5f5f5] p-2 my-2 rounded text-xs overflow-x-auto">
                     {children}
                   </code>
                 );
               }
               return (
-                <code className="bg-[#f5f5f5] px-1 rounded text-[10px]">
+                <code className="bg-[#f5f5f5] px-1 rounded text-xs">
                   {children}
                 </code>
               );

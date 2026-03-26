@@ -3,7 +3,7 @@
 import React from 'react';
 import { PixelFileIcon } from '@/components/PixelIcons';
 import { useOpenApp } from '@/hooks/useWindow';
-import { getFolderContent } from '@/data/content';
+import { useFolderContent } from '@/context/ContentContext';
 
 interface FolderProps {
   contentId: string;
@@ -11,7 +11,7 @@ interface FolderProps {
 
 export default function Folder({ contentId }: FolderProps) {
   const { openSimpleText } = useOpenApp();
-  const folder = getFolderContent(contentId);
+  const folder = useFolderContent(contentId);
 
   if (!folder) {
     return (
@@ -41,10 +41,10 @@ export default function Folder({ contentId }: FolderProps) {
               }
             }}
           >
-            <div className="w-12 h-12 flex items-center justify-center">
+            <div className="w-14 h-14 flex items-center justify-center">
               <PixelFileIcon color="#152A54" />
             </div>
-            <span className="text-[10px] text-center mt-1 max-w-[70px] break-words text-gray-800">
+            <span className="text-xs text-center mt-1 max-w-[100px] break-words text-gray-800">
               {item.label}
             </span>
           </div>

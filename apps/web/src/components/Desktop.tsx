@@ -10,7 +10,7 @@ import Folder from './apps/Folder';
 import { useWindow } from '@/hooks/useWindow';
 import { useView } from '@/context/ViewContext';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { desktopIcons, getTextContent } from '@/data/content';
+import { useDesktopIcons, useTextContent } from '@/context/ContentContext';
 import { WindowState } from '@/types/window';
 
 const KNOWN_FOLDERS = ['thoughts', 'projects'];
@@ -59,13 +59,14 @@ export default function Desktop({ initialContentId }: DesktopProps) {
   const { visibleWindows, closeWindow, openWindow, updateWindowPosition } = useWindow();
   const { settings } = useView();
   const isMobile = useIsMobile();
+  const desktopIcons = useDesktopIcons();
+  const initialContent = useTextContent(initialContentId || 'about-me');
 
   // Open initial content window centered on page load
   useEffect(() => {
     if (visibleWindows.length === 0) {
       const contentId = initialContentId || 'about-me';
-      const content = getTextContent(contentId);
-      const title = content?.title || 'About Me.txt';
+      const title = initialContent?.title || 'About Me.txt';
 
       openWindow({
         appType: 'simpletext',

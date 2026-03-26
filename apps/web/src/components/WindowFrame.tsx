@@ -85,7 +85,7 @@ export default function WindowFrame({
 
         {/* Window Content */}
         <div
-          className="overflow-auto bg-white"
+          className="overflow-auto bg-white font-sans text-sm antialiased break-words"
           style={{ height: 'calc(100% - 26px)' }}
         >
           {children}
@@ -109,7 +109,7 @@ export default function WindowFrame({
         className="retro-window absolute"
         style={{
           width: typeof width === 'number' ? `${width}px` : width,
-          maxWidth: '750px',
+          maxWidth: 'clamp(750px, 50vw, 1100px)',
           minWidth: `${minWidth}px`,
           height: typeof height === 'number' ? `${height}px` : height,
           minHeight: `${minHeight}px`,
@@ -144,7 +144,7 @@ export default function WindowFrame({
 
         {/* Window Content */}
         <div
-          className="overflow-auto bg-white"
+          className="overflow-auto bg-white font-sans text-sm antialiased break-words"
           style={{
             height: `calc(100% - 26px)`,
           }}

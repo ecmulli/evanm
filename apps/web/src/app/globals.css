@@ -138,8 +138,6 @@ body {
   font-size: 12px;
   color: var(--text-primary);
   background-color: var(--desktop-bg);
-  -webkit-font-smoothing: none;
-  -moz-osx-font-smoothing: auto;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   overflow: hidden;
@@ -291,7 +289,7 @@ body {
 .retro-window {
   background-color: var(--window-bg);
   border: 3px solid var(--border-color);
-  box-shadow: 
+  box-shadow:
     6px 6px 0px var(--border-color),
     inset 0 0 0 1px rgba(255,255,255,0.5);
   border-radius: 0;
@@ -342,7 +340,9 @@ body {
   background-color: var(--titlebar-bg);
   padding: 2px 10px;
   font-weight: bold;
-  font-size: 11px;
+  font-size: 12px;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: auto;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -448,7 +448,9 @@ body {
 .retro-menu-item {
   padding: 2px 12px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: auto;
   font-weight: normal;
   transition: none;
 }
@@ -496,12 +498,11 @@ body {
   max-width: 86px;
   word-wrap: break-word;
   color: white;
-  text-shadow: 
-    1px 1px 0px #000,
-    -1px -1px 0px #000,
-    1px -1px 0px #000,
-    -1px 1px 0px #000,
-    2px 2px 2px rgba(0,0,0,0.5);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: auto;
+  text-shadow:
+    0 1px 3px rgba(0,0,0,0.9),
+    0 0 6px rgba(0,0,0,0.4);
 }
 
 /* Mobile Responsive Styles */
