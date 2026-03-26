@@ -45,7 +45,7 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
   };
 
   return (
-    <div className="px-6 py-5 h-full overflow-auto sm:px-8 sm:py-6">
+    <div className="px-6 py-5 h-full overflow-auto sm:px-8 sm:py-6 2xl:px-10 2xl:py-8">
       {parentFolder && (
         <button
           onClick={() => openFolder(
@@ -69,7 +69,7 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
           />
         </div>
       )}
-      <div className="markdown-content leading-[1.75] text-[#2A2520] max-w-[620px] mx-auto">
+      <div className="markdown-content leading-[1.75] text-[#2A2520]">
         <ReactMarkdown
           components={{
             img: ({ src, alt }) => (
@@ -108,10 +108,10 @@ export default function SimpleText({ contentId }: SimpleTextProps) {
               );
             },
             h1: ({ children }) => (
-              <h1 className="text-[1.65rem] font-bold mt-6 mb-4 text-[#152A54] border-b border-[#A0584A]/30 pb-2 leading-snug">{children}</h1>
+              <h1 className="text-[1.65rem] 2xl:text-3xl font-bold mt-6 mb-4 text-[#152A54] border-b border-[#A0584A]/30 pb-2 leading-snug">{children}</h1>
             ),
             h2: ({ children }) => (
-              <h2 className="text-xl font-semibold mt-7 mb-3 text-[#152A54] leading-snug">{children}</h2>
+              <h2 className="text-xl 2xl:text-2xl font-semibold mt-7 mb-3 text-[#152A54] leading-snug">{children}</h2>
             ),
             h3: ({ children }) => (
               <h3 className="text-[1.05rem] font-semibold mt-5 mb-2 text-[#3A3530] leading-snug">{children}</h3>
