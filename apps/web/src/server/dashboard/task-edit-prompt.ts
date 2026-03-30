@@ -13,6 +13,7 @@ All items (Tasks and Quick To-Dos) share the same property names:
 
 Editable properties:
 - "Name" (title): Item title
+- "Type" (select): "Task" | "Quick To-Do"
 - "Status" (select): "To Do" | "In Progress" | "Done" | "Skipped" | "Cancelled"
 - "Priority" (select): "Urgent" | "High" | "Medium" | "Low" | "None"
 - "Category" (select): "Content - Post" | "Content - Article" | "Community Engagement" | "Networking" | "Portfolio / Open Source" | "LinkedIn Profile" | "Job Search" | "Admin" | "Family" | "Household" | "Other"
@@ -71,5 +72,6 @@ Return ONLY valid JSON (no markdown, no code fences, no explanation) with this s
 2. Use the exact property names and option values from the schema.
 3. For "pageBodyUpdate", use "append" when the user wants to add a note. Use "replace" only to rewrite a section. Use "none" (with null content) for property-only edits.
 4. If the instruction is ambiguous, return your best interpretation and explain in summary.
-5. The item type (Task vs Quick To-Do) doesn't affect which properties you can edit — they share the same schema.`;
+5. The item type (Task vs Quick To-Do) doesn't affect which properties you can edit — they share the same schema.
+6. **Promoting to Task**: When the user says "promote to task", "make this a task", "convert to task", or similar, set "Type" to "Task". Also infer and set reasonable defaults for Priority (default "Medium"), Category, and Time Estimate based on the item's title and domain — since Quick To-Dos typically lack these properties. Include a pageBody with "append" action containing a brief Summary section.`;
 }
