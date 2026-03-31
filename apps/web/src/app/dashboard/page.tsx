@@ -130,6 +130,10 @@ export default function DashboardPage() {
         <DailyTaskView
           tasks={tasks}
           onStatusChange={handleStatusChange}
+          selectedTaskId={selectedTask?.id ?? null}
+          selectedTodoId={selectedTodo?.id ?? null}
+          onSelectTask={handleSelectTask}
+          onSelectTodo={handleSelectTodo}
         />
 
         {/* Quick To-Dos */}

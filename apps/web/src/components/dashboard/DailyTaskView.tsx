@@ -60,20 +60,33 @@ function formatDateLabel(date: Date): string {
 
 function DailyTodoItem({
   todo,
+  isSelected,
   onToggle,
   onDelete,
+  onSelect,
 }: {
   todo: Todo;
+  isSelected: boolean;
   onToggle: (id: string, done: boolean) => void;
   onDelete: (id: string) => void;
+  onSelect: (todo: Todo) => void;
 }) {
   const [deleting, setDeleting] = useState(false);
   const checkStyles = DOMAIN_CHECK_STYLES[todo.domain] ?? DOMAIN_CHECK_STYLES.personal;
 
   return (
-    <div className="group flex items-center gap-3 py-2 px-1 rounded-lg transition-all duration-200 hover:bg-[#F0EEEB]">
+    <div
+      onClick={() => onSelect(todo)}
+      className={`group flex items-center gap-3 py-2 px-1 rounded-lg transition-all duration-200 cursor-pointer ${
+        isSelected
+          ? 'bg-[#E8EDF5] ring-1 ring-[#1C2B4A]/20'
+          : todo.done
+            ? 'opacity-40'
+            : 'hover:bg-[#F0EEEB]'
+      }`}
+    >
       <button
-        onClick={() => onToggle(todo.id, !todo.done)}
+        onClick={(e) => { e.stopPropagation(); onToggle(todo.id, !todo.done); }}
         className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
           todo.done ? checkStyles.checked : checkStyles.unchecked
         }`}
@@ -122,18 +135,27 @@ function DailyTodoItem({
 
 function DailyTaskItem({
   task,
+  isSelected,
   onStatusChange,
+  onSelect,
 }: {
   task: UnifiedTask;
+  isSelected: boolean;
   onStatusChange: (taskId: string, rawStatus: string) => void;
+  onSelect: (task: UnifiedTask) => void;
 }) {
   const isCompleted = task.status === 'done' || task.status === 'cancelled';
   const config = DOMAIN_CONFIG[task.domain];
 
   return (
     <div
-      className={`flex items-center gap-2 py-2 px-1 rounded-lg transition-all duration-200 hover:bg-[#F0EEEB] ${
-        isCompleted ? 'opacity-50' : ''
+      onClick={() => onSelect(task)}
+      className={`flex items-center gap-2 py-2 px-1 rounded-lg transition-all duration-200 cursor-pointer ${
+        isSelected
+          ? 'bg-[#E8EDF5] ring-1 ring-[#1C2B4A]/20'
+          : isCompleted
+            ? 'opacity-50 hover:bg-[#F0EEEB]'
+            : 'hover:bg-[#F0EEEB]'
       }`}
     >
       <CompleteCheckbox task={task} onStatusChange={onStatusChange} />
@@ -170,9 +192,20 @@ function DailyTaskItem({
 interface DailyTaskViewProps {
   tasks: UnifiedTask[];
   onStatusChange: (taskId: string, rawStatus: string) => void;
+  selectedTaskId?: string | null;
+  selectedTodoId?: string | null;
+  onSelectTask?: (task: UnifiedTask) => void;
+  onSelectTodo?: (todo: Todo) => void;
 }
 
-export function DailyTaskView({ tasks, onStatusChange }: DailyTaskViewProps) {
+export function DailyTaskView({
+  tasks,
+  onStatusChange,
+  selectedTaskId,
+  selectedTodoId,
+  onSelectTask,
+  onSelectTodo,
+}: DailyTaskViewProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const touchStartX = useRef<number | null>(null);
@@ -379,14 +412,18 @@ export function DailyTaskView({ tasks, onStatusChange }: DailyTaskViewProps) {
                           <DailyTodoItem
                             key={item.data.id}
                             todo={item.data}
+                            isSelected={selectedTodoId === item.data.id}
                             onToggle={handleToggleTodo}
                             onDelete={handleDeleteTodo}
+                            onSelect={(todo) => onSelectTodo?.(todo)}
                           />
                         ) : (
                           <DailyTaskItem
                             key={item.data.id}
                             task={item.data}
+                            isSelected={selectedTaskId === item.data.id}
                             onStatusChange={onStatusChange}
+                            onSelect={(task) => onSelectTask?.(task)}
                           />
                         ),
                       )}
