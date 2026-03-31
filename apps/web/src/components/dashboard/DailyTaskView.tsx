@@ -25,8 +25,6 @@ import { DOMAIN_CONFIG } from '@/server/dashboard/types';
 import { CompleteCheckbox } from './CompleteCheckbox';
 import { StatusDropdown } from './StatusDropdown';
 
-const DOMAINS: TaskDomain[] = ['work', 'career', 'personal'];
-
 const DOMAIN_CHECK_STYLES: Record<TaskDomain, { checked: string; unchecked: string }> = {
   work: {
     checked: 'bg-[#1C2B4A] border-[#1C2B4A]',
@@ -73,11 +71,12 @@ function DailyTodoItem({
 }) {
   const [deleting, setDeleting] = useState(false);
   const checkStyles = DOMAIN_CHECK_STYLES[todo.domain] ?? DOMAIN_CHECK_STYLES.personal;
+  const config = DOMAIN_CONFIG[todo.domain];
 
   return (
     <div
       onClick={() => onSelect(todo)}
-      className={`group flex items-center gap-3 py-2 px-1 rounded-lg transition-all duration-200 cursor-pointer ${
+      className={`group flex items-center gap-2 py-2 px-1 rounded-lg transition-all duration-200 cursor-pointer ${
         isSelected
           ? 'bg-[#E8EDF5] ring-1 ring-[#1C2B4A]/20'
           : todo.done
@@ -93,6 +92,10 @@ function DailyTodoItem({
       >
         {todo.done && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
       </button>
+      <span
+        className="w-1 self-stretch rounded-full flex-shrink-0"
+        style={{ backgroundColor: config.color }}
+      />
 
       <span
         className={`flex-1 text-[15px] leading-relaxed text-[#1A1714] ${
@@ -258,20 +261,32 @@ export function DailyTaskView({
     return items;
   }, [tasks, todos, selectedDateStr, isToday]);
 
-  // Group items by domain
-  const groupedByDomain = useMemo(() => {
-    const groups: Partial<Record<TaskDomain, DailyItem[]>> = {};
-    for (const domain of DOMAINS) {
-      const domainItems = dailyItems.filter(item => {
-        const d = item.kind === 'task' ? item.data.domain : item.data.domain;
-        return d === domain;
-      });
-      if (domainItems.length > 0) groups[domain] = domainItems;
+  // Sort items chronologically by start time (items without time go to end)
+  const sortedItems = useMemo(() => {
+    function getTimeMinutes(item: DailyItem): number | null {
+      const timeStr = item.kind === 'task' ? item.data.startTime : item.data.startTime;
+      if (!timeStr) return null;
+      const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+      if (!match) return null;
+      let hours = parseInt(match[1], 10);
+      const minutes = parseInt(match[2], 10);
+      const period = match[3].toUpperCase();
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      return hours * 60 + minutes;
     }
-    return groups;
+
+    return [...dailyItems].sort((a, b) => {
+      const aTime = getTimeMinutes(a);
+      const bTime = getTimeMinutes(b);
+      if (aTime !== null && bTime !== null) return aTime - bTime;
+      if (aTime !== null) return -1;
+      if (bTime !== null) return 1;
+      return 0;
+    });
   }, [dailyItems]);
 
-  const itemCount = dailyItems.length;
+  const itemCount = sortedItems.length;
 
   const goToPrev = useCallback(() => setSelectedDate(d => subDays(d, 1)), []);
   const goToNext = useCallback(() => setSelectedDate(d => addDays(d, 1)), []);
@@ -394,42 +409,27 @@ export function DailyTaskView({
                 Nothing scheduled for {dateLabel.toLowerCase()}
               </p>
             ) : (
-              <div>
-                {DOMAINS.map(domain => {
-                  const items = groupedByDomain[domain];
-                  if (!items) return null;
-                  const config = DOMAIN_CONFIG[domain];
-                  return (
-                    <div key={domain} className="mb-1">
-                      <div
-                        className="text-[10px] font-bold uppercase tracking-widest mb-0.5 px-1 pt-2"
-                        style={{ color: config.color }}
-                      >
-                        {config.label}
-                      </div>
-                      {items.map(item =>
-                        item.kind === 'todo' ? (
-                          <DailyTodoItem
-                            key={item.data.id}
-                            todo={item.data}
-                            isSelected={selectedTodoId === item.data.id}
-                            onToggle={handleToggleTodo}
-                            onDelete={handleDeleteTodo}
-                            onSelect={(todo) => onSelectTodo?.(todo)}
-                          />
-                        ) : (
-                          <DailyTaskItem
-                            key={item.data.id}
-                            task={item.data}
-                            isSelected={selectedTaskId === item.data.id}
-                            onStatusChange={onStatusChange}
-                            onSelect={(task) => onSelectTask?.(task)}
-                          />
-                        ),
-                      )}
-                    </div>
-                  );
-                })}
+              <div className="pt-1">
+                {sortedItems.map(item =>
+                  item.kind === 'todo' ? (
+                    <DailyTodoItem
+                      key={item.data.id}
+                      todo={item.data}
+                      isSelected={selectedTodoId === item.data.id}
+                      onToggle={handleToggleTodo}
+                      onDelete={handleDeleteTodo}
+                      onSelect={(todo) => onSelectTodo?.(todo)}
+                    />
+                  ) : (
+                    <DailyTaskItem
+                      key={item.data.id}
+                      task={item.data}
+                      isSelected={selectedTaskId === item.data.id}
+                      onStatusChange={onStatusChange}
+                      onSelect={(task) => onSelectTask?.(task)}
+                    />
+                  ),
+                )}
               </div>
             )}
           </div>
