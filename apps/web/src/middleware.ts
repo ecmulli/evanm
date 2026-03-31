@@ -2,18 +2,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  if (pathname.startsWith('/dashboard')) {
-    const token = request.cookies.get('bearerToken')?.value;
-    
-    if (!token) {
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-  }
-
+  // Dashboard is accessible to everyone (demo mode for unauthenticated users)
+  // Auth state is handled client-side in the dashboard page
   return NextResponse.next();
 }
 

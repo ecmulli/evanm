@@ -109,8 +109,30 @@ export function BrandLogoIcon() {
   );
 }
 
+export function PixelDashboardIcon({ color = BRAND.navy }: { color?: string }) {
+  return (
+    <svg width="48" height="48" viewBox="0 0 16 16" style={{ imageRendering: 'pixelated' }}>
+      {/* Clipboard body */}
+      <rect x="2" y="3" width="12" height="12" fill={BRAND.cream} />
+      <rect x="2" y="3" width="12" height="12" fill="none" stroke="#3A3530" strokeWidth="1" />
+
+      {/* Clipboard clip */}
+      <rect x="5" y="1" width="6" height="4" rx="1" fill={BRAND.silver} stroke="#3A3530" strokeWidth="1" />
+      <rect x="6" y="2" width="4" height="2" fill={BRAND.cream} />
+
+      {/* Checklist lines */}
+      <rect x="4" y="7" width="2" height="1" fill={color} />
+      <rect x="7" y="7" width="5" height="1" fill={color} opacity="0.5" />
+      <rect x="4" y="9" width="2" height="1" fill={BRAND.terracotta} />
+      <rect x="7" y="9" width="5" height="1" fill={BRAND.terracotta} opacity="0.5" />
+      <rect x="4" y="11" width="2" height="1" fill={BRAND.moss} />
+      <rect x="7" y="11" width="5" height="1" fill={BRAND.moss} opacity="0.5" />
+    </svg>
+  );
+}
+
 interface PixelIconProps {
-  type: 'file' | 'folder' | 'app';
+  type: 'file' | 'folder' | 'app' | 'dashboard';
   color?: string;
 }
 
@@ -122,6 +144,8 @@ export default function PixelIcon({ type, color }: PixelIconProps) {
       return <PixelFolderIcon color={color || BRAND.olive} />;
     case 'app':
       return <PixelStickyIcon color={color || BRAND.terracotta} />;
+    case 'dashboard':
+      return <PixelDashboardIcon color={color || BRAND.navy} />;
     default:
       return <PixelFileIcon color={color} />;
   }

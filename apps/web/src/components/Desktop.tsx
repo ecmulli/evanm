@@ -11,7 +11,7 @@ import { useWindow } from '@/hooks/useWindow';
 import { useView } from '@/context/ViewContext';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useDesktopIcons, useTextContent } from '@/context/ContentContext';
-import { WindowState } from '@/types/window';
+import { DesktopIconConfig, WindowState } from '@/types/window';
 
 const KNOWN_FOLDERS = ['thoughts', 'projects'];
 
@@ -61,6 +61,15 @@ export default function Desktop({ initialContentId }: DesktopProps) {
   const isMobile = useIsMobile();
   const desktopIcons = useDesktopIcons();
   const initialContent = useTextContent(initialContentId || 'about-me');
+
+  const dashboardIcon: DesktopIconConfig = {
+    id: 'dashboard',
+    label: 'Dashboard',
+    iconType: 'dashboard',
+    appType: 'simpletext',
+    href: '/dashboard',
+  };
+  const allIcons = [...desktopIcons, dashboardIcon];
 
   // Open initial content window centered on page load
   useEffect(() => {
@@ -129,7 +138,7 @@ export default function Desktop({ initialContentId }: DesktopProps) {
             ? "absolute bottom-2 left-0 right-0 flex justify-center gap-2 z-10"
             : "absolute top-4 right-4 flex flex-col gap-1 z-10"
         }>
-          {desktopIcons.map((icon) => (
+          {allIcons.map((icon) => (
             <DesktopIcon key={icon.id} config={icon} />
           ))}
         </div>

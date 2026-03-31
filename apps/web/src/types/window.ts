@@ -38,9 +38,10 @@ export interface WindowContextType {
 export interface DesktopIconConfig {
   id: string;
   label: string;
-  iconType: 'file' | 'folder' | 'app';
+  iconType: 'file' | 'folder' | 'app' | 'dashboard';
   appType: AppType;
   contentId?: string;
+  href?: string;
 }
 
 export interface StickyNote {
