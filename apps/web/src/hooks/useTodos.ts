@@ -27,11 +27,11 @@ interface EditResult {
   };
 }
 
-export function useTodos(includeCompleted = false) {
+export function useTodos(includeCompleted = false, disabled = false) {
   const url = `/api/todos${includeCompleted ? '?includeCompleted=true' : ''}`;
 
   const { data, error, isLoading, mutate } = useSWR<TodosResponse>(
-    url,
+    disabled ? null : url,
     authedFetcher,
     {
       revalidateOnFocus: false,

@@ -35,9 +35,11 @@ export default function DashboardPage() {
   const editTodoRef = useRef<(instruction: string, todo: Todo) => Promise<unknown>>(() => Promise.resolve());
 
   // Always call both hooks (React rules of hooks) — use results conditionally
+  // Pass disabled when in demo mode to prevent SWR from making API calls
   const realTasks = useTasks({
     domain: domainFilter ?? undefined,
     includeCompleted: showCompleted,
+    disabled: isDemo,
   });
   const demoTasks = useDemoTasks({
     domain: domainFilter ?? undefined,

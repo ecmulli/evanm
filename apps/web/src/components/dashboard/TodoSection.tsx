@@ -158,7 +158,7 @@ export function TodoSection({
   const [isExpanded, setIsExpanded] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
 
-  const hookResult = useTodos(showCompleted);
+  const hookResult = useTodos(showCompleted, !!injectedTodos);
   const { todos, isLoading, addTodo, toggleTodo, deleteTodo, editTodo, createSmartTask } =
     injectedTodos ?? hookResult;
 
