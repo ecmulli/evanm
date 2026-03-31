@@ -104,7 +104,14 @@ export async function createTaskInNotion(
         properties[key] = { select: { name: String(value) } };
         break;
       case 'date':
-        properties[key] = { date: { start: String(value) } };
+        if (typeof value === 'object' && value !== null && !Array.isArray(value) && 'start' in value) {
+          const dateRange = value as { start: string; end?: string };
+          properties[key] = {
+            date: { start: dateRange.start, ...(dateRange.end ? { end: dateRange.end } : {}) },
+          };
+        } else {
+          properties[key] = { date: { start: String(value) } };
+        }
         break;
       case 'number':
         properties[key] = { number: Number(value) };

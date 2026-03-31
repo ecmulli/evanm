@@ -17,7 +17,7 @@ All tasks go into a single database. The user selects a Domain (Work, Career, Pe
 - "Priority" (select): "Urgent" | "High" | "Medium" | "Low" | "None" — default "Medium"
 - "Category" (select): Pick the best fit from: "Content - Post" | "Content - Article" | "Community Engagement" | "Networking" | "Portfolio / Open Source" | "LinkedIn Profile" | "Job Search" | "Admin" | "Family" | "Household" | "Other" — infer from the task and domain
 - "Time Estimate" (select): "10 min" | "30 min" | "60 min" | "90+ min" — infer if possible
-- "Due Date" (date): ISO date string if mentioned, null otherwise
+- "Due Date" (date): See Date Format section below
 
 ### Domain Hints
 - **Work**: job-related tasks, data engineering, analytics, dashboards, meetings, stakeholder requests
@@ -34,6 +34,18 @@ Today's date is ${currentDate}. Resolve relative dates:
 - "end of month" → last day of current month
 
 **IMPORTANT: All times are in US Central Time (America/Chicago).** If the user mentions a specific time, include the Central Time offset in the ISO string. Use -06:00 for CST (Nov–Mar) or -05:00 for CDT (Mar–Nov). Since today is ${currentDate}, determine the correct offset based on whether US daylight saving time is in effect.
+
+## Date Format
+
+The "Due Date" property supports two formats:
+
+1. **Date-only** (just a due date, no specific time): Use an ISO date string: "2026-03-14"
+2. **Date with time** (time-blocked / scheduled): Return an object with start and end, using the Central Time offset:
+   { "start": "2026-03-14T13:00:00-05:00", "end": "2026-03-14T14:00:00-05:00" }
+
+Use format 2 when the user mentions a specific start time, scheduling, or duration. Calculate the end time by adding the duration to the start time. If the user says "at 1pm for 2 hours", return { "start": "..T13:00:00-05:00", "end": "..T15:00:00-05:00" }.
+
+If the user mentions a time but no duration, default to 1 hour for the end time.
 
 If no due date is mentioned, set it to null — the system will default to 1 week from today.
 
@@ -64,6 +76,7 @@ Return ONLY valid JSON (no markdown, no code fences, no explanation) with this s
     // Only include properties relevant to the task
     // Use exact property names and option values from the schema above
     // Do NOT include Name, Status, Domain, or Type — those are set automatically
+    // For "Due Date": use a string for date-only ("2026-03-14") or an object for time-blocked: { "start": "...", "end": "..." }
   },
   "pageBody": "## Summary\\nDescription...\\n\\n## Suggested Approach\\n- Step 1...\\n\\n## Notes & Resources\\n- Note 1...",
   "confidence": "high" | "medium" | "low"
