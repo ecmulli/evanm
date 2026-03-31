@@ -12,6 +12,7 @@ import { ListView } from '@/components/dashboard/ListView';
 import { BoardView } from '@/components/dashboard/BoardView';
 import { CalendarView } from '@/components/dashboard/CalendarView';
 import { TodoSection } from '@/components/dashboard/TodoSection';
+import { DailyTaskView } from '@/components/dashboard/DailyTaskView';
 import { FloatingAddBar } from '@/components/dashboard/FloatingAddBar';
 import type { TaskDomain, UnifiedTask } from '@/server/dashboard/types';
 import type { Todo } from '@/hooks/useTodos';
@@ -331,6 +332,16 @@ function DashboardShell({
       </header>
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4">
+        {/* Daily Task View */}
+        <DailyTaskView
+          tasks={tasks}
+          onStatusChange={handleStatusChange}
+          selectedTaskId={selectedTask?.id ?? null}
+          selectedTodoId={selectedTodo?.id ?? null}
+          onSelectTask={handleSelectTask}
+          onSelectTodo={handleSelectTodo}
+        />
+
         {/* Quick To-Dos */}
         <TodoSection {...todoSectionProps} />
 
