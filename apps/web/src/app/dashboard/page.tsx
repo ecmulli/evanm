@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { LogIn } from 'lucide-react';
 import { useTasks } from '@/hooks/useTasks';
+import { useDemoTasks } from '@/hooks/useDemoTasks';
+import { useDemoTodos } from '@/hooks/useDemoTodos';
+import { useAuth } from '@/hooks/useAuth';
 import { FilterBar, type ViewMode } from '@/components/dashboard/FilterBar';
 import { ListView } from '@/components/dashboard/ListView';
 import { BoardView } from '@/components/dashboard/BoardView';
@@ -17,6 +22,9 @@ type SelectedItem =
   | { kind: 'todo'; todo: Todo };
 
 export default function DashboardPage() {
+  const { isAuthenticated } = useAuth();
+  const isDemo = !isAuthenticated;
+
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [domainFilter, setDomainFilter] = useState<TaskDomain | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -26,10 +34,19 @@ export default function DashboardPage() {
   const smartAddRef = useRef<(text: string, domain: TaskDomain) => Promise<unknown>>(() => Promise.resolve());
   const editTodoRef = useRef<(instruction: string, todo: Todo) => Promise<unknown>>(() => Promise.resolve());
 
-  const { tasks, count, isLoading, error, updateTaskStatus, editTask, refreshTasks } = useTasks({
+  // Always call both hooks (React rules of hooks) — use results conditionally
+  const realTasks = useTasks({
     domain: domainFilter ?? undefined,
     includeCompleted: showCompleted,
   });
+  const demoTasks = useDemoTasks({
+    domain: domainFilter ?? undefined,
+    includeCompleted: showCompleted,
+  });
+  const demoTodosHook = useDemoTodos(showCompleted);
+
+  const { tasks, count, isLoading, error, updateTaskStatus, editTask, refreshTasks } =
+    isDemo ? demoTasks : realTasks;
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -109,6 +126,11 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-[#F7F6F4] font-sans pb-32">
       {/* Header bar */}
       <header className="bg-[#1C2B4A] sticky top-0 z-40">
+        {isDemo && (
+          <div className="bg-[#A05040]/90 text-white text-center text-xs py-1.5 font-medium tracking-wide">
+            Demo Mode — data is temporary and stored in your browser
+          </div>
+        )}
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-[#A05040] flex items-center justify-center flex-shrink-0">
@@ -118,9 +140,20 @@ export default function DashboardPage() {
             </div>
             <h1 className="text-sm font-semibold text-white tracking-tight">My Work</h1>
           </div>
-          <span className="text-xs text-white/40 font-mono tabular-nums">
-            {count} task{count !== 1 ? 's' : ''}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-white/40 font-mono tabular-nums">
+              {count} task{count !== 1 ? 's' : ''}
+            </span>
+            {isDemo && (
+              <Link
+                href="/login?redirect=/dashboard"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                Log In
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
@@ -132,6 +165,7 @@ export default function DashboardPage() {
           onEditRef={(fn) => { editTodoRef.current = fn; }}
           selectedTodoId={selectedTodo?.id ?? null}
           onSelectTodo={handleSelectTodo}
+          injectedTodos={isDemo ? demoTodosHook : undefined}
         />
 
         {/* Filters */}
@@ -188,11 +222,11 @@ export default function DashboardPage() {
       {/* Floating liquid-glass add bar */}
       <FloatingAddBar
         onAdd={(text, domain) => addTodoRef.current(text, domain)}
-        onSmartAdd={(text, domain) => smartAddRef.current(text, domain)}
+        onSmartAdd={isDemo ? undefined : (text, domain) => smartAddRef.current(text, domain)}
         selectedTask={selectedTask}
         selectedTodo={selectedTodo}
-        onEditTask={handleEditTask}
-        onEditTodo={handleEditTodo}
+        onEditTask={isDemo ? undefined : handleEditTask}
+        onEditTodo={isDemo ? undefined : handleEditTodo}
         onDeselect={handleDeselect}
       />
     </div>

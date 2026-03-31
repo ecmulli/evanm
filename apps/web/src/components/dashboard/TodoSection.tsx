@@ -128,24 +128,39 @@ function TodoItem({
   );
 }
 
+interface InjectedTodos {
+  todos: Todo[];
+  count: number;
+  isLoading: boolean;
+  error: Error | null;
+  addTodo: (name: string, domain: TaskDomain) => Promise<void>;
+  toggleTodo: (id: string, done: boolean) => Promise<void>;
+  deleteTodo: (id: string) => Promise<void>;
+  editTodo: (instruction: string, todo: Todo) => Promise<unknown>;
+  createSmartTask: (text: string, domain: TaskDomain) => Promise<unknown>;
+}
+
 export function TodoSection({
   onAddRef,
   onSmartAddRef,
   onEditRef,
   selectedTodoId,
   onSelectTodo,
+  injectedTodos,
 }: {
   onAddRef?: (fn: (text: string, domain: TaskDomain) => Promise<void>) => void;
   onSmartAddRef?: (fn: (text: string, domain: TaskDomain) => Promise<unknown>) => void;
   onEditRef?: (fn: (instruction: string, todo: Todo) => Promise<unknown>) => void;
   selectedTodoId?: string | null;
   onSelectTodo?: (todo: Todo) => void;
+  injectedTodos?: InjectedTodos;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
 
+  const hookResult = useTodos(showCompleted);
   const { todos, isLoading, addTodo, toggleTodo, deleteTodo, editTodo, createSmartTask } =
-    useTodos(showCompleted);
+    injectedTodos ?? hookResult;
 
   // Expose handlers upward
   const handleAdd = useCallback(async (text: string, domain: TaskDomain) => {
