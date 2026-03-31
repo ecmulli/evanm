@@ -23,8 +23,15 @@ type SelectedItem =
 
 export default function DashboardPage() {
   const { isAuthenticated } = useAuth();
-  const isDemo = !isAuthenticated;
 
+  // Render entirely separate component trees so the real SWR hooks
+  // are never mounted (and never fetch) when in demo mode.
+  return isAuthenticated ? <AuthenticatedDashboard /> : <DemoDashboard />;
+}
+
+// ─── Authenticated Dashboard (real Notion data) ────────────────────────
+
+function AuthenticatedDashboard() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [domainFilter, setDomainFilter] = useState<TaskDomain | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -34,21 +41,10 @@ export default function DashboardPage() {
   const smartAddRef = useRef<(text: string, domain: TaskDomain) => Promise<unknown>>(() => Promise.resolve());
   const editTodoRef = useRef<(instruction: string, todo: Todo) => Promise<unknown>>(() => Promise.resolve());
 
-  // Always call both hooks (React rules of hooks) — use results conditionally
-  // Pass disabled when in demo mode to prevent SWR from making API calls
-  const realTasks = useTasks({
-    domain: domainFilter ?? undefined,
-    includeCompleted: showCompleted,
-    disabled: isDemo,
-  });
-  const demoTasks = useDemoTasks({
+  const { tasks, count, isLoading, error, updateTaskStatus, editTask, refreshTasks } = useTasks({
     domain: domainFilter ?? undefined,
     includeCompleted: showCompleted,
   });
-  const demoTodosHook = useDemoTodos(showCompleted);
-
-  const { tasks, count, isLoading, error, updateTaskStatus, editTask, refreshTasks } =
-    isDemo ? demoTasks : realTasks;
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -100,7 +96,6 @@ export default function DashboardPage() {
     [],
   );
 
-  // Escape key deselects at page level
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && selectedItem) {
@@ -111,7 +106,6 @@ export default function DashboardPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedItem]);
 
-  // Register service worker for PWA support
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch((err) => {
@@ -120,10 +114,187 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Derive props for FloatingAddBar based on selection type
   const selectedTask = selectedItem?.kind === 'task' ? selectedItem.task : null;
   const selectedTodo = selectedItem?.kind === 'todo' ? selectedItem.todo : null;
 
+  return (
+    <DashboardShell
+      isDemo={false}
+      viewMode={viewMode}
+      onViewChange={setViewMode}
+      domainFilter={domainFilter}
+      onDomainChange={setDomainFilter}
+      showCompleted={showCompleted}
+      onShowCompletedChange={setShowCompleted}
+      isRefreshing={isRefreshing}
+      onRefresh={handleRefresh}
+      tasks={tasks}
+      count={count}
+      isLoading={isLoading}
+      error={error}
+      onStatusChange={handleStatusChange}
+      selectedTask={selectedTask}
+      selectedTodo={selectedTodo}
+      onSelectTask={handleSelectTask}
+      onSelectTodo={handleSelectTodo}
+      onDeselect={handleDeselect}
+      onAdd={(text, domain) => addTodoRef.current(text, domain)}
+      onSmartAdd={(text, domain) => smartAddRef.current(text, domain)}
+      onEditTask={handleEditTask}
+      onEditTodo={handleEditTodo}
+      todoSectionProps={{
+        onAddRef: (fn) => { addTodoRef.current = fn; },
+        onSmartAddRef: (fn) => { smartAddRef.current = fn; },
+        onEditRef: (fn) => { editTodoRef.current = fn; },
+        selectedTodoId: selectedTodo?.id ?? null,
+        onSelectTodo: handleSelectTodo,
+      }}
+    />
+  );
+}
+
+// ─── Demo Dashboard (in-memory data, no API calls) ─────────────────────
+
+function DemoDashboard() {
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [domainFilter, setDomainFilter] = useState<TaskDomain | null>(null);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
+  const addTodoRef = useRef<(text: string, domain: TaskDomain) => Promise<void>>(() => Promise.resolve());
+
+  const { tasks, count, isLoading, error, updateTaskStatus } = useDemoTasks({
+    domain: domainFilter ?? undefined,
+    includeCompleted: showCompleted,
+  });
+  const demoTodosHook = useDemoTodos(showCompleted);
+
+  const handleStatusChange = useCallback(
+    async (taskId: string, rawStatus: string) => {
+      try {
+        await updateTaskStatus(taskId, rawStatus);
+      } catch (err) {
+        console.error('Failed to update task status:', err);
+      }
+    },
+    [updateTaskStatus],
+  );
+
+  const handleSelectTask = useCallback((task: UnifiedTask) => {
+    setSelectedItem(prev =>
+      prev?.kind === 'task' && prev.task.id === task.id ? null : { kind: 'task', task },
+    );
+  }, []);
+
+  const handleSelectTodo = useCallback((todo: Todo) => {
+    setSelectedItem(prev =>
+      prev?.kind === 'todo' && prev.todo.id === todo.id ? null : { kind: 'todo', todo },
+    );
+  }, []);
+
+  const handleDeselect = useCallback(() => {
+    setSelectedItem(null);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedItem) {
+        setSelectedItem(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedItem]);
+
+  const selectedTask = selectedItem?.kind === 'task' ? selectedItem.task : null;
+  const selectedTodo = selectedItem?.kind === 'todo' ? selectedItem.todo : null;
+
+  return (
+    <DashboardShell
+      isDemo={true}
+      viewMode={viewMode}
+      onViewChange={setViewMode}
+      domainFilter={domainFilter}
+      onDomainChange={setDomainFilter}
+      showCompleted={showCompleted}
+      onShowCompletedChange={setShowCompleted}
+      isRefreshing={false}
+      onRefresh={async () => {}}
+      tasks={tasks}
+      count={count}
+      isLoading={isLoading}
+      error={error}
+      onStatusChange={handleStatusChange}
+      selectedTask={selectedTask}
+      selectedTodo={selectedTodo}
+      onSelectTask={handleSelectTask}
+      onSelectTodo={handleSelectTodo}
+      onDeselect={handleDeselect}
+      onAdd={(text, domain) => addTodoRef.current(text, domain)}
+      todoSectionProps={{
+        onAddRef: (fn) => { addTodoRef.current = fn; },
+        selectedTodoId: selectedTodo?.id ?? null,
+        onSelectTodo: handleSelectTodo,
+        injectedTodos: demoTodosHook,
+      }}
+    />
+  );
+}
+
+// ─── Shared Dashboard UI Shell ──────────────────────────────────────────
+
+interface DashboardShellProps {
+  isDemo: boolean;
+  viewMode: ViewMode;
+  onViewChange: (mode: ViewMode) => void;
+  domainFilter: TaskDomain | null;
+  onDomainChange: (domain: TaskDomain | null) => void;
+  showCompleted: boolean;
+  onShowCompletedChange: (show: boolean) => void;
+  isRefreshing: boolean;
+  onRefresh: () => Promise<void>;
+  tasks: UnifiedTask[];
+  count: number;
+  isLoading: boolean;
+  error: Error | null;
+  onStatusChange: (taskId: string, rawStatus: string) => Promise<void>;
+  selectedTask: UnifiedTask | null;
+  selectedTodo: Todo | null;
+  onSelectTask: (task: UnifiedTask) => void;
+  onSelectTodo: (todo: Todo) => void;
+  onDeselect: () => void;
+  onAdd: (text: string, domain: TaskDomain) => Promise<void>;
+  onSmartAdd?: (text: string, domain: TaskDomain) => Promise<unknown>;
+  onEditTask?: (instruction: string, task: UnifiedTask) => Promise<{ success: boolean; updates: { summary: string } }>;
+  onEditTodo?: (instruction: string, todo: Todo) => Promise<unknown>;
+  todoSectionProps: React.ComponentProps<typeof TodoSection>;
+}
+
+function DashboardShell({
+  isDemo,
+  viewMode,
+  onViewChange,
+  domainFilter,
+  onDomainChange,
+  showCompleted,
+  onShowCompletedChange,
+  isRefreshing,
+  onRefresh,
+  tasks,
+  count,
+  isLoading,
+  error,
+  onStatusChange,
+  selectedTask,
+  selectedTodo,
+  onSelectTask,
+  onSelectTodo,
+  onDeselect,
+  onAdd,
+  onSmartAdd,
+  onEditTask,
+  onEditTodo,
+  todoSectionProps,
+}: DashboardShellProps) {
   return (
     <div className="min-h-screen bg-[#F7F6F4] font-sans pb-32">
       {/* Header bar */}
@@ -161,24 +332,17 @@ export default function DashboardPage() {
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4">
         {/* Quick To-Dos */}
-        <TodoSection
-          onAddRef={(fn) => { addTodoRef.current = fn; }}
-          onSmartAddRef={(fn) => { smartAddRef.current = fn; }}
-          onEditRef={(fn) => { editTodoRef.current = fn; }}
-          selectedTodoId={selectedTodo?.id ?? null}
-          onSelectTodo={handleSelectTodo}
-          injectedTodos={isDemo ? demoTodosHook : undefined}
-        />
+        <TodoSection {...todoSectionProps} />
 
         {/* Filters */}
         <FilterBar
           viewMode={viewMode}
-          onViewChange={setViewMode}
+          onViewChange={onViewChange}
           domainFilter={domainFilter}
-          onDomainChange={setDomainFilter}
+          onDomainChange={onDomainChange}
           showCompleted={showCompleted}
-          onShowCompletedChange={setShowCompleted}
-          onRefresh={handleRefresh}
+          onShowCompletedChange={onShowCompletedChange}
+          onRefresh={onRefresh}
           isRefreshing={isRefreshing}
           taskCount={count}
         />
@@ -190,7 +354,7 @@ export default function DashboardPage() {
               <p className="text-sm font-medium">Failed to load tasks</p>
               <p className="text-xs mt-1 opacity-70">{error.message}</p>
               <button
-                onClick={handleRefresh}
+                onClick={onRefresh}
                 className="mt-2 text-xs text-[#B34438] hover:opacity-70 underline"
               >
                 Try again
@@ -205,16 +369,16 @@ export default function DashboardPage() {
               {viewMode === 'list' && (
                 <ListView
                   tasks={tasks}
-                  onStatusChange={handleStatusChange}
+                  onStatusChange={onStatusChange}
                   selectedTaskId={selectedTask?.id ?? null}
-                  onSelectTask={handleSelectTask}
+                  onSelectTask={onSelectTask}
                 />
               )}
               {viewMode === 'board' && (
-                <BoardView tasks={tasks} onStatusChange={handleStatusChange} />
+                <BoardView tasks={tasks} onStatusChange={onStatusChange} />
               )}
               {viewMode === 'calendar' && (
-                <CalendarView tasks={tasks} onStatusChange={handleStatusChange} />
+                <CalendarView tasks={tasks} onStatusChange={onStatusChange} />
               )}
             </>
           )}
@@ -223,13 +387,13 @@ export default function DashboardPage() {
 
       {/* Floating liquid-glass add bar */}
       <FloatingAddBar
-        onAdd={(text, domain) => addTodoRef.current(text, domain)}
-        onSmartAdd={isDemo ? undefined : (text, domain) => smartAddRef.current(text, domain)}
+        onAdd={onAdd}
+        onSmartAdd={onSmartAdd}
         selectedTask={selectedTask}
         selectedTodo={selectedTodo}
-        onEditTask={isDemo ? undefined : handleEditTask}
-        onEditTodo={isDemo ? undefined : handleEditTodo}
-        onDeselect={handleDeselect}
+        onEditTask={onEditTask}
+        onEditTodo={onEditTodo}
+        onDeselect={onDeselect}
       />
     </div>
   );

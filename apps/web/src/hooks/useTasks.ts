@@ -10,7 +10,6 @@ interface UseTasksOptions {
   domain?: TaskDomain;
   status?: TaskStatus;
   includeCompleted?: boolean;
-  disabled?: boolean;
 }
 
 interface TasksResponse {
@@ -30,7 +29,7 @@ function buildUrl(options: UseTasksOptions): string {
 export function useTasks(options: UseTasksOptions = {}) {
   const url = buildUrl(options);
 
-  const { data, error, isLoading, mutate } = useSWR<TasksResponse>(options.disabled ? null : url, authedFetcher, {
+  const { data, error, isLoading, mutate } = useSWR<TasksResponse>(url, authedFetcher, {
     revalidateOnFocus: false,
     refreshInterval: 3 * 60 * 1000,
     dedupingInterval: 5000,
