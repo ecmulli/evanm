@@ -16,7 +16,11 @@ export default function DesktopIcon({ config }: DesktopIconProps) {
 
   const handleClick = () => {
     if (config.href) {
-      router.push(config.href);
+      if (config.href.startsWith('http')) {
+        window.open(config.href, '_blank');
+      } else {
+        router.push(config.href);
+      }
       return;
     }
 

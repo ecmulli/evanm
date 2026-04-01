@@ -62,6 +62,13 @@ export default function Desktop({ initialContentId }: DesktopProps) {
   const desktopIcons = useDesktopIcons();
   const initialContent = useTextContent(initialContentId || 'about-me');
 
+  const githubIcon: DesktopIconConfig = {
+    id: 'github',
+    label: 'GitHub',
+    iconType: 'github',
+    appType: 'simpletext',
+    href: 'https://github.com/ecmulli/',
+  };
   const dashboardIcon: DesktopIconConfig = {
     id: 'dashboard',
     label: 'Dashboard',
@@ -69,7 +76,7 @@ export default function Desktop({ initialContentId }: DesktopProps) {
     appType: 'simpletext',
     href: '/dashboard',
   };
-  const allIcons = [...desktopIcons, dashboardIcon];
+  const allIcons = [...desktopIcons, githubIcon, dashboardIcon];
 
   // Open initial content window centered on page load
   useEffect(() => {
