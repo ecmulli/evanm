@@ -335,11 +335,11 @@ function DashboardShell({
         {/* Daily Task View */}
         <DailyTaskView
           tasks={tasks}
-          onStatusChange={handleStatusChange}
+          onStatusChange={onStatusChange}
           selectedTaskId={selectedTask?.id ?? null}
           selectedTodoId={selectedTodo?.id ?? null}
-          onSelectTask={handleSelectTask}
-          onSelectTodo={handleSelectTodo}
+          onSelectTask={onSelectTask}
+          onSelectTodo={onSelectTodo}
         />
 
         {/* Quick To-Dos */}
