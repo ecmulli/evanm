@@ -123,6 +123,7 @@ export default function MenuBar() {
     { label: 'Empty Trash', action: () => alert('🗑️ The Trash is already empty!') },
     { separator: true, label: '' },
     { label: 'View Source', action: () => window.open('https://github.com/ecmulli/evanm', '_blank') },
+    { label: 'GitHub', action: () => window.open('https://github.com/ecmulli/', '_blank') },
     { label: 'Contact', action: () => window.open('mailto:hello@evanm.xyz', '_blank') },
   ];
 

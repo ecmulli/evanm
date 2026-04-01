@@ -131,8 +131,41 @@ export function PixelDashboardIcon({ color = BRAND.navy }: { color?: string }) {
   );
 }
 
+export function PixelGitHubIcon({ color = BRAND.navy }: { color?: string }) {
+  return (
+    <svg width="48" height="48" viewBox="0 0 16 16" style={{ imageRendering: 'pixelated' }}>
+      {/* Body / head */}
+      <rect x="4" y="2" width="8" height="8" fill={color} />
+      <rect x="3" y="3" width="1" height="6" fill={color} />
+      <rect x="12" y="3" width="1" height="6" fill={color} />
+      <rect x="5" y="1" width="6" height="1" fill={color} />
+      <rect x="5" y="10" width="6" height="1" fill={color} />
+      {/* Eyes */}
+      <rect x="5" y="5" width="2" height="2" fill={BRAND.cream} />
+      <rect x="9" y="5" width="2" height="2" fill={BRAND.cream} />
+      {/* Pupils */}
+      <rect x="6" y="5" width="1" height="1" fill="#3A3530" />
+      <rect x="10" y="5" width="1" height="1" fill="#3A3530" />
+      {/* Tentacles / legs */}
+      <rect x="3" y="10" width="2" height="2" fill={color} />
+      <rect x="11" y="10" width="2" height="2" fill={color} />
+      <rect x="2" y="11" width="1" height="2" fill={color} />
+      <rect x="13" y="11" width="1" height="2" fill={color} />
+      {/* Middle legs */}
+      <rect x="6" y="11" width="1" height="2" fill={color} />
+      <rect x="9" y="11" width="1" height="2" fill={color} />
+      <rect x="7" y="12" width="2" height="2" fill={color} />
+      {/* Ears */}
+      <rect x="3" y="1" width="2" height="2" fill={color} />
+      <rect x="11" y="1" width="2" height="2" fill={color} />
+      {/* Outline highlights */}
+      <rect x="4" y="3" width="1" height="1" fill="rgba(255,255,255,0.3)" />
+    </svg>
+  );
+}
+
 interface PixelIconProps {
-  type: 'file' | 'folder' | 'app' | 'dashboard';
+  type: 'file' | 'folder' | 'app' | 'dashboard' | 'github';
   color?: string;
 }
 
@@ -146,6 +179,8 @@ export default function PixelIcon({ type, color }: PixelIconProps) {
       return <PixelStickyIcon color={color || BRAND.terracotta} />;
     case 'dashboard':
       return <PixelDashboardIcon color={color || BRAND.navy} />;
+    case 'github':
+      return <PixelGitHubIcon color={color || BRAND.navy} />;
     default:
       return <PixelFileIcon color={color} />;
   }

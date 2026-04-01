@@ -38,7 +38,7 @@ export interface WindowContextType {
 export interface DesktopIconConfig {
   id: string;
   label: string;
-  iconType: 'file' | 'folder' | 'app' | 'dashboard';
+  iconType: 'file' | 'folder' | 'app' | 'dashboard' | 'github';
   appType: AppType;
   contentId?: string;
   href?: string;
