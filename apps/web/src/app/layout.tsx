@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.evanm.xyz"
+  ),
   title: "evanm.xyz",
   description: "A retro Mac OS inspired personal website",
   icons: {
