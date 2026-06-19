@@ -96,6 +96,11 @@ export default function ChatPage() {
     setActiveId(r.conversation.id); setMessages([]);
   }
 
+  function startNewChat() {
+    const def = projects.find((p) => /general/i.test(p.name)) ?? projects[0];
+    if (def) newConversation(def.id);
+  }
+
   async function onPickFiles(files: FileList | null) {
     if (!files || !activeId) return;
     for (const f of Array.from(files)) {
@@ -131,6 +136,9 @@ export default function ChatPage() {
           </select>
           <button title="Enable notifications" className="chat-bell" onClick={() => profileId && enablePush(profileId)}><Bell size={15} /></button>
         </div>
+        <button className="chat-newchat" onClick={startNewChat} disabled={!projects.length}>
+          <Plus size={16} /> New chat
+        </button>
         <div className="chat-projects">
           {projects.map((proj) => (
             <div key={proj.id} className="chat-project">
@@ -148,7 +156,14 @@ export default function ChatPage() {
 
       <main className="chat-main">
         <div className="chat-thread" ref={scrollRef}>
-          {!activeId && <div className="chat-empty">Pick a project and start a conversation.</div>}
+          {!activeId && (
+            <div className="chat-empty">
+              <p>Start a new conversation, or pick one from the sidebar.</p>
+              <button className="chat-newchat chat-newchat-lg" onClick={startNewChat} disabled={!projects.length}>
+                <Plus size={16} /> New chat
+              </button>
+            </div>
+          )}
           {messages.map((m) => (
             <div key={m.id} className={`chat-msg chat-msg-${m.role}`}>
               {m.role === 'assistant' ? <Markdown>{m.content}</Markdown> : <div className="chat-user-text">{m.content}</div>}
