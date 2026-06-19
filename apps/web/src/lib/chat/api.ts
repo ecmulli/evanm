@@ -73,10 +73,10 @@ export type BridgeEvent =
   | { type: 'sync'; running: boolean; queued: number }
   | { type: 'user'; messageId: string; text: string; attachments: string[]; queued: boolean }
   | { type: 'start'; sessionId: string; model: string }
-  | { type: 'text'; text: string }
+  | { type: 'text'; messageId: string; text: string }
   | { type: 'tool'; name: string }
   | { type: 'questions'; questions: Question[]; toolUseId: string }
-  | { type: 'done'; text: string; costUsd?: number; isError?: boolean }
+  | { type: 'done'; costUsd?: number; isError?: boolean }
   | { type: 'error'; message: string }
   | { type: 'end' }
   | { type: 'idle' };
