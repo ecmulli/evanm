@@ -87,10 +87,18 @@
 .chat-tools span { font-size: 11px; color: var(--c-dim); background: var(--c-panel); border: 1px solid var(--c-border); border-radius: 999px; padding: 2px 9px; }
 
 /* Composer */
-.chat-composer { border-top: 1px solid var(--c-border); background: var(--c-bg); padding: 12px 0 16px; }
+.chat-composer { border-top: 1px solid var(--c-border); background: var(--c-bg); padding: 16px 0 22px; }
 .chat-attachments, .chat-composer textarea, .chat-composer-bar { max-width: 760px; margin: 0 auto; padding: 0 28px; }
-.chat-attachments { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; color: var(--c-dim); font-size: 12px; }
-.chat-composer textarea { display: block; width: 100%; box-sizing: border-box; background: var(--c-panel); color: var(--c-text); border: 1px solid var(--c-border); border-radius: 12px; padding: 12px 14px; resize: vertical; font: inherit; outline: none; }
+.chat-attachments { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.chat-composer textarea { display: block; width: 100%; box-sizing: border-box; background: var(--c-panel); color: var(--c-text); border: 1px solid var(--c-border); border-radius: 14px; padding: 16px 18px; min-height: 76px; resize: vertical; font: inherit; line-height: 1.55; outline: none; }
+
+/* Attachment preview chips */
+.chat-attach { position: relative; width: 60px; height: 60px; }
+.chat-attach img { width: 60px; height: 60px; object-fit: cover; border-radius: 10px; border: 1px solid var(--c-border); display: block; }
+.chat-attach-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.4); border-radius: 10px; color: #fff; }
+.chat-attach-x { position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius: 50%; background: var(--c-text); color: var(--c-bg); font-size: 14px; line-height: 1; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.chat-attach-x:hover { background: var(--c-accent); }
+.chat-attach-name { display: none; }
 .chat-composer textarea:focus { border-color: var(--c-accent-dim); }
 .chat-composer-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
 .chat-composer-left { display: flex; align-items: center; gap: 10px; }

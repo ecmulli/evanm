@@ -25,7 +25,7 @@ export default function ChatPage() {
   const [questions, setQuestions] = useState<{ items: Question[] } | null>(null);
   const [input, setInput] = useState('');
   const [model, setModel] = useState('sonnet');
-  const [pending, setPending] = useState<{ name: string; path: string }[]>([]);
+  const [pending, setPending] = useState<{ id: string; name: string; url: string; path?: string; uploading: boolean }[]>([]);
   const [running, setRunning] = useState(false);
   const [queued, setQueued] = useState(0);
   const [ready, setReady] = useState(false);
@@ -135,9 +135,19 @@ export default function ChatPage() {
     if (!files) return;
     const convId = activeId || 'draft';
     for (const f of Array.from(files)) {
-      try { const path = await uploadFile(convId, f); setPending((p) => [...p, { name: f.name, path }]); } catch { /* */ }
+      const id = `${Date.now()}-${f.name}`;
+      // Show the chip immediately (with a local preview + spinner), then fill in the path.
+      setPending((p) => [...p, { id, name: f.name, url: URL.createObjectURL(f), uploading: true }]);
+      try {
+        const path = await uploadFile(convId, f);
+        setPending((p) => p.map((x) => (x.id === id ? { ...x, path, uploading: false } : x)));
+      } catch {
+        setPending((p) => p.filter((x) => x.id !== id));
+      }
     }
   }
+
+  const removePending = (id: string) => setPending((p) => p.filter((x) => x.id !== id));
 
   async function send(promptOverride?: string) {
     const prompt = (promptOverride ?? input).trim();
@@ -152,7 +162,7 @@ export default function ChatPage() {
       setActiveId(convId);
     }
     if (!convId) return;
-    const attachments = pending.map((p) => p.path);
+    const attachments = pending.map((p) => p.path).filter((x): x is string => !!x);
     setInput(''); setPending([]);
     await sendMessage({ conversationId: convId, prompt, model, attachments }).catch(() => {});
   }
@@ -248,7 +258,18 @@ export default function ChatPage() {
             {(running || queued > 1) && (
               <div className="chat-status"><Loader className="chat-spin" size={12} /> {running ? 'Working…' : ''}{queued > 1 ? ` ${queued - 1} queued` : ''} — keep typing, messages queue</div>
             )}
-            {pending.length > 0 && <div className="chat-attachments">{pending.map((p, i) => <span key={i}>📎 {p.name}</span>)}</div>}
+            {pending.length > 0 && (
+              <div className="chat-attachments">
+                {pending.map((p) => (
+                  <div key={p.id} className="chat-attach">
+                    <img src={p.url} alt={p.name} />
+                    {p.uploading && <div className="chat-attach-loading"><Loader className="chat-spin" size={14} /></div>}
+                    <button className="chat-attach-x" onClick={() => removePending(p.id)} aria-label="Remove">×</button>
+                    <span className="chat-attach-name">{p.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             {!questions && (
               <>
                 <textarea
