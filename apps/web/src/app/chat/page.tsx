@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Plus, Send, Paperclip, Loader, User, Bell, Search, ChevronDown } from 'lucide-react';
+import { Plus, Send, Paperclip, Loader, User, Bell, Search, ChevronDown, Menu } from 'lucide-react';
 import {
   getProjects, getConversations, getMessages, searchConversations,
   createConversation, sendMessage, openStream, uploadFile,
@@ -32,6 +32,7 @@ export default function ChatPage() {
   const [newOpen, setNewOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [results, setResults] = useState<Conversation[] | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // mobile: collapsed when a chat is active
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const activeIdRef = useRef('');
@@ -39,7 +40,6 @@ export default function ChatPage() {
   // Auth gate via the cookie-aware bridge proxy (NOT /api/v1/auth/validate, which
   // is header-only and caused a login loop).
   useEffect(() => {
-    getProjects('evan').catch(() => null); // warm
     fetch('/api/bridge/profiles')
       .then(async (r) => {
         if (r.status === 401) { window.location.href = '/login?redirect=/chat'; return; }
@@ -53,9 +53,14 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!profileId) return;
-    getProjects(profileId).then((r) => setProjects(r.projects)).catch(() => {});
+    setActiveId(''); setMessages([]); setSearch(''); setResults(null);
     getConversations(profileId).then((r) => setConversations(r.conversations)).catch(() => {});
-    setActiveId(''); setDraftProjectId(null); setMessages([]); setSearch(''); setResults(null);
+    getProjects(profileId).then((r) => {
+      setProjects(r.projects);
+      // Default to a new active chat (General) so the composer is ready immediately.
+      const gen = r.projects.find((p) => /general/i.test(p.name)) ?? r.projects[0];
+      setDraftProjectId(gen ? gen.id : null);
+    }).catch(() => {});
   }, [profileId]);
 
   useEffect(() => {
@@ -117,11 +122,13 @@ export default function ChatPage() {
     setActiveId('');
     setDraftProjectId(projectId);
     setMessages([]); setTools([]); setQuestions(null);
+    setSidebarOpen(false); // mobile: jump into the chat
   }
 
   function openConversation(id: string) {
     setDraftProjectId(null);
     setActiveId(id);
+    setSidebarOpen(false); // mobile: collapse the list, show the chat
   }
 
   async function onPickFiles(files: FileList | null) {
@@ -157,6 +164,7 @@ export default function ChatPage() {
   }
 
   const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? '';
+  const activeConv = conversations.find((c) => c.id === activeId);
   const list = results ?? conversations;
   const composing = !!activeId || !!draftProjectId;
   const lastIsUser = messages.length > 0 && messages[messages.length - 1].role === 'user';
@@ -171,7 +179,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="chat-shell">
+    <div className="chat-shell" data-sidebar={sidebarOpen ? 'open' : 'closed'}>
       <aside className="chat-sidebar">
         <div className="chat-profile">
           <User size={15} />
@@ -216,6 +224,10 @@ export default function ChatPage() {
       </aside>
 
       <main className="chat-main">
+        <div className="chat-mobilebar">
+          <button onClick={() => setSidebarOpen(true)} aria-label="Conversations"><Menu size={18} /></button>
+          <span className="chat-mobilebar-title">{activeConv?.title ?? (draftProjectId ? `New chat · ${projectName(draftProjectId)}` : 'Chat')}</span>
+        </div>
         <div className="chat-thread" ref={scrollRef}>
           {!composing && <div className="chat-empty">Start a new chat or pick a conversation.</div>}
           {composing && messages.length === 0 && (

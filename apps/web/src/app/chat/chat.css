@@ -1,12 +1,13 @@
+/* Inherit the app design system (globals.css tokens) instead of a bespoke theme. */
 :root {
-  --c-bg: #262624;
-  --c-side: #1c1b1a;
-  --c-panel: #30302e;
-  --c-border: #3a3937;
-  --c-text: #ece9e3;
-  --c-dim: #9c9893;
-  --c-accent: #d97757;
-  --c-accent-dim: #b85f43;
+  --c-bg: var(--background, #F7F6F4);
+  --c-side: var(--surface-subtle, #F0EEEb);
+  --c-panel: var(--surface, #FFFFFF);
+  --c-border: var(--border, #E5E0DB);
+  --c-text: var(--foreground, #1A1714);
+  --c-dim: var(--foreground-secondary, #6B6560);
+  --c-accent: var(--brand-accent, #A05040);
+  --c-accent-dim: #8a4537;
 }
 
 .chat-shell {
@@ -61,6 +62,23 @@
 
 /* Main */
 .chat-main { display: flex; flex-direction: column; overflow: hidden; }
+
+/* Mobile top bar (back to conversation list) — hidden on desktop */
+.chat-mobilebar { display: none; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--c-border); background: var(--c-panel); }
+.chat-mobilebar button { display: inline-flex; color: var(--c-dim); padding: 6px; border-radius: 8px; }
+.chat-mobilebar button:hover { color: var(--c-text); background: var(--c-bg); }
+.chat-mobilebar .chat-mobilebar-title { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ===== Mobile: collapse the sidebar when a chat is active ===== */
+@media (max-width: 768px) {
+  .chat-shell { grid-template-columns: 1fr; }
+  .chat-sidebar, .chat-main { grid-column: 1; grid-row: 1; min-width: 0; }
+  .chat-shell[data-sidebar="closed"] .chat-sidebar { display: none; }
+  .chat-shell[data-sidebar="open"] .chat-main { display: none; }
+  .chat-mobilebar { display: flex; }
+  .chat-msg { padding: 0 16px; }
+  .chat-attachments, .chat-composer textarea, .chat-composer-bar, .chat-status, .chat-questions { padding-left: 16px; padding-right: 16px; }
+}
 .chat-thread { flex: 1; overflow-y: auto; padding: 28px 0 24px; }
 .chat-msg { max-width: 760px; margin: 0 auto 22px; padding: 0 28px; }
 .chat-msg-user .chat-user-text { background: var(--c-panel); border: 1px solid var(--c-border); border-radius: 14px; padding: 12px 16px; white-space: pre-wrap; }
