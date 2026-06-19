@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus, Send, Paperclip, Loader, Hash, User, Bell } from 'lucide-react';
 import {
-  getProfiles, getProjects, getConversations, getMessages,
+  getProjects, getConversations, getMessages,
   createConversation, sendMessage, openStream, uploadFile,
   type Profile, type Project, type Conversation, type Message, type Question, type BridgeEvent,
 } from '@/lib/chat/api';
@@ -36,19 +36,21 @@ export default function ChatPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const activeIdRef = useRef('');
 
-  // Auth gate: validate the session cookie; if not signed in, bounce to /login
-  // and come back to /chat afterwards. Without this, an unauthenticated visit
-  // just renders a dead empty sidebar (every /api/bridge call 401s).
+  // Auth gate + initial load in one. Validates via a COOKIE-AWARE endpoint
+  // (the bridge proxy uses validateApiAuth which reads the bearerToken cookie).
+  // NOTE: /api/v1/auth/validate only checks the Authorization header, not the
+  // cookie — using it here caused an infinite login loop.
   useEffect(() => {
-    fetch('/api/v1/auth/validate')
-      .then((r) => { if (r.ok) setReady(true); else window.location.href = '/login?redirect=/chat'; })
-      .catch(() => window.location.href = '/login?redirect=/chat');
+    fetch('/api/bridge/profiles')
+      .then(async (r) => {
+        if (r.status === 401) { window.location.href = '/login?redirect=/chat'; return; }
+        const d = await r.json().catch(() => ({ profiles: [] }));
+        setProfiles(d.profiles ?? []);
+        if (d.profiles?.[0]) setProfileId(d.profiles[0].id);
+        setReady(true); // authed (even if bridge errored — that's a different problem, don't loop)
+      })
+      .catch(() => setReady(true));
   }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    getProfiles().then((r) => { setProfiles(r.profiles); if (r.profiles[0]) setProfileId(r.profiles[0].id); }).catch(() => {});
-  }, [ready]);
 
   useEffect(() => {
     if (!profileId) return;
