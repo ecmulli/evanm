@@ -1,9 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Plus, Send, Paperclip, Loader, Hash, User, Bell } from 'lucide-react';
+import { Plus, Send, Paperclip, Loader, User, Bell, Search, ChevronDown } from 'lucide-react';
 import {
-  getProjects, getConversations, getMessages,
+  getProjects, getConversations, getMessages, searchConversations,
   createConversation, sendMessage, openStream, uploadFile,
   type Profile, type Project, type Conversation, type Message, type Question, type BridgeEvent,
 } from '@/lib/chat/api';
@@ -13,16 +13,13 @@ import { enablePush } from '@/lib/chat/push-client';
 
 const MODELS = ['sonnet', 'opus', 'haiku'];
 
-// Single source of truth: assistant segments stream straight into `messages`,
-// upserted by `seg-<assistant message id>`. Each assistant message is its own
-// sequential bubble — later messages never overwrite the lead-up — and upsert is
-// idempotent (safe under StrictMode double-subscription / stream reconnects).
 export default function ChatPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profileId, setProfileId] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState('');
+  const [draftProjectId, setDraftProjectId] = useState<string | null>(null); // new chat, not yet created
   const [messages, setMessages] = useState<Message[]>([]);
   const [tools, setTools] = useState<string[]>([]);
   const [questions, setQuestions] = useState<{ items: Question[] } | null>(null);
@@ -32,22 +29,24 @@ export default function ChatPage() {
   const [running, setRunning] = useState(false);
   const [queued, setQueued] = useState(0);
   const [ready, setReady] = useState(false);
+  const [newOpen, setNewOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [results, setResults] = useState<Conversation[] | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const activeIdRef = useRef('');
 
-  // Auth gate + initial load in one. Validates via a COOKIE-AWARE endpoint
-  // (the bridge proxy uses validateApiAuth which reads the bearerToken cookie).
-  // NOTE: /api/v1/auth/validate only checks the Authorization header, not the
-  // cookie — using it here caused an infinite login loop.
+  // Auth gate via the cookie-aware bridge proxy (NOT /api/v1/auth/validate, which
+  // is header-only and caused a login loop).
   useEffect(() => {
+    getProjects('evan').catch(() => null); // warm
     fetch('/api/bridge/profiles')
       .then(async (r) => {
         if (r.status === 401) { window.location.href = '/login?redirect=/chat'; return; }
         const d = await r.json().catch(() => ({ profiles: [] }));
         setProfiles(d.profiles ?? []);
         if (d.profiles?.[0]) setProfileId(d.profiles[0].id);
-        setReady(true); // authed (even if bridge errored — that's a different problem, don't loop)
+        setReady(true);
       })
       .catch(() => setReady(true));
   }, []);
@@ -56,7 +55,7 @@ export default function ChatPage() {
     if (!profileId) return;
     getProjects(profileId).then((r) => setProjects(r.projects)).catch(() => {});
     getConversations(profileId).then((r) => setConversations(r.conversations)).catch(() => {});
-    setActiveId(''); setMessages([]);
+    setActiveId(''); setDraftProjectId(null); setMessages([]); setSearch(''); setResults(null);
   }, [profileId]);
 
   useEffect(() => {
@@ -68,6 +67,17 @@ export default function ChatPage() {
     return () => close();
   }, [activeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Debounced search (title + message content) via the bridge.
+  useEffect(() => {
+    if (!profileId) return;
+    const q = search.trim();
+    if (!q) { setResults(null); return; }
+    const t = setTimeout(() => {
+      searchConversations(profileId, q).then((r) => setResults(r.conversations)).catch(() => setResults([]));
+    }, 220);
+    return () => clearTimeout(t);
+  }, [search, profileId]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, tools, questions]);
@@ -76,7 +86,6 @@ export default function ChatPage() {
     if (profileId) getConversations(profileId).then((r) => setConversations(r.conversations)).catch(() => {});
   }, [profileId]);
 
-  // Insert-or-update a message by id (idempotent).
   function upsert(id: string, patch: Partial<Message> & { role: Message['role']; content: string }) {
     setMessages((m) => {
       const i = m.findIndex((x) => x.id === id);
@@ -91,9 +100,7 @@ export default function ChatPage() {
   function handleEvent(e: BridgeEvent) {
     switch (e.type) {
       case 'sync': setRunning(e.running); setQueued(e.queued); break;
-      case 'user':
-        upsert(e.messageId, { role: 'user', content: e.text + (e.attachments?.length ? `\n\n📎 ${e.attachments.length} file(s)` : '') });
-        break;
+      case 'user': upsert(e.messageId, { role: 'user', content: e.text + (e.attachments?.length ? `\n\n📎 ${e.attachments.length} file(s)` : '') }); break;
       case 'start': setRunning(true); setTools([]); setQuestions(null); break;
       case 'text': upsert(`seg-${e.messageId}`, { role: 'assistant', content: e.text }); break;
       case 'tool': setTools((t) => (t[t.length - 1] === e.name ? t : [...t, e.name])); break;
@@ -105,30 +112,42 @@ export default function ChatPage() {
     }
   }
 
-  async function newConversation(projectId: string) {
-    const r = await createConversation(projectId, profileId, model);
-    setConversations((c) => [r.conversation, ...c]);
-    setActiveId(r.conversation.id); setMessages([]);
+  function startDraft(projectId: string) {
+    setNewOpen(false);
+    setActiveId('');
+    setDraftProjectId(projectId);
+    setMessages([]); setTools([]); setQuestions(null);
   }
 
-  function startNewChat() {
-    const def = projects.find((p) => /general/i.test(p.name)) ?? projects[0];
-    if (def) newConversation(def.id);
+  function openConversation(id: string) {
+    setDraftProjectId(null);
+    setActiveId(id);
   }
 
   async function onPickFiles(files: FileList | null) {
-    if (!files || !activeId) return;
+    if (!files) return;
+    const convId = activeId || 'draft';
     for (const f of Array.from(files)) {
-      try { const path = await uploadFile(activeId, f); setPending((p) => [...p, { name: f.name, path }]); } catch { /* */ }
+      try { const path = await uploadFile(convId, f); setPending((p) => [...p, { name: f.name, path }]); } catch { /* */ }
     }
   }
 
   async function send(promptOverride?: string) {
     const prompt = (promptOverride ?? input).trim();
-    if (!prompt || !activeId) return;
+    if (!prompt) return;
+    let convId = activeId;
+    // Draft → create the conversation only now, on first send.
+    if (!convId && draftProjectId) {
+      const r = await createConversation(draftProjectId, profileId, model);
+      convId = r.conversation.id;
+      setConversations((c) => [r.conversation, ...c]);
+      setDraftProjectId(null);
+      setActiveId(convId);
+    }
+    if (!convId) return;
     const attachments = pending.map((p) => p.path);
     setInput(''); setPending([]);
-    await sendMessage({ conversationId: activeId, prompt, model, attachments }).catch(() => {});
+    await sendMessage({ conversationId: convId, prompt, model, attachments }).catch(() => {});
   }
 
   function submitAnswers(answers: { question: string; answer: string }[]) {
@@ -137,16 +156,16 @@ export default function ChatPage() {
     send(reply);
   }
 
-  const activeConv = conversations.find((c) => c.id === activeId);
+  const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? '';
+  const list = results ?? conversations;
+  const composing = !!activeId || !!draftProjectId;
   const lastIsUser = messages.length > 0 && messages[messages.length - 1].role === 'user';
   const showSpinner = running && lastIsUser && tools.length === 0;
 
   if (!ready) {
     return (
       <div className="chat-shell" style={{ gridTemplateColumns: '1fr' }}>
-        <div className="chat-empty" style={{ margin: 'auto' }}>
-          <Loader className="chat-spin" size={20} /> Checking access…
-        </div>
+        <div className="chat-empty" style={{ margin: 'auto' }}><Loader className="chat-spin" size={20} /> Checking access…</div>
       </div>
     );
   }
@@ -161,33 +180,46 @@ export default function ChatPage() {
           </select>
           <button title="Enable notifications" className="chat-bell" onClick={() => profileId && enablePush(profileId)}><Bell size={15} /></button>
         </div>
-        <button className="chat-newchat" onClick={startNewChat} disabled={!projects.length}>
-          <Plus size={16} /> New chat
-        </button>
-        <div className="chat-projects">
-          {projects.map((proj) => (
-            <div key={proj.id} className="chat-project">
-              <div className="chat-project-head">
-                <span><Hash size={13} /> {proj.name}{proj.scope === 'shared' && <em> · shared</em>}</span>
-                <button title="New conversation" onClick={() => newConversation(proj.id)}><Plus size={14} /></button>
-              </div>
-              {conversations.filter((c) => c.projectId === proj.id).map((c) => (
-                <button key={c.id} className={`chat-conv ${c.id === activeId ? 'chat-conv-on' : ''}`} onClick={() => setActiveId(c.id)}>{c.title}</button>
+
+        {/* New chat with project picker */}
+        <div className="chat-new">
+          <button className="chat-newchat" onClick={() => setNewOpen((o) => !o)} disabled={!projects.length}>
+            <Plus size={16} /> New chat <ChevronDown size={14} />
+          </button>
+          {newOpen && (
+            <div className="chat-new-menu">
+              {projects.map((p) => (
+                <button key={p.id} onClick={() => startDraft(p.id)}>
+                  {p.name}{p.scope === 'shared' && <em> · shared</em>}
+                </button>
               ))}
             </div>
+          )}
+        </div>
+
+        {/* Search */}
+        <div className="chat-search">
+          <Search size={14} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search chats…" />
+        </div>
+
+        {/* Flat conversation list with topic badge */}
+        <div className="chat-convs">
+          {list.length === 0 && <div className="chat-convs-empty">{search ? 'No matches' : 'No conversations yet'}</div>}
+          {list.map((c) => (
+            <button key={c.id} className={`chat-conv ${c.id === activeId ? 'chat-conv-on' : ''}`} onClick={() => openConversation(c.id)}>
+              <span className="chat-conv-title">{c.title}</span>
+              <span className="chat-conv-badge">{projectName(c.projectId)}</span>
+            </button>
           ))}
         </div>
       </aside>
 
       <main className="chat-main">
         <div className="chat-thread" ref={scrollRef}>
-          {!activeId && (
-            <div className="chat-empty">
-              <p>Start a new conversation, or pick one from the sidebar.</p>
-              <button className="chat-newchat chat-newchat-lg" onClick={startNewChat} disabled={!projects.length}>
-                <Plus size={16} /> New chat
-              </button>
-            </div>
+          {!composing && <div className="chat-empty">Start a new chat or pick a conversation.</div>}
+          {composing && messages.length === 0 && (
+            <div className="chat-empty chat-draft-hint">New chat{draftProjectId ? ` in ${projectName(draftProjectId)}` : ''} — type a message to begin.</div>
           )}
           {messages.map((m) => (
             <div key={m.id} className={`chat-msg chat-msg-${m.role}`}>
@@ -199,12 +231,10 @@ export default function ChatPage() {
           {questions && <QuestionPanel questions={questions.items} onSubmit={submitAnswers} />}
         </div>
 
-        {activeId && (
+        {composing && (
           <div className="chat-composer">
             {(running || queued > 1) && (
-              <div className="chat-status">
-                <Loader className="chat-spin" size={12} /> {running ? 'Working…' : ''}{queued > 1 ? ` ${queued - 1} queued` : ''} — keep typing, messages queue
-              </div>
+              <div className="chat-status"><Loader className="chat-spin" size={12} /> {running ? 'Working…' : ''}{queued > 1 ? ` ${queued - 1} queued` : ''} — keep typing, messages queue</div>
             )}
             {pending.length > 0 && <div className="chat-attachments">{pending.map((p, i) => <span key={i}>📎 {p.name}</span>)}</div>}
             {!questions && (
@@ -221,11 +251,8 @@ export default function ChatPage() {
                     <button onClick={() => fileRef.current?.click()} title="Attach image"><Paperclip size={16} /></button>
                     <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => onPickFiles(e.target.files)} />
                     <select value={model} onChange={(e) => setModel(e.target.value)}>{MODELS.map((m) => <option key={m} value={m}>{m}</option>)}</select>
-                    {activeConv && <span className="chat-cwd">{activeConv.title}</span>}
                   </div>
-                  <button className="chat-send" onClick={() => send()} disabled={!input.trim()}>
-                    <Send size={16} />
-                  </button>
+                  <button className="chat-send" onClick={() => send()} disabled={!input.trim()}><Send size={16} /></button>
                 </div>
               </>
             )}

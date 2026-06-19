@@ -48,3 +48,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ path: strin
 export async function POST(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   return proxy(req, (await ctx.params).path);
 }
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
+  return proxy(req, (await ctx.params).path);
+}

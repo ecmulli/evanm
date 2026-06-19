@@ -41,6 +41,12 @@ export const createConversation = (projectId: string, profileId: string, model?:
     body: JSON.stringify({ projectId, profileId, model }),
   }).then(j);
 
+export const searchConversations = (profileId: string, q: string): Promise<{ conversations: Conversation[] }> =>
+  fetch(`/api/bridge/search?profileId=${profileId}&q=${encodeURIComponent(q)}`).then(j);
+
+export const deleteConversation = (id: string): Promise<{ ok: boolean }> =>
+  fetch(`/api/bridge/conversations/${id}`, { method: 'DELETE' }).then(j);
+
 export const createProject = (p: { name: string; cwd: string; scope?: string; profileId?: string }): Promise<{ project: Project }> =>
   fetch('/api/bridge/projects', {
     method: 'POST', headers: { 'content-type': 'application/json' },
