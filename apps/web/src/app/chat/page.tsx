@@ -31,11 +31,24 @@ export default function ChatPage() {
   const [pending, setPending] = useState<{ name: string; path: string }[]>([]);
   const [running, setRunning] = useState(false);
   const [queued, setQueued] = useState(0);
+  const [ready, setReady] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const activeIdRef = useRef('');
 
-  useEffect(() => { getProfiles().then((r) => { setProfiles(r.profiles); if (r.profiles[0]) setProfileId(r.profiles[0].id); }).catch(() => {}); }, []);
+  // Auth gate: validate the session cookie; if not signed in, bounce to /login
+  // and come back to /chat afterwards. Without this, an unauthenticated visit
+  // just renders a dead empty sidebar (every /api/bridge call 401s).
+  useEffect(() => {
+    fetch('/api/v1/auth/validate')
+      .then((r) => { if (r.ok) setReady(true); else window.location.href = '/login?redirect=/chat'; })
+      .catch(() => window.location.href = '/login?redirect=/chat');
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    getProfiles().then((r) => { setProfiles(r.profiles); if (r.profiles[0]) setProfileId(r.profiles[0].id); }).catch(() => {});
+  }, [ready]);
 
   useEffect(() => {
     if (!profileId) return;
@@ -125,6 +138,16 @@ export default function ChatPage() {
   const activeConv = conversations.find((c) => c.id === activeId);
   const lastIsUser = messages.length > 0 && messages[messages.length - 1].role === 'user';
   const showSpinner = running && lastIsUser && tools.length === 0;
+
+  if (!ready) {
+    return (
+      <div className="chat-shell" style={{ gridTemplateColumns: '1fr' }}>
+        <div className="chat-empty" style={{ margin: 'auto' }}>
+          <Loader className="chat-spin" size={20} /> Checking access…
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="chat-shell">
