@@ -28,6 +28,39 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Push: show notification + set app badge when a Claude run finishes.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) { /* noop */ }
+  const title = data.title || 'Claude';
+  const options = {
+    body: data.body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    tag: data.conversationId || 'claude',
+    data: { conversationId: data.conversationId },
+  };
+  event.waitUntil((async () => {
+    await self.registration.showNotification(title, options);
+    if (self.navigator && self.navigator.setAppBadge) {
+      try { await self.navigator.setAppBadge(data.badge || 1); } catch (e) { /* noop */ }
+    }
+  })());
+});
+
+// Tap a notification: focus the chat (and clear the badge).
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    if (self.navigator && self.navigator.clearAppBadge) {
+      try { await self.navigator.clearAppBadge(); } catch (e) { /* noop */ }
+    }
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of wins) { if (c.url.includes('/chat')) return c.focus(); }
+    return self.clients.openWindow('/chat');
+  })());
+});
+
 // Fetch: network-first for API, stale-while-revalidate for assets
 self.addEventListener('fetch', (event) => {
   const { request } = event;
