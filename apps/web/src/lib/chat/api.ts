@@ -83,6 +83,7 @@ export type BridgeEvent =
   | { type: 'tool'; name: string }
   | { type: 'questions'; questions: Question[]; toolUseId: string }
   | { type: 'done'; costUsd?: number; isError?: boolean }
+  | { type: 'title'; conversationId: string; title: string }
   | { type: 'error'; message: string }
   | { type: 'end' }
   | { type: 'idle' };

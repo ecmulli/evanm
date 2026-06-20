@@ -112,6 +112,7 @@ export default function ChatPage() {
       case 'questions': setQuestions({ items: e.questions }); break;
       case 'error': upsert(`err-${Date.now()}`, { role: 'assistant', content: `⚠️ ${e.message}` }); break;
       case 'done': break;
+      case 'title': setConversations((cs) => cs.map((c) => (c.id === e.conversationId ? { ...c, title: e.title } : c))); break;
       case 'end': setQueued((q) => Math.max(0, q - 1)); setTools([]); refreshConvs(); break;
       case 'idle': setRunning(false); setQueued(0); setTools([]); break;
     }
