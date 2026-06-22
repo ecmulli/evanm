@@ -108,3 +108,13 @@ next-env.d.ts
 
 # Cloned upstream repos
 /zeroclaw/
+
+# Claude Code local config
+.claude/
+
+# pnpm store (not used by this project)
+.pnpm-store/
+pnpm-lock.yaml
+
+# Data files
+*.csv
