@@ -76,7 +76,14 @@ export default function Desktop({ initialContentId }: DesktopProps) {
     appType: 'simpletext',
     href: '/dashboard',
   };
-  const allIcons = [...desktopIcons, githubIcon, dashboardIcon];
+  const keystroidsIcon: DesktopIconConfig = {
+    id: 'keystroids',
+    label: 'Keystroids',
+    iconType: 'game',
+    appType: 'simpletext',
+    href: '/games/keystroids',
+  };
+  const allIcons = [...desktopIcons, keystroidsIcon, githubIcon, dashboardIcon];
 
   // Open initial content window centered on page load
   useEffect(() => {

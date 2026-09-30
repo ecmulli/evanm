@@ -18,6 +18,9 @@ export default function DesktopIcon({ config }: DesktopIconProps) {
     if (config.href) {
       if (config.href.startsWith('http')) {
         window.open(config.href, '_blank');
+      } else if (config.href.startsWith('/games/')) {
+        // Games are static HTML behind a rewrite, not Next routes.
+        window.location.assign(config.href);
       } else {
         router.push(config.href);
       }

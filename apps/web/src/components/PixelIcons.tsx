@@ -164,8 +164,35 @@ export function PixelGitHubIcon({ color = BRAND.navy }: { color?: string }) {
   );
 }
 
+export function PixelGameIcon({ color = BRAND.terracotta }: { color?: string }) {
+  return (
+    <svg width="48" height="48" viewBox="0 0 16 16" style={{ imageRendering: 'pixelated' }}>
+      {/* Rock */}
+      <rect x="4" y="2" width="7" height="1" fill={BRAND.silver} />
+      <rect x="2" y="3" width="11" height="2" fill={BRAND.silver} />
+      <rect x="1" y="5" width="13" height="4" fill={BRAND.silver} />
+      <rect x="2" y="9" width="11" height="2" fill={BRAND.silver} />
+      <rect x="4" y="11" width="6" height="1" fill={BRAND.silver} />
+      {/* Crater */}
+      <rect x="10" y="4" width="2" height="1" fill="#3A3530" opacity="0.4" />
+      {/* Letter K */}
+      <rect x="5" y="4" width="1" height="6" fill={BRAND.navy} />
+      <rect x="6" y="6" width="1" height="1" fill={BRAND.navy} />
+      <rect x="7" y="5" width="1" height="1" fill={BRAND.navy} />
+      <rect x="8" y="4" width="1" height="1" fill={BRAND.navy} />
+      <rect x="7" y="7" width="1" height="1" fill={BRAND.navy} />
+      <rect x="8" y="8" width="1" height="2" fill={BRAND.navy} />
+      {/* Ship */}
+      <rect x="7" y="13" width="1" height="1" fill={color} />
+      <rect x="6" y="14" width="3" height="1" fill={color} />
+      {/* Shot */}
+      <rect x="7" y="12" width="1" height="1" fill={color} opacity="0.6" />
+    </svg>
+  );
+}
+
 interface PixelIconProps {
-  type: 'file' | 'folder' | 'app' | 'dashboard' | 'github';
+  type: 'file' | 'folder' | 'app' | 'dashboard' | 'github' | 'game';
   color?: string;
 }
 
@@ -181,6 +208,8 @@ export default function PixelIcon({ type, color }: PixelIconProps) {
       return <PixelDashboardIcon color={color || BRAND.navy} />;
     case 'github':
       return <PixelGitHubIcon color={color || BRAND.navy} />;
+    case 'game':
+      return <PixelGameIcon color={color || BRAND.terracotta} />;
     default:
       return <PixelFileIcon color={color} />;
   }
