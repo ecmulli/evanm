@@ -30,3 +30,20 @@ export function useIsTouchDevice(): boolean {
 
   return isTouch;
 }
+
+// Rows of compact icons that fit beside the window on a short landscape screen (a sideways phone). 0 = not that layout.
+export function useLandscapeDockRows(maxHeight: number = 500): number {
+  const [rows, setRows] = useState(0);
+
+  useEffect(() => {
+    const check = () => {
+      const { innerWidth: w, innerHeight: h } = window;
+      setRows(w > h && h < maxHeight ? Math.max(1, Math.floor((h - 60) / 86)) : 0);
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, [maxHeight]);
+
+  return rows;
+}
