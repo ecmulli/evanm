@@ -326,7 +326,7 @@ const best = () => +localStorage.getItem(bestKey()) || 0;
 function startGame() {
   Object.assign(S, {
     state: 'play', level: S.cfg.level, score: 0, lives: 3, combo: 0, kills: 0, buffer: '',
-    rocks: [], particles: [], floaters: [], beams: [], flash: {}, spawnT: .6, t: 0,
+    rocks: [], particles: [], floaters: [], beams: [], flash: {}, spawnT: .6, typeT: 0,
     goodChars: 0, keystrokes: 0, errors: 0, misses: {}, shake: 0, redFlash: 0, turretAngle: -Math.PI / 2,
     banner: { text: `LEVEL ${S.cfg.level}`, sub: DRILLS[S.cfg.drill].name, t: 2.2 }, newBest: false,
   });
@@ -606,13 +606,14 @@ function update(dt) {
   }
   if (S.state !== 'play') return;
 
-  S.t += dt;
   S.shake = Math.max(0, S.shake - dt);
   S.redFlash = Math.max(0, S.redFlash - dt);
   if (S.banner) { S.banner.t -= dt; if (S.banner.t <= 0) S.banner = null; }
   const P = params();
   S.spawnT -= dt;
   const live = S.rocks.filter(r => !r.dead).length;
+  // WPM counts only time when a word is on screen to type.
+  if (S.rocks.some(r => !r.dead && r.y >= 0)) S.typeT += dt;
   if ((S.spawnT <= 0 && live < P.max) || live === 0) { spawnRock(false); S.spawnT = P.interval * rand(.8, 1.2); }
   const gy = groundY();
   for (const r of S.rocks) {
@@ -765,9 +766,11 @@ function drawGround() {
 }
 
 function stats() {
-  const mins = S.t / 60;
+  const mins = S.typeT / 60;
+  // Letters typed toward a rock count now; the rest of the word counts when it is destroyed.
+  const typing = S.state === 'play' && S.rocks.some(r => !r.dead && r.text.startsWith(S.buffer)) ? S.buffer.length : 0;
   return {
-    wpm: mins > .05 ? Math.round(S.goodChars / 5 / mins) : 0,
+    wpm: mins > .05 ? Math.round((S.goodChars + typing) / 5 / mins) : 0,
     acc: S.keystrokes ? clamp(Math.round((1 - S.errors / S.keystrokes) * 100), 0, 100) : 100,
     mult: Math.min(5, 1 + Math.floor(S.combo / 5)),
   };
