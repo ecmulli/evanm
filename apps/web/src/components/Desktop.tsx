@@ -9,7 +9,7 @@ import Stickies from './apps/Stickies';
 import Folder from './apps/Folder';
 import { useWindow } from '@/hooks/useWindow';
 import { useView } from '@/context/ViewContext';
-import { useIsMobile } from '@/hooks/useIsMobile';
+import { useIsMobile, useLandscapeDockRows } from '@/hooks/useIsMobile';
 import { useDesktopIcons, useTextContent } from '@/context/ContentContext';
 import { DesktopIconConfig, WindowState } from '@/types/window';
 
@@ -59,6 +59,7 @@ export default function Desktop({ initialContentId }: DesktopProps) {
   const { visibleWindows, closeWindow, openWindow, updateWindowPosition } = useWindow();
   const { settings } = useView();
   const isMobile = useIsMobile();
+  const dockRows = useLandscapeDockRows();
   const desktopIcons = useDesktopIcons();
   const initialContent = useTextContent(initialContentId || 'about-me');
 
@@ -125,6 +126,7 @@ export default function Desktop({ initialContentId }: DesktopProps) {
         style={{ 
           height: isMobile ? 'calc(100vh - 44px)' : 'calc(100vh - 32px)',
           marginTop: isMobile ? '44px' : '32px',
+          ['--dock-width' as string]: dockRows ? `${Math.ceil(allIcons.length / dockRows) * 74 + 8}px` : '0px',
         }}
       >
         {/* Stars layer */}
@@ -146,12 +148,17 @@ export default function Desktop({ initialContentId }: DesktopProps) {
         {/* Grid overlay */}
         {settings.showGrid && <div className="pixel-grid" />}
 
-        {/* Desktop Icons - bottom dock on mobile, top-right on desktop */}
-        <div className={
-          isMobile 
-            ? "absolute bottom-2 left-0 right-0 flex justify-center gap-2 z-10"
-            : "absolute top-4 right-4 flex flex-col gap-1 z-10"
-        }>
+        {/* Desktop Icons - bottom dock on mobile, grid on the right on a sideways phone, top-right on desktop */}
+        <div
+          className={
+            dockRows
+              ? "desktop-icons-compact absolute top-2 right-2 grid grid-flow-col z-10"
+              : isMobile
+                ? "desktop-icons-compact absolute bottom-2 left-0 right-0 flex flex-wrap justify-center gap-x-1 px-1 z-10"
+                : "absolute top-4 right-4 flex flex-col gap-1 z-10"
+          }
+          style={dockRows ? { gridTemplateRows: `repeat(${dockRows}, auto)` } : undefined}
+        >
           {allIcons.map((icon) => (
             <DesktopIcon key={icon.id} config={icon} />
           ))}

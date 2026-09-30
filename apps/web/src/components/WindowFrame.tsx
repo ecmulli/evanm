@@ -3,7 +3,7 @@
 import React, { ReactNode, useRef } from 'react';
 import Draggable, { DraggableEvent, DraggableData } from 'react-draggable';
 import { useWindow } from '@/hooks/useWindow';
-import { useIsMobile } from '@/hooks/useIsMobile';
+import { useIsMobile, useLandscapeDockRows } from '@/hooks/useIsMobile';
 import { Position } from '@/types/window';
 
 interface WindowFrameProps {
@@ -37,6 +37,7 @@ export default function WindowFrame({
   const nodeRef = useRef<HTMLDivElement>(null);
   const isActive = isWindowFocused(id);
   const isMobile = useIsMobile();
+  const isLandscapePhone = useLandscapeDockRows() > 0;
 
   const handleDragStart = () => {
     focusWindow(id);
@@ -52,17 +53,18 @@ export default function WindowFrame({
     focusWindow(id);
   };
 
-  // Mobile: full-width, fixed position, no dragging, ~70% height to show dock
-  if (isMobile) {
+  // Mobile: full-width, fixed position, no dragging, ends above the two-row dock.
+  // Sideways phone: fixed, fills the space left of the icon grid.
+  if (isMobile || isLandscapePhone) {
     return (
       <div
         ref={nodeRef}
-        className="retro-window absolute left-0 right-0 mx-2"
-        style={{
-          top: '8px',
-          height: '70%',
-          zIndex,
-        }}
+        className={isLandscapePhone ? 'retro-window absolute' : 'retro-window absolute left-0 right-0 mx-2'}
+        style={
+          isLandscapePhone
+            ? { top: '8px', bottom: '8px', left: '8px', right: 'calc(var(--dock-width) + 8px)', zIndex }
+            : { top: '8px', height: 'calc(100% - 204px)', zIndex }
+        }
         onTouchStart={handleMouseDown}
       >
         {/* Title Bar */}

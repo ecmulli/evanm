@@ -505,6 +505,23 @@ body {
     0 0 6px rgba(0,0,0,0.4);
 }
 
+/* Compact icons: phone dock and sideways-phone grid */
+.desktop-icons-compact .desktop-icon {
+  width: 74px;
+  padding: 4px 2px;
+}
+
+.desktop-icons-compact .desktop-icon-image {
+  width: 40px;
+  height: 40px;
+}
+
+.desktop-icons-compact .desktop-icon-label {
+  font-size: 10px;
+  max-width: 72px;
+  padding: 2px;
+}
+
 /* Mobile Responsive Styles */
 @media (max-width: 640px) {
   .retro-menubar {
@@ -515,21 +532,6 @@ body {
   .retro-menu-item {
     padding: 8px 10px;
     font-size: 14px;
-  }
-
-  .desktop-icon {
-    width: 70px;
-    padding: 6px;
-  }
-
-  .desktop-icon-image {
-    width: 40px;
-    height: 40px;
-  }
-
-  .desktop-icon-label {
-    font-size: 10px;
-    max-width: 68px;
   }
 
   .retro-close-btn {
