@@ -35,6 +35,8 @@
   .arrow { cursor:pointer; padding:0 .8cqw; color:var(--amber); }
   #desc { margin:1cqw 0 0; max-width:60cqw; min-height:3.2cqw; line-height:1.7; font-size:1cqw; color:#cfc8e8; }
   #best { margin:0; font-size:1.1cqw; color:var(--amber); }
+  #hiscores { margin:0; font-size:1cqw; line-height:1.9; color:#cfc8e8; white-space:pre; }
+  #hiscores b { color:var(--amber); font-weight:normal; }
   #launch { font:inherit; font-size:1.4cqw; color:var(--amber); background:transparent; border:.25cqw solid var(--amber);
     padding:1cqw 3cqw; cursor:pointer; box-shadow:0 0 1cqw rgba(255,176,0,.35); }
   .hint { margin:0; font-size:1cqw; color:var(--dim); }
@@ -47,7 +49,7 @@
   body.mobile .row { grid-template-columns:32cqw 56cqw; padding:2.2cqw 2.5cqw; border-width:.5cqw; }
   body.mobile .arrow { padding:2cqw 3cqw; }
   body.mobile #desc { font-size:2.6cqw; max-width:86cqw; min-height:10cqw; }
-  body.mobile #best, body.mobile .hint { font-size:2.6cqw; }
+  body.mobile #best, body.mobile .hint, body.mobile #hiscores { font-size:2.6cqw; }
   #kbin { position:fixed; left:0; top:0; width:1px; height:1px; opacity:0; border:0; padding:0; font-size:16px;
     -webkit-user-select:text; user-select:text; }
   body.mobile { align-items:flex-start; }
@@ -63,6 +65,7 @@
     <div id="rows"></div>
     <p id="desc"></p>
     <p id="best"></p>
+    <p id="hiscores"></p>
     <button id="launch">LAUNCH</button>
     <p class="hint" id="menuhint">&uarr;&darr; SELECT &middot; &larr;&rarr; CHANGE &middot; ENTER TO LAUNCH</p>
   </div>
@@ -260,6 +263,62 @@ const S = {
 if (MOBILE) { S.cfg.mode = 0; if (!DRILL_IDS.includes(S.cfg.drill)) S.cfg.drill = 4; }
 layout();
 S.stars = Array.from({ length: 140 }, () => ({ x: Math.random() * W, y: Math.random() * H, z: 1 + Math.random() * 2 | 0 }));
+// ---------- leaderboard ----------
+const BOARD = MOBILE ? 'mobile' : 'desktop';
+const SCORES_API = '/api/games/keystroids/scores';
+S.hs = { scores: null, status: 'idle', mine: null };
+S.initials = '';
+async function loadScores() {
+  S.hs.status = 'loading';
+  try {
+    const r = await fetch(`${SCORES_API}?board=${BOARD}`);
+    if (!r.ok) throw new Error(r.status);
+    S.hs.scores = (await r.json()).scores;
+    S.hs.status = 'ok';
+  } catch { S.hs.status = 'error'; }
+  renderMenuScores();
+}
+function qualifies() {
+  const list = S.hs.scores;
+  return S.hs.status === 'ok' && S.score > 0 && (list.length < 10 || S.score > list[list.length - 1].score);
+}
+async function submitInitials() {
+  if (S.state !== 'initials' || S.initials.length !== 3) return;
+  S.state = 'saving';
+  localStorage.setItem('keystroids:initials', S.initials);
+  const { wpm, acc } = stats();
+  try {
+    const r = await fetch(SCORES_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ board: BOARD, initials: S.initials, score: S.score, level: S.level, wpm, acc, drill: S.cfg.drill, mode: S.cfg.mode }),
+    });
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    S.hs.scores = j.scores;
+    S.hs.mine = j.id;
+  } catch { S.hs.saveFailed = true; }
+  toOver();
+}
+function toOver() {
+  S.state = 'over';
+  S.overReady = S.clock + .6;
+  kbin.blur();
+  renderMenuScores();
+}
+function initialsKey(key) {
+  if (key === 'Enter') submitInitials();
+  else if (key === 'Backspace') S.initials = S.initials.slice(0, -1);
+  else if (key === 'Escape') toOver();
+  else if (/^[a-z0-9]$/i.test(key) && S.initials.length < 3) { S.initials += key.toUpperCase(); sfx.key(); }
+}
+function renderMenuScores() {
+  const el = document.getElementById('hiscores');
+  const list = (S.hs.scores || []).slice(0, MOBILE ? 5 : 3);
+  const rows = list.map((e, i) => `${i + 1} ${e.initials} ${String(e.score).padStart(7, '0')}`);
+  el.innerHTML = list.length ? `<b>HIGH SCORES</b>${MOBILE ? '\n' + rows.join('\n') : '   ' + rows.join('   ')}` : '';
+}
+
 const groundY = () => MOBILE ? L.groundY : S.cfg.mode === 2 ? 470 : 380;
 const bestKey = () => `keystroids:best:${S.cfg.drill}:${S.cfg.mode}${MOBILE ? ':m' : ''}`;
 const best = () => +localStorage.getItem(bestKey()) || 0;
@@ -274,6 +333,7 @@ function startGame() {
   menuEl.classList.add('hidden');
   audio();
   showKeyboard();
+  loadScores();
 }
 function toMenu() {
   Object.assign(S, { state: 'menu', rocks: [], particles: [], floaters: [], beams: [], buffer: '' });
@@ -283,9 +343,16 @@ function toMenu() {
 }
 function pause() { if (S.state === 'play') S.state = 'paused'; }
 function gameOver() {
-  S.state = 'over';
-  S.overReady = S.clock + 1;
   if (S.score > best()) { localStorage.setItem(bestKey(), S.score); S.newBest = true; }
+  Object.assign(S.hs, { mine: null, saveFailed: false });
+  if (qualifies()) {
+    S.state = 'initials';
+    S.initials = localStorage.getItem('keystroids:initials') || '';
+    S.overReady = S.clock + .6;
+  } else {
+    toOver();
+    S.overReady = S.clock + 1;
+  }
 }
 
 function params() {
@@ -471,6 +538,10 @@ window.addEventListener('keydown', e => {
     else if (e.key.toLowerCase() === 'q') toMenu();
     return;
   }
+  if (S.state === 'initials') {
+    if (S.clock >= S.overReady) initialsKey(e.key);
+    return;
+  }
   if (S.state === 'over') {
     if (S.clock < S.overReady) return;
     if (e.key === 'Enter') startGame();
@@ -495,10 +566,15 @@ cv.addEventListener('pointerdown', e => {
   if (btn) btn.action();
 });
 // iOS opens the keyboard only from a tap, so any tap on the game reopens it.
-cv.addEventListener('click', () => { if (S.state === 'play') showKeyboard(); });
+cv.addEventListener('click', () => { if (S.state === 'play' || S.state === 'initials') showKeyboard(); });
 // Fallback for keyboards that send 'Unidentified' keydowns. Handled keydowns cancel this event.
 kbin.addEventListener('beforeinput', e => {
   e.preventDefault();
+  if (S.state === 'initials') {
+    if (e.inputType === 'deleteContentBackward') initialsKey('Backspace');
+    else if (e.data) for (const c of e.data) initialsKey(c);
+    return;
+  }
   if (S.state !== 'play') return;
   if (e.inputType === 'deleteContentBackward') backspace();
   else if (e.data) for (const c of e.data.toLowerCase()) typeChar(c, CHAR2KEY[c] ? CHAR2KEY[c].code : '');
@@ -774,25 +850,71 @@ function render() {
     button('QUIT', W / 2, y + bh + 20, bw, bh, DIM, toMenu);
     if (!MOBILE) text('ENTER RESUME / Q QUIT', W / 2, y + 2 * bh + 60, 8, DIM, 'center');
   }
+  if (S.state === 'initials' || S.state === 'saving') {
+    S.buttons = [];
+    const y = overlay([['NEW HIGH SCORE!', 22, AMBER], [String(S.score).padStart(7, '0'), 14, '#fff'], ['ENTER YOUR INITIALS', 10, '#cfc8e8']]);
+    const slot = 56 * FS, sy = y + 30 * FS;
+    for (let i = 0; i < 3; i++) {
+      const cx = W / 2 + (i - 1) * slot * 1.2;
+      const active = S.state === 'initials' && i === S.initials.length && Math.sin(S.clock * 8) > 0;
+      text(S.initials[i] || (active ? '_' : ''), cx, sy, 28, GREEN, 'center');
+      ctx.fillStyle = i === S.initials.length ? AMBER : '#4a4566';
+      ctx.fillRect(cx - slot / 2, sy + 22 * FS, slot, 4 * FS);
+    }
+    const by = sy + 50 * FS;
+    if (S.state === 'saving') text('SAVING...', W / 2, by + bh / 2, 10, DIM, 'center');
+    else if (MOBILE) {
+      button('SKIP', W / 2 - 130, by, 240, bh, DIM, toOver);
+      if (S.initials.length === 3) button('SAVE', W / 2 + 130, by, 240, bh, GREEN, submitInitials);
+    } else {
+      text(S.initials.length === 3 ? 'ENTER SAVE / ESC SKIP' : 'TYPE 3 LETTERS / ESC SKIP', W / 2, by + 10, 8, DIM, 'center');
+    }
+  }
   if (S.state === 'over') {
     S.buttons = [];
     const { wpm, acc } = stats();
     const trouble = Object.entries(S.misses).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k]) => k === ' ' ? 'SPACE' : k).join('  ');
-    const statLines = MOBILE
-      ? [[`LEVEL ${S.level}   ROCKS ${S.kills}`, 9, '#cfc8e8'], [`WPM ${wpm}   ACC ${acc}%`, 9, '#cfc8e8']]
-      : [[`LEVEL ${S.level}   WPM ${wpm}   ACC ${acc}%   ROCKS ${S.kills}`, 10, '#cfc8e8']];
-    const y = overlay([
-      ['GAME OVER', 28, RED],
-      [S.newBest ? `NEW BEST! ${S.score}` : `SCORE ${S.score}`, 14, S.newBest ? AMBER : '#fff'],
-      ...statLines,
-      [trouble ? `TROUBLE KEYS: ${trouble}` : 'NO TROUBLE KEYS. NICE.', MOBILE ? 8 : 10, trouble ? AMBER : GREEN],
-    ]);
+    ctx.fillStyle = 'rgba(5,4,13,.84)';
+    ctx.fillRect(0, 0, W, H);
+    const lines = [
+      ['GAME OVER', 22, RED],
+      [S.newBest ? `NEW BEST! ${S.score}` : `SCORE ${S.score}`, 12, S.newBest ? AMBER : '#fff'],
+      ...(MOBILE
+        ? [[`LEVEL ${S.level}   ROCKS ${S.kills}`, 8, '#cfc8e8'], [`WPM ${wpm}   ACC ${acc}%`, 8, '#cfc8e8']]
+        : [[`LEVEL ${S.level}   WPM ${wpm}   ACC ${acc}%   ROCKS ${S.kills}`, 9, '#cfc8e8']]),
+      [trouble ? `TROUBLE KEYS: ${trouble}` : 'NO TROUBLE KEYS. NICE.', 8, trouble ? AMBER : GREEN],
+    ];
+    let y = MOBILE ? H * .09 : 50;
+    const gap = (MOBILE ? 28 : 30) * FS;
+    for (const [str, size, c] of lines) { text(str, W / 2, y, size, c, 'center'); y += gap; }
+    y = drawScoreTable(y + 6 * FS, (MOBILE ? 19 : 18) * FS);
     if (S.clock >= S.overReady) {
-      button('PLAY AGAIN', W / 2, y + 10, bw, bh, GREEN, startGame);
-      button('MENU', W / 2, y + bh + 30, bw, bh, DIM, toMenu);
-      if (!MOBILE) text('ENTER PLAY AGAIN / ESC MENU', W / 2, y + 2 * bh + 70, 8, DIM, 'center');
+      const w = MOBILE ? 240 : 200;
+      button('PLAY AGAIN', W / 2 - w / 2 - 10, y + 6, w, bh, GREEN, startGame);
+      button('MENU', W / 2 + w / 2 + 10, y + 6, w, bh, DIM, toMenu);
+      if (!MOBILE) text('ENTER PLAY AGAIN / ESC MENU', W / 2, y + bh + 26, 8, DIM, 'center');
     }
   }
+}
+
+function drawScoreTable(y, rowH) {
+  text('HIGH SCORES', W / 2, y, 10, AMBER, 'center');
+  y += rowH * 1.4;
+  const list = S.hs.scores;
+  if (!list) {
+    text(S.hs.status === 'loading' ? 'LOADING...' : 'SCORES OFFLINE', W / 2, y, 8, DIM, 'center');
+    return y + rowH;
+  }
+  if (S.hs.saveFailed) { text('COULD NOT SAVE SCORE', W / 2, y, 8, RED, 'center'); y += rowH; }
+  if (!list.length) { text('NO SCORES YET', W / 2, y, 8, DIM, 'center'); return y + rowH; }
+  list.forEach((e, i) => {
+    const line = `${String(i + 1).padStart(2)}  ${e.initials}  ${String(e.score).padStart(7, '0')}  LV${String(e.level).padStart(2)}  ${String(e.wpm).padStart(3)} WPM`;
+    const mine = e.id === S.hs.mine;
+    const c = mine ? (Math.sin(S.clock * 6) > 0 ? AMBER : '#fff') : i === 0 ? GREEN : '#cfc8e8';
+    text(line, W / 2, y, 8, c, 'center');
+    y += rowH;
+  });
+  return y;
 }
 
 let last = performance.now();
@@ -803,6 +925,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 renderMenu();
+loadScores();
 requestAnimationFrame(frame);
 window.S = S;
 </script>
