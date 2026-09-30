@@ -48,6 +48,9 @@
   body.mobile .arrow { padding:2cqw 3cqw; }
   body.mobile #desc { font-size:2.6cqw; max-width:86cqw; min-height:10cqw; }
   body.mobile #best, body.mobile .hint { font-size:2.6cqw; }
+  #kbin { position:fixed; left:0; top:0; width:1px; height:1px; opacity:0; border:0; padding:0; font-size:16px;
+    -webkit-user-select:text; user-select:text; }
+  body.mobile { align-items:flex-start; }
   body.mobile #launch { font-size:4.4cqw; padding:3.5cqw 10cqw; border-width:.6cqw; }
 </style>
 </head>
@@ -65,6 +68,7 @@
   </div>
   <div id="crt"></div>
 </div>
+<input id="kbin" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" aria-label="Type here">
 <script>
 'use strict';
 const QS = new URLSearchParams(location.search);
@@ -183,27 +187,24 @@ ROWS.forEach((row, ri) => {
   });
 });
 
-// ---------- touch keyboard layout ----------
-const TK_ROWS = ['1234567890', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'];
-const TK_PITCH = 62, TK_H = 56;
-let TKEYS = [];
+// ---------- phone keyboard ----------
 const L = {};
+const kbin = document.getElementById('kbin');
+function showKeyboard() {
+  if (!MOBILE) return;
+  kbin.value = '';
+  kbin.focus({ preventScroll: true });
+}
 function layout() {
   if (MOBILE) {
+    // The phone keyboard covers the bottom of the screen, so fit the game to the visible area above it.
+    const vh = window.visualViewport ? visualViewport.height : innerHeight;
     W = 540;
-    H = clamp(Math.round(540 * innerHeight / innerWidth), 860, 1200);
-    L.kbY = H - 5 * TK_PITCH - 30;
-    L.inputY = L.kbY - 58;
+    H = clamp(Math.round(540 * vh / innerWidth), 480, 1200);
+    L.inputY = H - 54;
     L.groundY = L.inputY - 46;
-    const kw = (W - 12) / 10;
-    TKEYS = [];
-    TK_ROWS.forEach((row, ri) => [...row].forEach((c, i) =>
-      TKEYS.push({ code: CHAR2KEY[c].code, label: c, ch: c, x: 6 + i * kw, y: L.kbY + ri * TK_PITCH, w: kw })));
-    let x = 6;
-    [['Minus', '-', '-', 1.5], ['Backspace', 'DEL', null, 3], ['Enter', 'FIRE', null, 5.5]].forEach(([code, label, ch, units]) => {
-      TKEYS.push({ code, label, ch, x, y: L.kbY + 4 * TK_PITCH, w: units * kw });
-      x += units * kw;
-    });
+    document.body.style.height = vh + 'px';
+    window.scrollTo(0, 0);
   } else {
     W = 960; H = 540;
   }
@@ -272,10 +273,12 @@ function startGame() {
   });
   menuEl.classList.add('hidden');
   audio();
+  showKeyboard();
 }
 function toMenu() {
   Object.assign(S, { state: 'menu', rocks: [], particles: [], floaters: [], beams: [], buffer: '' });
   menuEl.classList.remove('hidden');
+  kbin.blur();
   renderMenu();
 }
 function pause() { if (S.state === 'play') S.state = 'paused'; }
@@ -434,7 +437,7 @@ function renderMenu() {
   });
   const drill = DRILLS[S.cfg.drill];
   document.getElementById('desc').textContent = MOBILE
-    ? `${drill.mdesc || drill.desc} Tap the keys, then FIRE.`
+    ? `${drill.mdesc || drill.desc} Type, then hit GO.`
     : `${drill.desc} ${MODES[S.cfg.mode].desc}`;
   const b = best();
   document.getElementById('best').textContent = b ? `BEST ${String(b).padStart(7, '0')}` : '';
@@ -443,7 +446,7 @@ function saveCfg() { localStorage.setItem('keystroids:cfg', JSON.stringify(S.cfg
 document.getElementById('launch').addEventListener('click', () => { saveCfg(); startGame(); });
 if (MOBILE) {
   document.body.classList.add('mobile');
-  document.querySelector('.sub').textContent = 'TYPE THE ROCK. HIT FIRE. SAVE THE PLANET.';
+  document.querySelector('.sub').textContent = 'TYPE THE ROCK. HIT GO. SAVE THE PLANET.';
   document.getElementById('menuhint').textContent = 'TAP ◀ ▶ TO CHANGE';
 }
 
@@ -489,18 +492,21 @@ cv.addEventListener('pointerdown', e => {
   const r = cv.getBoundingClientRect();
   const x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
   const btn = S.buttons.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);
-  if (btn) { btn.action(); return; }
-  if (S.state !== 'play' || !MOBILE) return;
-  const k = TKEYS.find(k => x >= k.x && x < k.x + k.w && y >= k.y - 3 && y < k.y + TK_PITCH - 3);
-  if (!k) return;
-  if (k.code === 'Enter') fireKey();
-  else if (k.code === 'Backspace') backspace();
-  else typeChar(k.ch, k.code);
-  if (navigator.vibrate) navigator.vibrate(8);
+  if (btn) btn.action();
+});
+// iOS opens the keyboard only from a tap, so any tap on the game reopens it.
+cv.addEventListener('click', () => { if (S.state === 'play') showKeyboard(); });
+// Fallback for keyboards that send 'Unidentified' keydowns. Handled keydowns cancel this event.
+kbin.addEventListener('beforeinput', e => {
+  e.preventDefault();
+  if (S.state !== 'play') return;
+  if (e.inputType === 'deleteContentBackward') backspace();
+  else if (e.data) for (const c of e.data.toLowerCase()) typeChar(c, CHAR2KEY[c] ? CHAR2KEY[c].code : '');
 });
 window.addEventListener('blur', pause);
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 window.addEventListener('resize', () => { if (MOBILE) layout(); });
+if (MOBILE && window.visualViewport) visualViewport.addEventListener('resize', layout);
 
 // ---------- update ----------
 function update(dt) {
@@ -641,30 +647,6 @@ function drawKeyboard() {
   }
 }
 
-function drawTouchKeyboard() {
-  const hints = hintCodes();
-  const pulse = .55 + .45 * Math.sin(S.clock * 8);
-  ctx.fillStyle = '#0d0b1a';
-  ctx.fillRect(0, L.kbY - 10, W, H - L.kbY + 10);
-  ctx.fillStyle = '#2a2640';
-  ctx.fillRect(0, L.kbY - 10, W, 2);
-  for (const k of TKEYS) {
-    const x = k.x + 3, w = k.w - 6;
-    const fl = S.flash[k.code];
-    const isFire = k.code === 'Enter';
-    let fill = isFire ? '#0f2a12' : '#1c1a2c', stroke = isFire ? GREEN : '#4a4566';
-    if (hints.has(k.code)) { fill = `rgba(255,176,0,${pulse})`; stroke = AMBER; }
-    if (fl) { fill = fl.c; stroke = fl.c; }
-    ctx.fillStyle = fill;
-    ctx.fillRect(x, k.y, w, TK_H);
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = stroke;
-    ctx.strokeRect(x + 1, k.y + 1, w - 2, TK_H - 2);
-    const dark = fl || hints.has(k.code);
-    text(k.label, x + w / 2, k.y + TK_H / 2 + 2, k.label.length > 1 ? 9 : 12, dark ? '#000' : isFire ? GREEN : '#e8e4f8', 'center');
-  }
-}
-
 function drawGround() {
   const gy = groundY();
   ctx.fillStyle = '#120f22';
@@ -702,7 +684,8 @@ function drawGround() {
   ctx.strokeRect(bx, by, bw, bh);
   const shown = S.cfg.mode === 2 ? '*'.repeat(S.buffer.length) : S.buffer;
   const cursor = Math.sin(S.clock * 8) > 0 ? '_' : ' ';
-  text('> ' + shown + cursor, bx + 8, by + bh / 2 + 1, 12, '#fff');
+  if (MOBILE && S.state === 'play' && document.activeElement !== kbin) text('TAP HERE TO TYPE', W / 2, by + bh / 2 + 1, 12, AMBER, 'center');
+  else text('> ' + shown + cursor, bx + 8, by + bh / 2 + 1, 12, '#fff');
 }
 
 function stats() {
@@ -768,7 +751,7 @@ function render() {
   ctx.globalAlpha = 1;
 
   drawGround();
-  if (MOBILE) drawTouchKeyboard(); else drawKeyboard();
+  if (!MOBILE) drawKeyboard();
   if (S.state !== 'menu') drawHud();
 
   for (const f of S.floaters) { ctx.globalAlpha = clamp(f.life, 0, 1); text(f.text, f.x, f.y, 10, f.c, 'center'); }
