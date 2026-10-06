@@ -73,6 +73,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Games: network only. A cached copy shows the old game after a deploy.
+  if (new URL(request.url).pathname.startsWith('/games/')) {
+    return;
+  }
+
   // Everything else: stale-while-revalidate
   event.respondWith(
     caches.match(request).then((cached) => {

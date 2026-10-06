@@ -7,6 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>KEYSTROIDS</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -35,8 +37,17 @@
   .arrow { cursor:pointer; padding:0 .8cqw; color:var(--amber); }
   #desc { margin:1cqw 0 0; max-width:60cqw; min-height:3.2cqw; line-height:1.7; font-size:1cqw; color:#cfc8e8; }
   #best { margin:0; font-size:1.1cqw; color:var(--amber); }
-  #hiscores { margin:0; font-size:1cqw; line-height:1.9; color:#cfc8e8; white-space:pre; }
-  #hiscores b { color:var(--amber); font-weight:normal; }
+  #hiscores { margin:0; font-size:1cqw; line-height:1.9; color:#cfc8e8; }
+  #hiscores b { display:block; color:var(--amber); font-weight:normal; cursor:pointer; }
+  /* The half row at the bottom shows that the list scrolls. */
+  #hilist { max-height:6.65em; overflow-y:auto; padding:0 1.5em; white-space:pre; overscroll-behavior:contain;
+    touch-action:pan-y; scrollbar-width:thin; scrollbar-color:var(--amber) transparent; }
+  #hsfull { position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center;
+    gap:1.6cqw; background:rgba(5,4,13,.96); cursor:pointer; z-index:2; }
+  #hsfull.open { display:flex; }
+  #hsfull b { color:var(--amber); font-weight:normal; font-size:2cqw; }
+  #hsrows { max-height:80%; overflow-y:auto; white-space:pre; line-height:2.1; color:#cfc8e8; touch-action:pan-y;
+    scrollbar-width:thin; scrollbar-color:var(--amber) transparent; }
   #launch { font:inherit; font-size:1.4cqw; color:var(--amber); background:transparent; border:.25cqw solid var(--amber);
     padding:1cqw 3cqw; cursor:pointer; box-shadow:0 0 1cqw rgba(255,176,0,.35); }
   .hint { margin:0; font-size:1cqw; color:var(--dim); }
@@ -50,6 +61,10 @@
   body.mobile .arrow { padding:2cqw 3cqw; }
   body.mobile #desc { font-size:2.6cqw; max-width:86cqw; min-height:10cqw; }
   body.mobile #best, body.mobile .hint, body.mobile #hiscores { font-size:2.6cqw; }
+  body.mobile #hilist { max-height:10.45em; }
+  body.mobile #hsfull { gap:4cqw; }
+  body.mobile #hsfull b { font-size:4.4cqw; }
+  body.mobile #hsrows { font-size:2.6cqw; line-height:2.4; }
   #kbin { position:fixed; left:0; top:0; width:1px; height:1px; opacity:0; border:0; padding:0; font-size:16px;
     -webkit-user-select:text; user-select:text; }
   body.mobile { align-items:flex-start; }
@@ -65,9 +80,10 @@
     <div id="rows"></div>
     <p id="desc"></p>
     <p id="best"></p>
-    <p id="hiscores"></p>
+    <div id="hiscores"></div>
     <button id="launch">LAUNCH</button>
-    <p class="hint" id="menuhint">&uarr;&darr; SELECT &middot; &larr;&rarr; CHANGE &middot; ENTER TO LAUNCH</p>
+    <p class="hint" id="menuhint">&uarr;&darr; SELECT &middot; &larr;&rarr; CHANGE &middot; ENTER TO LAUNCH &middot; H FOR SCORES</p>
+    <div id="hsfull"><b>HIGH SCORES</b><div id="hsrows"></div><p class="hint" id="hsclose"></p></div>
   </div>
   <div id="crt"></div>
 </div>
@@ -314,10 +330,20 @@ function initialsKey(key) {
 }
 function renderMenuScores() {
   const el = document.getElementById('hiscores');
-  const list = (S.hs.scores || []).slice(0, MOBILE ? 5 : 3);
-  const rows = list.map((e, i) => `${i + 1} ${e.initials} ${String(e.score).padStart(7, '0')}`);
-  el.innerHTML = list.length ? `<b>HIGH SCORES</b>${MOBILE ? '\n' + rows.join('\n') : '   ' + rows.join('   ')}` : '';
+  const list = (S.hs.scores || []).slice(0, 10);
+  const rows = list.map((e, i) => `${String(i + 1).padStart(2)} ${e.initials} ${String(e.score).padStart(7, '0')}`);
+  el.innerHTML = list.length ? `<b>HIGH SCORES &#9654; VIEW ALL</b><div id="hilist">${rows.join('\n')}</div>` : '';
+  document.getElementById('hsrows').textContent = list.map(scoreLine).join('\n');
+  if (!list.length) toggleScores(false);
 }
+const scoreLine = (e, i) => `${String(i + 1).padStart(2)}  ${e.initials}  ${String(e.score).padStart(7, '0')}  LV${String(e.level).padStart(2)}  ${String(e.wpm).padStart(3)} WPM`;
+function toggleScores(open) {
+  S.hsOpen = open && !!(S.hs.scores || []).length;
+  document.getElementById('hsfull').classList.toggle('open', S.hsOpen);
+}
+document.getElementById('hiscores').addEventListener('click', e => { if (e.target.tagName === 'B') toggleScores(true); });
+document.getElementById('hsfull').addEventListener('click', () => toggleScores(false));
+document.getElementById('hsclose').textContent = MOBILE ? 'TAP TO CLOSE' : 'CLICK OR ESC TO CLOSE';
 
 const groundY = () => MOBILE ? L.groundY : S.cfg.mode === 2 ? 470 : 380;
 const bestKey = () => `keystroids:best:${S.cfg.drill}:${S.cfg.mode}${MOBILE ? ':m' : ''}`;
@@ -523,6 +549,8 @@ window.addEventListener('keydown', e => {
   if (HANDLED.has(e.key) || e.key.length === 1 || e.key.startsWith('Arrow')) e.preventDefault();
 
   if (S.state === 'menu') {
+    if (S.hsOpen) { if (e.key === 'Escape' || e.key === 'Enter' || e.key.toLowerCase() === 'h') toggleScores(false); return; }
+    if (e.key.toLowerCase() === 'h') { toggleScores(true); return; }
     const m = MENU_ROWS[S.menuRow];
     if (e.key === 'ArrowUp') S.menuRow = (S.menuRow + MENU_ROWS.length - 1) % MENU_ROWS.length;
     else if (e.key === 'ArrowDown') S.menuRow = (S.menuRow + 1) % MENU_ROWS.length;
@@ -911,7 +939,7 @@ function drawScoreTable(y, rowH) {
   if (S.hs.saveFailed) { text('COULD NOT SAVE SCORE', W / 2, y, 8, RED, 'center'); y += rowH; }
   if (!list.length) { text('NO SCORES YET', W / 2, y, 8, DIM, 'center'); return y + rowH; }
   list.forEach((e, i) => {
-    const line = `${String(i + 1).padStart(2)}  ${e.initials}  ${String(e.score).padStart(7, '0')}  LV${String(e.level).padStart(2)}  ${String(e.wpm).padStart(3)} WPM`;
+    const line = scoreLine(e, i);
     const mine = e.id === S.hs.mine;
     const c = mine ? (Math.sin(S.clock * 6) > 0 ? AMBER : '#fff') : i === 0 ? GREEN : '#cfc8e8';
     text(line, W / 2, y, 8, c, 'center');
