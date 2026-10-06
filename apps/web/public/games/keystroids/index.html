@@ -24,51 +24,45 @@
     background:repeating-linear-gradient(to bottom, transparent 0, transparent 2px, rgba(0,0,0,.22) 3px);
     box-shadow:inset 0 0 12cqw rgba(0,0,0,.85); }
   #menu { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:1.6cqw; background:rgba(5,4,13,.82); font-size:1.4cqw; text-align:center; z-index:1; }
+    gap:1cqw; background:rgba(5,4,13,.82); font-size:1.2cqw; text-align:center; z-index:1; }
   #menu.hidden { display:none; }
-  h1 { margin:0 0 .5cqw; font-size:5.2cqw; color:var(--amber); letter-spacing:.3cqw;
+  h1 { margin:0; font-size:3.6cqw; color:var(--amber); letter-spacing:.3cqw;
     text-shadow:0 0 1cqw rgba(255,176,0,.6), .4cqw .4cqw 0 #7a2a00; }
-  .sub { margin:0 0 1.5cqw; color:var(--dim); font-size:1.1cqw; }
-  .row { display:grid; grid-template-columns:18cqw 34cqw; align-items:center; padding:.6cqw 1.2cqw; border:.2cqw solid transparent; }
+  .sub { margin:0 0 .4cqw; color:var(--dim); font-size:1cqw; }
+  .row { display:grid; grid-template-columns:18cqw 34cqw; align-items:center; padding:.35cqw 1.2cqw; border:.2cqw solid transparent; }
   .row.sel { border-color:var(--green); box-shadow:0 0 1cqw rgba(57,255,20,.35); }
   .row .label { text-align:left; color:var(--dim); }
   .row .val { display:flex; justify-content:space-between; align-items:center; color:#fff; }
   .row.sel .val { color:var(--green); }
   .arrow { cursor:pointer; padding:0 .8cqw; color:var(--amber); }
-  #desc { margin:1cqw 0 0; max-width:60cqw; min-height:3.2cqw; line-height:1.7; font-size:1cqw; color:#cfc8e8; }
+  #desc { margin:0; max-width:70cqw; min-height:3cqw; line-height:1.6; font-size:.9cqw; color:#cfc8e8; }
   #best { margin:0; font-size:1.1cqw; color:var(--amber); }
-  #hiscores { margin:0; font-size:1cqw; line-height:1.9; color:#cfc8e8; }
-  #hiscores b { display:block; color:var(--amber); font-weight:normal; cursor:pointer; }
+  #hiscores { margin:0; font-size:1.1cqw; line-height:2; color:#fff; }
+  #hiscores b { display:block; color:var(--amber); font-weight:normal; }
   /* The half row at the bottom shows that the list scrolls. */
-  #hilist { max-height:6.65em; overflow-y:auto; padding:0 1.5em; white-space:pre; overscroll-behavior:contain;
+  #hilist { max-height:15.6em; overflow-y:auto; padding:.3em 1.5em; white-space:pre; border:.2cqw solid var(--amber);
+    box-shadow:0 0 1cqw rgba(255,176,0,.35); background:rgba(5,4,13,.6); overscroll-behavior:contain;
     touch-action:pan-y; scrollbar-width:thin; scrollbar-color:var(--amber) transparent; }
-  #hsfull { position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center;
-    gap:1.6cqw; background:rgba(5,4,13,.96); cursor:pointer; z-index:2; }
-  #hsfull.open { display:flex; }
-  #hsfull b { color:var(--amber); font-weight:normal; font-size:2cqw; }
-  #hsrows { max-height:80%; overflow-y:auto; white-space:pre; line-height:2.1; color:#cfc8e8; touch-action:pan-y;
-    scrollbar-width:thin; scrollbar-color:var(--amber) transparent; }
-  #launch { font:inherit; font-size:1.4cqw; color:var(--amber); background:transparent; border:.25cqw solid var(--amber);
-    padding:1cqw 3cqw; cursor:pointer; box-shadow:0 0 1cqw rgba(255,176,0,.35); }
+  #hilist span:first-child { color:var(--amber); }
+  #launch { font:inherit; font-size:1.3cqw; color:var(--amber); background:transparent; border:.25cqw solid var(--amber);
+    padding:.8cqw 3cqw; cursor:pointer; box-shadow:0 0 1cqw rgba(255,176,0,.35); }
   .hint { margin:0; font-size:1cqw; color:var(--dim); }
   .blink { animation:blink 1.1s steps(1) infinite; }
   @keyframes blink { 50% { opacity:0; } }
 
-  body.mobile #menu { font-size:3.6cqw; gap:3cqw; }
-  body.mobile h1 { font-size:8.4cqw; letter-spacing:0; }
-  body.mobile .sub { font-size:2.2cqw; margin-bottom:2cqw; }
-  body.mobile .row { grid-template-columns:32cqw 56cqw; padding:2.2cqw 2.5cqw; border-width:.5cqw; }
+  body.mobile #menu { font-size:3.4cqw; gap:2.2cqw; }
+  body.mobile h1 { font-size:7.4cqw; letter-spacing:0; }
+  body.mobile .sub { font-size:2.2cqw; margin-bottom:1cqw; }
+  body.mobile .row { grid-template-columns:32cqw 56cqw; padding:1.5cqw 2.5cqw; border-width:.5cqw; }
   body.mobile .arrow { padding:2cqw 3cqw; }
-  body.mobile #desc { font-size:2.6cqw; max-width:86cqw; min-height:10cqw; }
-  body.mobile #best, body.mobile .hint, body.mobile #hiscores { font-size:2.6cqw; }
-  body.mobile #hilist { max-height:10.45em; }
-  body.mobile #hsfull { gap:4cqw; }
-  body.mobile #hsfull b { font-size:4.4cqw; }
-  body.mobile #hsrows { font-size:2.6cqw; line-height:2.4; }
+  body.mobile #desc { font-size:2.4cqw; max-width:86cqw; min-height:8cqw; }
+  body.mobile #best, body.mobile .hint { font-size:2.6cqw; }
+  body.mobile #hiscores { font-size:2.4cqw; }
+  body.mobile #hilist { max-height:11.6em; border-width:.5cqw; }
   #kbin { position:fixed; left:0; top:0; width:1px; height:1px; opacity:0; border:0; padding:0; font-size:16px;
     -webkit-user-select:text; user-select:text; }
   body.mobile { align-items:flex-start; }
-  body.mobile #launch { font-size:4.4cqw; padding:3.5cqw 10cqw; border-width:.6cqw; }
+  body.mobile #launch { font-size:4.2cqw; padding:2.8cqw 10cqw; border-width:.6cqw; }
 </style>
 </head>
 <body>
@@ -82,8 +76,7 @@
     <p id="best"></p>
     <div id="hiscores"></div>
     <button id="launch">LAUNCH</button>
-    <p class="hint" id="menuhint">&uarr;&darr; SELECT &middot; &larr;&rarr; CHANGE &middot; ENTER TO LAUNCH &middot; H FOR SCORES</p>
-    <div id="hsfull"><b>HIGH SCORES</b><div id="hsrows"></div><p class="hint" id="hsclose"></p></div>
+    <p class="hint" id="menuhint">&uarr;&darr; SELECT &middot; &larr;&rarr; CHANGE &middot; ENTER TO LAUNCH</p>
   </div>
   <div id="crt"></div>
 </div>
@@ -331,19 +324,9 @@ function initialsKey(key) {
 function renderMenuScores() {
   const el = document.getElementById('hiscores');
   const list = (S.hs.scores || []).slice(0, 10);
-  const rows = list.map((e, i) => `${String(i + 1).padStart(2)} ${e.initials} ${String(e.score).padStart(7, '0')}`);
-  el.innerHTML = list.length ? `<b>HIGH SCORES &#9654; VIEW ALL</b><div id="hilist">${rows.join('\n')}</div>` : '';
-  document.getElementById('hsrows').textContent = list.map(scoreLine).join('\n');
-  if (!list.length) toggleScores(false);
+  el.innerHTML = list.length ? `<b>HIGH SCORES</b><div id="hilist">${list.map((e, i) => `<span>${scoreLine(e, i)}</span>`).join('\n')}</div>` : '';
 }
 const scoreLine = (e, i) => `${String(i + 1).padStart(2)}  ${e.initials}  ${String(e.score).padStart(7, '0')}  LV${String(e.level).padStart(2)}  ${String(e.wpm).padStart(3)} WPM`;
-function toggleScores(open) {
-  S.hsOpen = open && !!(S.hs.scores || []).length;
-  document.getElementById('hsfull').classList.toggle('open', S.hsOpen);
-}
-document.getElementById('hiscores').addEventListener('click', e => { if (e.target.tagName === 'B') toggleScores(true); });
-document.getElementById('hsfull').addEventListener('click', () => toggleScores(false));
-document.getElementById('hsclose').textContent = MOBILE ? 'TAP TO CLOSE' : 'CLICK OR ESC TO CLOSE';
 
 const groundY = () => MOBILE ? L.groundY : S.cfg.mode === 2 ? 470 : 380;
 const bestKey = () => `keystroids:best:${S.cfg.drill}:${S.cfg.mode}${MOBILE ? ':m' : ''}`;
@@ -549,8 +532,6 @@ window.addEventListener('keydown', e => {
   if (HANDLED.has(e.key) || e.key.length === 1 || e.key.startsWith('Arrow')) e.preventDefault();
 
   if (S.state === 'menu') {
-    if (S.hsOpen) { if (e.key === 'Escape' || e.key === 'Enter' || e.key.toLowerCase() === 'h') toggleScores(false); return; }
-    if (e.key.toLowerCase() === 'h') { toggleScores(true); return; }
     const m = MENU_ROWS[S.menuRow];
     if (e.key === 'ArrowUp') S.menuRow = (S.menuRow + MENU_ROWS.length - 1) % MENU_ROWS.length;
     else if (e.key === 'ArrowDown') S.menuRow = (S.menuRow + 1) % MENU_ROWS.length;
