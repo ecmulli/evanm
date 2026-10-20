@@ -21,7 +21,6 @@ from .db import Database
 from .models import (
     EnphaseLifetimeResponse,
     EnphaseProductionResponse,
-    EnphaseRgmStatsResponse,
     EnphaseTokenResponse,
 )
 
@@ -192,22 +191,26 @@ class EnphaseClient:
         )
         return EnphaseProductionResponse(**data)
 
-    def get_consumption_intervals(
-        self, start_at: int, end_at: int
-    ) -> EnphaseRgmStatsResponse:
-        """Fetch 15-min consumption intervals via rgm_stats endpoint.
+    def get_production_meter(self, start_at: int, granularity: str = "week") -> EnphaseProductionResponse:
+        """Fetch 15-min production intervals from the production meter (wh_del per interval).
 
-        The telemetry/consumption endpoint requires a paid plan.
-        rgm_stats returns meter_intervals with channels:
-          - Channel 1: Production
-          - Channel 2: Consumption (net)
+        granularity "day" returns up to 1 day from start_at, "week" up to 7 days.
+        The sum of a day matches energy_lifetime.
         """
-        endpoint = f"/api/v4/systems/{self.config.enphase_system_id}/rgm_stats"
-        data = self._make_api_request(
-            endpoint,
-            params={"start_at": start_at, "end_at": end_at, "granularity": "15mins"},
-        )
-        return EnphaseRgmStatsResponse(**data)
+        endpoint = f"/api/v4/systems/{self.config.enphase_system_id}/telemetry/production_meter"
+        data = self._make_api_request(endpoint, params={"start_at": start_at, "granularity": granularity})
+        return EnphaseProductionResponse(**data)
+
+    def get_consumption_meter(self, start_at: int, granularity: str = "week") -> EnphaseProductionResponse:
+        """Fetch 15-min consumption intervals from the consumption meter (enwh per interval).
+
+        granularity "day" returns up to 1 day from start_at, "week" up to 7 days.
+        The sum of a day matches consumption_lifetime.
+        Do not use rgm_stats for consumption: its channels 1 and 2 are the two legs of production.
+        """
+        endpoint = f"/api/v4/systems/{self.config.enphase_system_id}/telemetry/consumption_meter"
+        data = self._make_api_request(endpoint, params={"start_at": start_at, "granularity": granularity})
+        return EnphaseProductionResponse(**data)
 
     def get_production_lifetime(
         self, start_date: str | None = None, end_date: str | None = None

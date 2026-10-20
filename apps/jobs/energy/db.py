@@ -47,8 +47,12 @@ class Database:
         finally:
             cur.close()
 
-    def upsert_readings(self, readings: list[dict]):
-        """Batch upsert energy readings. Updates existing rows if new data is non-zero."""
+    def upsert_readings(self, readings: list[dict], overwrite: bool = False):
+        """Batch upsert energy readings.
+
+        By default an existing row keeps its value when the new value is zero.
+        With overwrite=True the new value always replaces it (used by backfills to correct old data).
+        """
         if not readings:
             return 0
 
@@ -62,14 +66,14 @@ class Database:
                 VALUES %s
                 ON CONFLICT ("timestamp", metric_type) DO UPDATE
                 SET watt_hours = CASE
-                        WHEN EXCLUDED.watt_hours != 0 THEN EXCLUDED.watt_hours
+                        WHEN EXCLUDED.watt_hours != 0 OR %(overwrite)s THEN EXCLUDED.watt_hours
                         ELSE energy_readings.watt_hours
                     END,
                     watts = CASE
-                        WHEN EXCLUDED.watt_hours != 0 THEN EXCLUDED.watts
+                        WHEN EXCLUDED.watt_hours != 0 OR %(overwrite)s THEN EXCLUDED.watts
                         ELSE energy_readings.watts
                     END
-                """,
+                """.replace("%(overwrite)s", "TRUE" if overwrite else "FALSE"),
                 [
                     (r["timestamp"], r["metric_type"], r["watt_hours"], r.get("watts"))
                     for r in readings
