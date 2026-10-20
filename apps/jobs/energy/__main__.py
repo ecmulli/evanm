@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 
 from .aggregator import Aggregator
 from .anomaly_detector import AnomalyDetector
-from .collector import Collector
+from .collector import Collector, fetch_and_store
 from .config import Config
 from .db import Database
 from .enphase_client import EnphaseClient
@@ -59,13 +59,14 @@ def run_collection(config: Config, db: Database):
 
 def run_backfill(config: Config, db: Database, start_date: date, end_date: date):
     """
-    Backfill historical data in 7-day chunks via rgm_stats.
+    Backfill historical data in 7-day chunks from the production and consumption meters.
 
-    Phase 1: Fetch production (ch1) + consumption (ch2) from rgm_stats in 7-day chunks.
-             Single API call per chunk returns both channels.
+    Phase 1: Fetch 15-min production and consumption intervals, 2 API calls per 7-day chunk.
+             Rows are overwritten, so a backfill corrects old data.
     Phase 2: Aggregate daily summaries and run anomaly detection.
 
-    Total API calls: ceil(N/7). 30 days = ~5 calls.
+    Total API calls: 2 * ceil(N/7). 30 days = ~10 calls.
+    Enphase keeps interval data for 2 years only.
     Rate limiter in EnphaseClient handles the 10 req/min limit automatically.
     """
     client = EnphaseClient(config, db)
@@ -82,48 +83,30 @@ def run_backfill(config: Config, db: Database, start_date: date, end_date: date)
 
     logger.info(f"=== Backfilling {days} days ({start_date} to {end_date - timedelta(days=1)}) ===")
 
-    # Phase 1: Fetch production + consumption in 7-day chunks
     CHUNK_DAYS = 7
     num_chunks = (days + CHUNK_DAYS - 1) // CHUNK_DAYS
     logger.info(f"Phase 1: Fetching production + consumption in {num_chunks} chunks of up to {CHUNK_DAYS} days...")
 
+    failed = []
     chunk_start = start_date
     chunk_num = 0
     while chunk_start < end_date:
         chunk_end = min(chunk_start + timedelta(days=CHUNK_DAYS), end_date)
         chunk_num += 1
 
-        start_dt = datetime(chunk_start.year, chunk_start.month, chunk_start.day, tzinfo=tz)
-        end_dt = datetime(chunk_end.year, chunk_end.month, chunk_end.day, tzinfo=tz)
-        start_at = int(start_dt.timestamp())
-        end_at = int(end_dt.timestamp())
+        start_at = int(datetime(chunk_start.year, chunk_start.month, chunk_start.day, tzinfo=tz).timestamp())
+        end_at = int(datetime(chunk_end.year, chunk_end.month, chunk_end.day, tzinfo=tz).timestamp())
 
         logger.info(f"  Chunk {chunk_num}/{num_chunks}: {chunk_start} to {chunk_end - timedelta(days=1)}")
-
-        # Single rgm_stats call returns both production (ch1) and consumption (ch2)
         try:
-            rgm = client.get_consumption_intervals(start_at, end_at)
-            prod_readings = []
-            cons_readings = []
-            for group in rgm.meter_intervals:
-                for iv in group.intervals:
-                    reading = {
-                        "timestamp": datetime.fromtimestamp(iv.end_at, tz).isoformat(),
-                        "watt_hours": int(iv.wh_del or 0),
-                        "watts": iv.curr_w,
-                    }
-                    if iv.channel == 1:  # Production
-                        reading["metric_type"] = "production"
-                        prod_readings.append(reading)
-                    elif iv.channel == 2:  # Consumption
-                        reading["metric_type"] = "consumption"
-                        cons_readings.append(reading)
-
-            db.upsert_readings(prod_readings)
-            db.upsert_readings(cons_readings)
-            logger.info(f"    Production: {len(prod_readings)} | Consumption: {len(cons_readings)}")
+            r = fetch_and_store(client, db, tz, start_at, end_at, "week", overwrite=True)
+            logger.info(
+                f"    Production: {r['production']} ({r['production_wh'] / 1000:.1f} kWh) | "
+                f"Consumption: {r['consumption']} ({r['consumption_wh'] / 1000:.1f} kWh)"
+            )
         except Exception as e:
             logger.error(f"    Failed chunk {chunk_start}-{chunk_end}: {e}")
+            failed.append(str(chunk_start))
 
         chunk_start = chunk_end
 
@@ -137,6 +120,9 @@ def run_backfill(config: Config, db: Database, start_date: date, end_date: date)
         except Exception as e:
             logger.error(f"Aggregation/anomaly detection failed for {target}: {e}")
 
+    if failed:
+        logger.error(f"=== Backfill finished with {len(failed)} failed chunks: {', '.join(failed)} ===")
+        sys.exit(1)
     logger.info("=== Backfill complete ===")
 
 

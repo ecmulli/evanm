@@ -13,8 +13,62 @@ from zoneinfo import ZoneInfo
 from .config import Config
 from .db import Database
 from .enphase_client import EnphaseClient
+from .models import EnphaseProductionResponse
 
 logger = logging.getLogger(__name__)
+
+# Intervals are 15 minutes, so average power in W is Wh * 4.
+INTERVALS_PER_HOUR = 4
+
+
+def meter_readings(
+    production: EnphaseProductionResponse,
+    consumption: EnphaseProductionResponse,
+    tz: ZoneInfo,
+    end_at: int | None = None,
+) -> tuple[list[dict], list[dict]]:
+    """Convert meter telemetry into energy_readings rows. Drops intervals that end after end_at."""
+
+    def rows(resp: EnphaseProductionResponse, metric: str, field: str) -> list[dict]:
+        out = []
+        for iv in resp.intervals:
+            if end_at is not None and iv.end_at > end_at:
+                continue
+            wh = int(round(getattr(iv, field) or 0))
+            out.append(
+                {
+                    "timestamp": datetime.fromtimestamp(iv.end_at, tz).isoformat(),
+                    "metric_type": metric,
+                    "watt_hours": wh,
+                    "watts": wh * INTERVALS_PER_HOUR,
+                }
+            )
+        return out
+
+    return rows(production, "production", "wh_del"), rows(consumption, "consumption", "enwh")
+
+
+def fetch_and_store(
+    client: EnphaseClient,
+    db: Database,
+    tz: ZoneInfo,
+    start_at: int,
+    end_at: int,
+    granularity: str,
+    overwrite: bool = False,
+) -> dict:
+    """Fetch production and consumption meter intervals (2 API calls) and upsert them."""
+    production = client.get_production_meter(start_at, granularity)
+    consumption = client.get_consumption_meter(start_at, granularity)
+    prod_rows, cons_rows = meter_readings(production, consumption, tz, end_at)
+    db.upsert_readings(prod_rows, overwrite=overwrite)
+    db.upsert_readings(cons_rows, overwrite=overwrite)
+    return {
+        "production": len(prod_rows),
+        "consumption": len(cons_rows),
+        "production_wh": sum(r["watt_hours"] for r in prod_rows),
+        "consumption_wh": sum(r["watt_hours"] for r in cons_rows),
+    }
 
 
 class Collector:
@@ -45,35 +99,11 @@ class Collector:
         )
 
         results = {"production": 0, "consumption": 0, "errors": []}
-
-        # Fetch production + consumption via rgm_stats (1 API call, both channels)
-        # Channel 1 = production, Channel 2 = consumption
         try:
-            rgm = self.client.get_consumption_intervals(start_at, now)
-            prod_readings = []
-            cons_readings = []
-            for group in rgm.meter_intervals:
-                for iv in group.intervals:
-                    reading = {
-                        "timestamp": datetime.fromtimestamp(iv.end_at, self.timezone).isoformat(),
-                        "watt_hours": int(iv.wh_del or 0),
-                        "watts": iv.curr_w,
-                    }
-                    if iv.channel == 1:  # Production
-                        reading["metric_type"] = "production"
-                        prod_readings.append(reading)
-                    elif iv.channel == 2:  # Consumption
-                        reading["metric_type"] = "consumption"
-                        cons_readings.append(reading)
-
-            results["production"] = self.db.upsert_readings(prod_readings)
-            results["consumption"] = self.db.upsert_readings(cons_readings)
-            logger.info(
-                f"Production: {len(prod_readings)} intervals, {results['production']} upserted | "
-                f"Consumption: {len(cons_readings)} intervals, {results['consumption']} upserted"
-            )
+            results.update(fetch_and_store(self.client, self.db, self.timezone, start_at, now, "day"))
+            logger.info(f"Production: {results['production']} intervals | Consumption: {results['consumption']} intervals")
         except Exception as e:
             logger.error(f"Failed to collect data: {e}")
-            results["errors"].append(f"rgm_stats: {e}")
+            results["errors"].append(f"meter telemetry: {e}")
 
         return results
